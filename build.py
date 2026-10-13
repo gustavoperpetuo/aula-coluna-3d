@@ -15,7 +15,5 @@ out = (doc + head
        + '\n<script>\n' + geo + '</script>\n<script>\n' + js + '</script>\n')
 (root / 'dist').mkdir(exist_ok=True)
 (root / 'dist' / 'coluna-vertebral.html').write_text(out, encoding='utf-8')
-# Cloudflare Pages: a raiz do site abre a aula
-(root / 'dist' / '_redirects').write_text('/ /coluna-vertebral 302\n', encoding='utf-8')
 assert '—' not in out and '–' not in out, 'travessão encontrado'
 print(len(out), 'bytes')
