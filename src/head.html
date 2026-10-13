@@ -1,0 +1,249 @@
+<title>Coluna Vertebral 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: estação de leitura. Roteiro da aula e modelo 3D lado a lado; no celular o texto lidera e o 3D é chamado sob demanda. */
+:root {
+  --paper: #EEF1F0;
+  --panel: #FFFFFF;
+  --ink: #18221F;
+  --ink-2: #3F4B49;
+  --ink-3: #5F6B68;
+  --line: #D6DEDB;
+  --line-strong: #8E9A97;
+  --accent: #0D6669;
+  --accent-soft: #E1EFEE;
+  --sel: #127E83;
+  --path: #B5432B;
+  --path-soft: #F8E9E4;
+  --lightbox-a: #F6F8F8;
+  --lightbox-b: #DCE5E4;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16.5px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+button, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+#app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.top { display: flex; align-items: center; gap: 20px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+.brand h1 { font-weight: 700; font-size: 20px; margin: 0; }
+.seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14.5px; color: var(--ink-2); min-height: 34px; }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(20,40,40,.14); }
+.seg button.dz[aria-pressed="true"] { color: var(--path); }
+.prog { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.prog .bar { width: 110px; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.prog .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform .4s; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 430px; grid-template-areas: "view panel"; min-height: 0; }
+.panel { grid-area: panel; }
+.view { grid-area: view; position: relative; min-height: 0; background: radial-gradient(120% 90% at 40% 35%, var(--lightbox-a), var(--lightbox-b)); overflow: hidden; }
+.view::after { content: ""; position: absolute; inset: 0; background: rgba(24,34,31,.14); opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 0; }
+.view.dim::after { opacity: 1; }
+#gl { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#gl:active { cursor: grabbing; }
+.loading { z-index: 5; position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: var(--ink-2); pointer-events: none; }
+.fail { z-index: 6; position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
+.fail p { max-width: 36ch; margin: 0 0 12px; color: var(--ink-2); }
+
+/* rótulos */
+#labels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+#labels svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 1; padding: 5px 8px; border-radius: 5px; background: rgba(255,255,255,.94); border: 1px solid var(--line); color: var(--ink); box-shadow: 0 1px 3px rgba(20,40,40,.1); }
+.lbl.hot { border-color: var(--path); color: var(--path); }
+.lbl.sel { background: var(--sel); border-color: var(--sel); color: #fff; }
+.lbl:hover { border-color: var(--accent); }
+
+/* ferramentas sobre o 3D */
+.ttog { z-index: 3; position: absolute; left: 12px; top: 12px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.95); border-radius: 8px; padding: 6px 12px; font-size: 14.5px; font-weight: 600; cursor: pointer; min-height: 36px; }
+.ttog[aria-expanded="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tools { z-index: 3; position: absolute; left: 12px; right: 64px; top: 56px; display: none; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.tools.open { display: flex; }
+.group { display: flex; flex-wrap: wrap; gap: 4px; background: rgba(255,255,255,.95); border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+.chip { border: 1px solid transparent; background: transparent; border-radius: 5px; padding: 4px 9px; font-size: 14px; cursor: pointer; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+.chip .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; opacity: .35; }
+.chip[aria-pressed="true"] { background: var(--panel); border-color: var(--line-strong); color: var(--ink); }
+.chip[aria-pressed="true"] .sw { opacity: 1; }
+.chip:hover { color: var(--ink); }
+.lvsel { display: none; }
+.hint { z-index: 2; position: absolute; left: 12px; bottom: 10px; font-size: 14px; color: var(--ink-2); pointer-events: none; background: rgba(246,248,248,.85); padding: 2px 6px; border-radius: 4px; }
+.explore, .done3d { display: none; }
+
+/* régua de níveis */
+.ruler { z-index: 3; position: absolute; right: 8px; top: 10px; bottom: 10px; width: 44px; display: flex; flex-direction: column; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
+.ruler::-webkit-scrollbar { display: none; }
+.ruler button { flex: 1 1 0; min-height: 14px; border: 0; background: transparent; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; padding: 0; font-variant-numeric: tabular-nums; }
+.ruler button::before { content: ""; position: absolute; left: 3px; top: 15%; bottom: 15%; width: 3px; border-radius: 2px; background: var(--rc); opacity: .6; }
+.ruler button:hover, .ruler button.on { color: var(--ink); background: var(--accent-soft); }
+.ruler button.on { font-weight: 700; }
+.ruler.short { bottom: auto; max-height: calc(100% - 20px); }
+.ruler.short button { flex: 0 0 34px; }
+.ruler button[hidden] { display: none; }
+.ruler.short::before { content: "Níveis"; display: block; font-size: 11px; font-weight: 600; color: var(--ink-3); text-align: center; padding: 2px 0 4px; }
+
+/* cartão de estrutura */
+.info { z-index: 4; position: absolute; left: 12px; bottom: 40px; width: min(340px, calc(100% - 80px)); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(20,40,40,.1); }
+.info h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; padding-right: 28px; text-wrap: balance; }
+.info .meta { font-size: 14px; color: var(--ink-3); margin-bottom: 6px; }
+.info p { margin: 0; font-size: 15px; color: var(--ink-2); }
+.info ul { margin: 6px 0 0; padding-left: 16px; font-size: 14.5px; color: var(--ink-2); }
+.info .note { margin-top: 6px; font-size: 13.5px; color: var(--ink-3); }
+.info .x { position: absolute; right: 6px; top: 6px; border: 0; background: transparent; cursor: pointer; font-size: 20px; line-height: 1; color: var(--ink-3); width: 32px; height: 32px; border-radius: 6px; }
+.info .x:hover { background: var(--paper); color: var(--ink); }
+.info .acts { margin-top: 10px; display: flex; gap: 6px; }
+
+/* painel */
+.panel { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.chapwrap { position: relative; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+.chapwrap::before, .chapwrap::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 1; }
+.chapwrap::before { left: 0; background: linear-gradient(to right, var(--panel), rgba(255,255,255,0)); }
+.chapwrap::after { right: 0; background: linear-gradient(to left, var(--panel), rgba(255,255,255,0)); }
+.chapwrap.more-l::before, .chapwrap.more-r::after { opacity: 1; }
+.chap { display: flex; gap: 4px; padding: 10px 14px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-behavior: smooth; }
+.chap::-webkit-scrollbar { display: none; }
+.chap button { flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; font-size: 14px; cursor: pointer; color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; min-height: 34px; }
+.chap button b { font-weight: 700; font-size: 13px; color: var(--ink-3); }
+.chap button[aria-current="step"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chap button[aria-current="step"] b { color: #B9C7C4; }
+.chap button.done:not([aria-current="step"])::after { content: "✓"; color: var(--accent); font-weight: 700; }
+.scroll { flex: 1 1 auto; overflow-y: auto; padding: 20px 22px 24px; min-height: 0; }
+.eyebrow { font-size: 14px; color: var(--ink-3); }
+.scroll h2 { font-weight: 700; font-size: 26px; line-height: 1.2; margin: 4px 0 14px; text-wrap: balance; }
+.scroll h2:focus { outline: none; }
+.scroll p { margin: 0 0 12px; max-width: 62ch; }
+.how { font-size: 15px; color: var(--ink-2); padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.how b { color: var(--ink); }
+.pro { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pro .h { font-weight: 700; font-size: 16px; color: var(--accent); margin-bottom: 4px; }
+.pro p { margin: 0; }
+.see { margin-top: 18px; }
+.see .h { font-size: 14px; color: var(--ink-3); margin-bottom: 2px; }
+.see .row { display: flex; flex-wrap: wrap; gap: 0 18px; }
+.see button { border: 0; background: none; padding: 7px 0; min-height: 36px; font-size: 15.5px; cursor: pointer; color: var(--accent); text-decoration: underline; text-decoration-color: rgba(13,102,105,.4); text-underline-offset: 3px; }
+.see button:hover { text-decoration-color: var(--accent); }
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel); }
+.btn { border: 1px solid var(--line-strong); background: var(--panel); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; font-size: 15px; min-height: 42px; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { background: #0A5558; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.sm { padding: 5px 12px; font-size: 14px; min-height: 36px; }
+.btn.link { border-color: transparent; background: none; color: var(--accent); padding-left: 0; }
+
+/* gráfico Wilke */
+.bars { margin: 14px 0 4px; display: grid; gap: 7px; }
+.bars .r { display: grid; grid-template-columns: 170px minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: 14.5px; }
+.bars .t { height: 12px; border-radius: 3px; overflow: hidden; }
+.bars .t i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bars .v { font-size: 14px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.bars .note { font-size: 13.5px; color: var(--ink-3); }
+
+/* quiz */
+.q { padding: 4px 0 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.q .qt { font-weight: 600; margin-bottom: 10px; }
+.q .opts { display: grid; gap: 6px; }
+.q .opts button { text-align: left; border: 1px solid var(--line-strong); background: var(--panel); border-radius: 7px; padding: 9px 12px; cursor: pointer; font-size: 15.5px; min-height: 44px; }
+.q .opts button:hover:not(:disabled) { border-color: var(--accent); }
+.q .opts button.ok { border-color: var(--accent); background: var(--accent-soft); }
+.q .opts button.no { border-color: var(--path); background: var(--path-soft); }
+.q .opts button:disabled { cursor: default; }
+.q .ex { margin-top: 8px; font-size: 15px; color: var(--ink-2); }
+.qfoot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.score { font-size: 15px; font-weight: 600; color: var(--accent); }
+
+/* doenças */
+.dzcat { margin: 26px 0 4px; font-size: 18px; font-weight: 700; color: var(--ink); }
+.dzcat:first-child { margin-top: 0; }
+.dzlist { display: grid; }
+.dzi { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 11px 2px; cursor: pointer; align-items: baseline; min-height: 44px; }
+.dzi:hover span { color: var(--path); }
+.dzi span { font-weight: 600; }
+.dzi em { font-style: normal; font-size: 14px; color: var(--ink-3); white-space: nowrap; }
+.dzi.seen span::after { content: " ✓"; color: var(--accent); font-weight: 400; }
+.others { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.others summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.others dl { margin: 10px 0 0; }
+.others dt { font-weight: 600; font-size: 15px; margin-top: 8px; }
+.others dd { margin: 2px 0 0; font-size: 15px; color: var(--ink-2); }
+.back { border: 0; background: transparent; cursor: pointer; color: var(--ink-2); padding: 6px 0; font-size: 15px; margin-bottom: 6px; min-height: 36px; }
+.back:hover { color: var(--ink); }
+.lvtag { font-size: 15px; color: var(--path); font-weight: 600; margin: -6px 0 12px; }
+.dzbar { margin: 0 0 16px; }
+.sec { margin-top: 16px; }
+.sec h3 { margin: 0 0 2px; font-size: 16.5px; font-weight: 700; color: var(--ink); }
+.sec p { margin: 0; }
+.donebox { margin: 0 0 20px; padding: 0 0 16px; border-bottom: 1px solid var(--line); }
+.donebox strong { color: var(--accent); }
+
+@media (max-width: 900px) {
+  html, body { height: auto; }
+  #app { height: auto; display: block; }
+  .stage { display: flex; flex-direction: column; }
+  .view { order: 1; height: 44svh; min-height: 300px; }
+  .panel { order: 2; border-left: 0; border-top: 1px solid var(--line); }
+  #gl { touch-action: pan-y; cursor: default; }
+  .scroll { overflow: visible; padding: 18px 16px; }
+  .nav { position: sticky; bottom: 0; z-index: 7; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .prog { margin-left: 0; width: 100%; }
+  .prog .bar { flex: 1; width: auto; }
+  .top { padding: 8px 16px; gap: 8px 12px; }
+  .ttog { top: auto; bottom: 12px; left: 12px; }
+  .tools { top: auto; bottom: 58px; right: 12px; }
+  .chip { padding: 6px 9px; min-height: 40px; }
+  .seg button, .chap button { min-height: 40px; }
+  .lvsel { display: block; min-height: 40px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: var(--panel); }
+  .ruler, .hint { display: none; }
+  .explore { display: block; position: absolute; z-index: 3; right: 12px; bottom: 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 40px; }
+  .info { position: fixed; left: 8px; right: 8px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); max-height: 36svh; overflow-y: auto; z-index: 8; }
+  .bars .r { grid-template-columns: 110px minmax(0, 1fr) 68px; font-size: 13.5px; }
+  /* modo explorar: 3D em tela cheia com gestos */
+  .view.full { position: fixed; inset: 0; height: 100%; min-height: 0; z-index: 20; }
+  .view.full #gl { touch-action: none; }
+  .view.full .explore { display: none; }
+  .view.full .done3d { display: block; position: absolute; z-index: 3; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); border: 1px solid var(--ink); background: var(--ink); color: #fff; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 15px; min-height: 40px; cursor: pointer; }
+  .view.full .ttog { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .view.full .info { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); z-index: 21; }
+  .view.full .gesture { display: block; }
+}
+.gesture { display: none; position: absolute; z-index: 3; left: 12px; right: 130px; top: calc(12px + env(safe-area-inset-top, 0px)); font-size: 14px; line-height: 1.35; color: var(--ink-2); background: rgba(255,255,255,.92); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div id="app">
+  <header class="top">
+    <div class="brand"><h1>Coluna vertebral</h1></div>
+    <div class="seg" role="group" aria-label="Parte da aula">
+      <button id="m-anat" aria-pressed="true">Anatomia</button>
+      <button id="m-dz" aria-pressed="false">Doenças</button>
+    </div>
+    <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span></div>
+  </header>
+  <main class="stage">
+    <aside class="panel" id="panel" aria-label="Aula">
+      <div class="chapwrap" id="chapwrap"><nav class="chap" id="chap" aria-label="Capítulos"></nav></div>
+      <div class="scroll" id="scroll"></div>
+      <div class="nav" id="nav"></div>
+    </aside>
+    <section class="view" id="view" aria-label="Modelo 3D da coluna">
+      <canvas id="gl" role="img" aria-label="Modelo 3D da coluna vertebral. Use os links Localizar no 3D do painel para destacar estruturas."></canvas>
+      <div id="labels" aria-hidden="true"><svg id="lines"></svg></div>
+      <div class="gesture">Um dedo gira, pinça aproxima, dois dedos movem</div>
+      <button class="done3d" id="done3d" type="button">Concluir</button>
+      <button class="ttog" id="ttog" type="button" aria-expanded="false" aria-controls="tools">Camadas e cortes</button>
+      <div class="tools" id="tools">
+        <div class="group" id="layers" role="group" aria-label="Camadas"></div>
+        <div class="group" id="viewtools" role="group" aria-label="Visualização"></div>
+      </div>
+      <nav class="ruler" id="ruler" aria-label="Ir para um nível da coluna"></nav>
+      <button class="explore" id="explore" type="button">Explorar em 3D</button>
+      <div class="info" id="info" hidden></div>
+      <div class="hint" id="hint">Arraste para girar, role para aproximar e clique numa estrutura para ver o nome</div>
+      <div class="loading" id="loading">Montando a coluna…</div>
+    </section>
+  </main>
+  <div class="sr" id="live" aria-live="polite"></div>
+</div>
