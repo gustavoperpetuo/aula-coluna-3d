@@ -81,26 +81,28 @@ body.resizing { cursor: col-resize; user-select: none; }
 .hint { z-index: 2; position: absolute; left: 12px; bottom: 10px; font-size: 14px; color: var(--ink-2); pointer-events: none; background: rgba(246,248,248,.85); padding: 2px 6px; border-radius: 4px; }
 .explore, .done3d { display: none; }
 
-/* sobre o modelo: no topo, comparar e localizar; embaixo, camadas e cortes. Mesma faixa horizontal
-   (12 px da borda esquerda até a régua), tudo centralizado, controles com 44 px de altura */
-.viewtop { z-index: 3; position: absolute; left: 12px; right: 68px; top: 12px; display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 8px; pointer-events: none; }
-.viewtop:empty { display: none; }
-.viewtop > * { pointer-events: auto; }
-.viewtop .dzbar { margin: 0; display: flex; }
-.viewtop .seg { box-sizing: border-box; height: 44px; align-items: stretch; background: rgba(238,241,240,.96); box-shadow: 0 1px 4px rgba(20,40,40,.08); }
-.viewtop .seg { flex: 0 0 auto; }
-.viewtop .seg button { min-height: 0; padding: 0 16px; font-size: 15px; white-space: nowrap; }
-.viewtop .see { margin: 0; box-sizing: border-box; min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 14px; padding: 4px 16px; background: rgba(255,255,255,.96); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 4px rgba(20,40,40,.08); }
-.viewtop .see .h { margin: 0; font-size: 14px; color: var(--ink-3); }
-.viewtop .see .row { gap: 0 14px; justify-content: center; }
-.viewtop .see button { padding: 0; min-height: 34px; font-size: 15px; }
+/* trilha à esquerda: Anatomia/Doenças e a lista vertical de capítulos (ou grupos de doenças).
+   No desktop as ferramentas ficam sempre abertas no topo do 3D, centralizadas entre a borda e a régua. */
+.rail { display: none; }
 @media (min-width: 901px) {
-  .ttog, .hint { display: none; }
-  /* grade de uma coluna: as duas linhas (camadas, cortes) ficam com a mesma largura e centralizadas */
-  .tools { display: grid; grid-template-columns: minmax(0, max-content); justify-content: center; top: auto; bottom: 12px; left: 12px; right: 68px; gap: 6px; pointer-events: none; }
+  .stage { grid-template-columns: var(--rail, 232px) minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "rail view split panel"; }
+  .rail { grid-area: rail; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); box-sizing: border-box; }
+  .rail .seg { display: flex; }
+  .rail .seg button { flex: 1 1 0; min-height: 38px; padding: 0 6px; white-space: nowrap; }
+  .hint { max-width: calc(100% - 92px); }
+  .rail-h { font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 4px 12px 0; }
+  .rail .chapwrap { border: 0; }
+  .rail .chapwrap::before, .rail .chapwrap::after { display: none; }
+  .rail .chap { flex-direction: column; gap: 2px; padding: 0; overflow: visible; }
+  .rail .chap button { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; border-color: transparent; border-radius: 8px; min-height: 44px; padding: 8px 12px; font-size: 15px; line-height: 1.3; }
+  .rail .chap button b { min-width: 14px; }
+  .rail .chap button:hover:not([aria-current="step"]) { background: var(--paper); }
+  .rail .chap button.done:not([aria-current="step"])::after { margin-left: auto; }
+  .ttog { display: none; }
+  .tools { display: grid; grid-template-columns: minmax(0, max-content); justify-content: center; top: 12px; left: 12px; right: 68px; gap: 6px; pointer-events: none; }
   .tools .group { justify-content: center; pointer-events: auto; box-shadow: 0 1px 4px rgba(20,40,40,.08); }
-  .view .info { bottom: calc(var(--dock-h, 90px) + 24px); }
 }
+@media (min-width: 901px) and (max-width: 1200px) { .stage { --rail: 196px; } }
 
 /* régua de níveis */
 .ruler { z-index: 3; position: absolute; right: 12px; top: 12px; bottom: 12px; width: 44px; display: flex; flex-direction: column; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
@@ -226,12 +228,6 @@ body.resizing { cursor: col-resize; user-select: none; }
   .seg button, .chap button { min-height: 40px; }
   .lvsel { display: block; min-height: 40px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: var(--panel); }
   .ruler, .hint, .split { display: none; }
-  .viewtop { left: 8px; right: 8px; top: 8px; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
-  .viewtop::-webkit-scrollbar { display: none; }
-  .viewtop .see, .viewtop .see .row { flex-wrap: nowrap; white-space: nowrap; justify-content: flex-start; }
-  .viewtop .see { flex: 0 0 auto; }
-  .viewtop .see .h { display: none; }
-  .view.full .viewtop { top: calc(56px + env(safe-area-inset-top, 0px)); }
   .explore { display: block; position: absolute; z-index: 3; right: 12px; bottom: 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 40px; }
   .info { position: fixed; left: 8px; right: 8px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); max-height: 36svh; overflow-y: auto; z-index: 8; }
   .bars .r { grid-template-columns: 110px minmax(0, 1fr) 68px; font-size: 13.5px; }
@@ -258,6 +254,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span></div>
   </header>
   <main class="stage">
+    <nav class="rail" id="rail" aria-label="Navegação da aula"><div class="rail-h" id="railh">Capítulos</div></nav>
     <aside class="panel" id="panel" aria-label="Aula">
       <div class="chapwrap" id="chapwrap"><nav class="chap" id="chap" aria-label="Capítulos"></nav></div>
       <div class="scroll" id="scroll"></div>
@@ -276,7 +273,6 @@ body.resizing { cursor: col-resize; user-select: none; }
       </div>
       <nav class="ruler" id="ruler" aria-label="Ir para um nível da coluna"></nav>
       <button class="explore" id="explore" type="button">Explorar em 3D</button>
-      <div class="viewtop" id="viewtop"></div>
       <div class="info" id="info" hidden></div>
       <div class="hint" id="hint">Arraste para girar, role para aproximar e clique numa estrutura para ver o nome</div>
       <div class="loading" id="loading">Montando a coluna…</div>

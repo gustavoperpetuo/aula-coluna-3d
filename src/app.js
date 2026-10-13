@@ -20,7 +20,7 @@
     const f = document.createElement('div'); f.className = 'fail';
     f.innerHTML = `<div><p>${msg} A aula em texto continua no painel.</p><button class="btn" id="retry">Tentar de novo</button></div>`;
     view.appendChild(f); $('#retry').onclick = () => location.reload();
-    ['#ttog', '#ruler', '#hint', '#explore', '#viewtop'].forEach(s => { const e = $(s); if (e) e.hidden = true; });
+    ['#ttog', '#ruler', '#hint', '#explore'].forEach(s => { const e = $(s); if (e) e.hidden = true; });
   }
   try {
     if (!window.THREE || !THREE.OrbitControls || typeof buildSpine !== 'function') throw new Error('lib');
@@ -216,7 +216,7 @@
   }
 
   /* ---------- rótulos ---------- */
-  const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog'), viewTop = $('#viewtop');
+  const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog');
   function resolvePos(key) {
     if (!model) return null;
     if (model.anchors.has(key)) return model.anchors.get(key).clone();
@@ -240,10 +240,9 @@
   function updateLabels() {
     const w = view.clientWidth, h = view.clientHeight; const placed = []; let svg = '';
     const vr = view.getBoundingClientRect();
-    // rótulos ficam entre a faixa do topo (comparar e localizar) e a barra de ferramentas embaixo
-    let topLim = mobileQ.matches ? (view.classList.contains('full') ? 72 : 8) : 12;
-    if (viewTop.childElementCount) topLim = Math.max(topLim, viewTop.getBoundingClientRect().bottom - vr.top + 8);
-    const botLim = mobileQ.matches ? 60 : vr.bottom - toolsBox.getBoundingClientRect().top + 8;
+    // no desktop as ferramentas ficam sempre abertas no topo: os rótulos começam abaixo delas
+    let topLim = mobileQ.matches ? (view.classList.contains('full') ? 72 : 8) : toolsBox.getBoundingClientRect().bottom - vr.top + 8;
+    const botLim = mobileQ.matches ? 60 : 40;
     LBL.forEach(L => {
       let ok = S.labelsOn && L.pos;
       if (ok) { tmp.copy(L.pos).project(camera); ok = tmp.z < 1 && Math.abs(tmp.x) < 1.02 && Math.abs(tmp.y) < 1.02; }
@@ -512,7 +511,16 @@
   function edgeFade() { const l = chapEl.scrollLeft > 4, r = chapEl.scrollLeft + chapEl.clientWidth < chapEl.scrollWidth - 4; chapWrap.classList.toggle('more-l', l); chapWrap.classList.toggle('more-r', r); }
   chapEl.addEventListener('scroll', edgeFade, { passive: true });
   function chapterDone(ch) { return ALL_STEPS.every((s, i) => s.ch !== ch || store.seen.includes(i)); }
+  /* ---------- trilha à esquerda (desktop): Anatomia/Doenças e os capítulos saem do topo e do painel ---------- */
+  const rail = $('#rail'), railH = $('#railh'), modeSeg = $('#m-anat').parentNode, brand = $('.brand');
+  function placeNav() {
+    if (mobileQ.matches) { brand.after(modeSeg); $('#panel').prepend(chapWrap); }
+    else { rail.prepend(modeSeg); railH.after(chapWrap); }
+  }
+  placeNav();
+  mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : 'Grupos de doenças';
     if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goStep(ALL_STEPS.findIndex(s => s.ch === +b.dataset.ch), true));
@@ -532,7 +540,7 @@
   }
   function focusTitle() { const h = scrollEl.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } }
   function bindSee() {
-    viewTop.querySelectorAll('.see button').forEach(b => b.onclick = () => {
+    scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
       if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
@@ -555,9 +563,9 @@
       h += st.body.map(p => `<p>${esc(p)}</p>`).join('');
       if (st.extra === 'wilke') h += wilkeHtml();
       h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(st.pro)}</p></aside>`;
+      h += seeHtml(st.labels);
     }
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
-    viewTop.innerHTML = st.quiz !== undefined ? '' : seeHtml(st.labels);
     bindQuiz('q' + st.quiz, st.quiz);
     bindSee();
     const last = S.step === ALL_STEPS.length - 1;
@@ -642,7 +650,7 @@
       });
       h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
       h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
-      scrollEl.innerHTML = h; scrollEl.scrollTop = 0; viewTop.innerHTML = '';
+      scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
       scrollEl.querySelectorAll('.dzi').forEach(b => b.onclick = () => openDz(b.dataset.id, true));
       bindQuiz('dz', 'dz');
       setNav(`<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
@@ -652,11 +660,12 @@
       return;
     }
     const d = DZ.find(x => x.id === S.dz), i = DZ.indexOf(d);
-    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>`;
+    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>
+      <div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
     [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]].forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
+    h += seeHtml(S.dzOn ? d.labels : neutralLabels(d));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
-    viewTop.innerHTML = `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>` + seeHtml(S.dzOn ? d.labels : neutralLabels(d));
     $('#back').onclick = () => { closeDz(); focusTitle(); };
     $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
     $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
@@ -699,7 +708,7 @@
   const stage = $('.stage'), split = $('#split'), PW = 430;
   let pw = PW;
   function setPw(w) {
-    const max = Math.max(320, stage.clientWidth - 360);
+    const max = Math.max(320, stage.clientWidth - 360 - rail.offsetWidth);
     pw = Math.round(Math.min(max, Math.max(320, w)));
     stage.style.setProperty('--pw', pw + 'px');
     split.setAttribute('aria-valuenow', pw); split.setAttribute('aria-valuemax', max);
@@ -727,8 +736,6 @@
   if (has3D) {
     function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); invalidate(); }
     new ResizeObserver(resize).observe(view);
-    // o cartão da estrutura fica logo acima da barra de ferramentas, qualquer que seja a altura dela
-    new ResizeObserver(() => { view.style.setProperty('--dock-h', toolsBox.offsetHeight + 'px'); invalidate(); }).observe(toolsBox);
     let visibleView = true;
     if ('IntersectionObserver' in window) new IntersectionObserver(es => { visibleView = es[0].isIntersecting; invalidate(); }).observe(view);
     // qualquer interação pode mudar rótulos, camadas ou o limite do painel de ferramentas
