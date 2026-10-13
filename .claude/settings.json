@@ -1,0 +1,14 @@
+{
+  "enabledPlugins": {
+    "savvy-progress@claude-kit": true,
+    "savvy-flow@claude-kit": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-kit": {
+      "source": {
+        "source": "github",
+        "repo": "johnnyvizz/claude-kit"
+      }
+    }
+  }
+}
