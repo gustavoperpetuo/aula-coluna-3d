@@ -217,8 +217,11 @@
 
   /* ---------- rótulos ---------- */
   const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog');
+  // rótulo de conceito (curvatura, ápice): chave 'cam:<nível>' só leva a câmera, sem selecionar
+  const camOnly = key => key.startsWith('cam:') ? key.slice(4) : null;
   function resolvePos(key) {
     if (!model) return null;
+    if (camOnly(key)) key = camOnly(key);
     if (model.anchors.has(key)) return model.anchors.get(key).clone();
     const ms = model.reg.get(key);
     if (ms && ms.length) { const b = new THREE.Box3(); ms.forEach(m => b.expandByObject(m)); return b.getCenter(new V3()); }
@@ -229,11 +232,12 @@
     if (!has3D) return;
     (list || []).forEach(([key, text]) => {
       const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button'; el.textContent = text; el.tabIndex = -1;
-      if (S.hot.has(key) || S.hot.has(key + '.body')) el.classList.add('hot');
+      const base = camOnly(key) || key;
+      if (S.hot.has(base) || S.hot.has(base + '.body')) el.classList.add('hot');
       if (DENIS[key]) { el.style.borderColor = DENIS[key]; el.style.color = DENIS[key]; }
       el.addEventListener('click', ev => { ev.stopPropagation(); focusKey(key, text); });
       labelsEl.appendChild(el);
-      LBL.push({ el, key, pos: resolvePos(key), meshes: model.reg.get(aliasKey(key)) || [], bw: 0, bh: 0, col: DENIS[key] });
+      LBL.push({ el, key, pos: resolvePos(key), meshes: model.reg.get(aliasKey(base)) || [], bw: 0, bh: 0, col: DENIS[key] });
     });
   }
   let tmp;
@@ -450,6 +454,12 @@
   const levelOf = key => /^(C[1-7]|T([1-9]|1[0-2])|L[1-5])$/.test(key) ? key : key === 'sacrum' ? 'S' : key === 'coccyx' ? 'Co' : null;
   function focusKey(key, text) {
     if (!has3D) return;
+    if (camOnly(key)) {
+      const p = resolvePos(key);
+      if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); }
+      if (!infoEl.hidden) closeCard();
+      say(text); return;
+    }
     const lv = levelOf(key); if (lv) { goLevel(lv); return; }
     const ms = model.reg.get(aliasKey(key));
     if (ms && ms.length) showInfo(ms[0]);
@@ -550,7 +560,7 @@
   function bindSee() {
     scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
-      if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
+      if (has3D && !levelOf(k) && !camOnly(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
       if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
     });

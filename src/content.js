@@ -18,7 +18,7 @@ const STEPS = [
       'A forma da pelve determina quanta lordose a pessoa precisa. A incidência pélvica (IP) é um ângulo anatômico que não muda depois do crescimento, em média perto de 52°. Ela é a soma de dois ângulos que mudam com a postura: a inclinação sacral (IS), ângulo do platô de S1 com a horizontal, e a versão pélvica (VP), que mede quanto a pelve está girada para trás (IP = VP + IS). Quem tem IP alta precisa de mais lordose lombar.'],
     pro: 'Na classificação SRS-Schwab (Schwab, Spine 2012), o alinhamento é considerado normal com IP menos lordose lombar abaixo de 10°, versão pélvica abaixo de 20° e eixo vertical sagital (SVA) abaixo de 4 cm. O SVA é a distância horizontal entre um fio de prumo que desce do centro de C7 e o canto de trás do platô de S1. Na cirurgia de deformidade, aceita-se como meta SVA abaixo de 5 cm, perto do limiar a partir do qual a incapacidade aumenta. Uma artrodese que ignora a IP tende a gerar dor e desgaste do segmento vizinho.',
     cam: { t: 'center', az: 90, el: 2, d: 150 }, show: 'bone disc',
-    labels: [['C4', 'Lordose cervical'], ['T7', 'Cifose torácica'], ['L3', 'Lordose lombar'], ['sacrum', 'Cifose sacral'], ['S1.endplate', 'Platô de S1 (inclinação sacral)']]
+    labels: [['cam:C4', 'Lordose cervical'], ['cam:T7', 'Cifose torácica'], ['cam:L3', 'Lordose lombar'], ['cam:sacrum', 'Cifose sacral'], ['S1.endplate', 'Platô de S1 (inclinação sacral)']]
   },
   {
     ch: 0, title: 'Planos e termos de orientação',
@@ -76,7 +76,7 @@ const STEPS = [
       'As facetas ficam inclinadas cerca de 45° em relação ao plano horizontal. Isso permite flexão, extensão, inclinação e rotação combinadas: é a região mais móvel.'],
     pro: 'Osteófitos uncovertebrais na frente e facetários atrás estreitam o forame e são a causa clássica de radiculopatia cervical. C5-C6 e C6-C7 são os níveis mais afetados. A raiz cervical sai acima da vértebra de mesmo número: hérnia C5-C6 comprime a raiz C6.',
     cam: { t: 'C5', az: 42, el: 12, d: 26 }, show: 'bone disc vessel', focus: ['C3', 'C4', 'C5', 'C6', 'C7'], hide: ['cca', 'bct', 'sca', 'plex', 'bvv'],
-    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
+    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7.sp', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
   },
   {
     ch: 2, title: 'Torácica e costelas',

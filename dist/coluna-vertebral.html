@@ -35,6 +35,8 @@ button, select { font: inherit; color: inherit; }
 #app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .top { display: flex; align-items: center; gap: 20px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
 .brand h1 { font-weight: 700; font-size: 20px; margin: 0; }
+.brand a { color: inherit; text-decoration: none; }
+.brand a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .seg { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
 .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14.5px; color: var(--ink-2); min-height: 34px; }
 .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(20,40,40,.14); }
@@ -256,7 +258,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 
 <div id="app">
   <header class="top">
-    <div class="brand"><h1>Coluna vertebral</h1></div>
+    <div class="brand"><h1><a href="/" title="Todas as aulas">Coluna vertebral</a></h1></div>
     <div class="seg" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
@@ -1393,7 +1395,7 @@ const STEPS = [
       'A forma da pelve determina quanta lordose a pessoa precisa. A incidência pélvica (IP) é um ângulo anatômico que não muda depois do crescimento, em média perto de 52°. Ela é a soma de dois ângulos que mudam com a postura: a inclinação sacral (IS), ângulo do platô de S1 com a horizontal, e a versão pélvica (VP), que mede quanto a pelve está girada para trás (IP = VP + IS). Quem tem IP alta precisa de mais lordose lombar.'],
     pro: 'Na classificação SRS-Schwab (Schwab, Spine 2012), o alinhamento é considerado normal com IP menos lordose lombar abaixo de 10°, versão pélvica abaixo de 20° e eixo vertical sagital (SVA) abaixo de 4 cm. O SVA é a distância horizontal entre um fio de prumo que desce do centro de C7 e o canto de trás do platô de S1. Na cirurgia de deformidade, aceita-se como meta SVA abaixo de 5 cm, perto do limiar a partir do qual a incapacidade aumenta. Uma artrodese que ignora a IP tende a gerar dor e desgaste do segmento vizinho.',
     cam: { t: 'center', az: 90, el: 2, d: 150 }, show: 'bone disc',
-    labels: [['C4', 'Lordose cervical'], ['T7', 'Cifose torácica'], ['L3', 'Lordose lombar'], ['sacrum', 'Cifose sacral'], ['S1.endplate', 'Platô de S1 (inclinação sacral)']]
+    labels: [['cam:C4', 'Lordose cervical'], ['cam:T7', 'Cifose torácica'], ['cam:L3', 'Lordose lombar'], ['cam:sacrum', 'Cifose sacral'], ['S1.endplate', 'Platô de S1 (inclinação sacral)']]
   },
   {
     ch: 0, title: 'Planos e termos de orientação',
@@ -1451,7 +1453,7 @@ const STEPS = [
       'As facetas ficam inclinadas cerca de 45° em relação ao plano horizontal. Isso permite flexão, extensão, inclinação e rotação combinadas: é a região mais móvel.'],
     pro: 'Osteófitos uncovertebrais na frente e facetários atrás estreitam o forame e são a causa clássica de radiculopatia cervical. C5-C6 e C6-C7 são os níveis mais afetados. A raiz cervical sai acima da vértebra de mesmo número: hérnia C5-C6 comprime a raiz C6.',
     cam: { t: 'C5', az: 42, el: 12, d: 26 }, show: 'bone disc vessel', focus: ['C3', 'C4', 'C5', 'C6', 'C7'], hide: ['cca', 'bct', 'sca', 'plex', 'bvv'],
-    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
+    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7.sp', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
   },
   {
     ch: 2, title: 'Torácica e costelas',
@@ -1838,7 +1840,7 @@ const DZ = [
     id: 'myelo', levels: ['C4', 'C5', 'C6', 'C7'], cat: 0, name: 'Mielopatia cervical espondilótica', lv: 'C5-C6 e C6-C7',
     mods: { sag: { 'C2-C3': 4, 'C3-C4': 5, 'C4-C5': 6, 'C5-C6': 6, 'C6-C7': 4 }, disc: { 'C5-C6': { h: 0.55, state: 'degen', bulge: 0.1 }, 'C6-C7': { h: 0.6, state: 'degen', bulge: 0.08 } }, osteo: { 'C5-C6': { size: 0.9, post: true }, 'C6-C7': { size: 0.8, post: true } }, flavum: { 'C5-C6': 1.8 }, pinch: [{ at: 'C5-C6', f: 0.55, w: 0.45, what: 'all' }, { at: 'C6-C7', f: 0.72, w: 0.4, what: 'all' }], myeloLesion: 'C5-C6' },
     cam: { t: 'C5', az: 90, el: 4, d: 28 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'T1'], hot: ['osteo.C5-C6', 'osteo.C6-C7', 'myelo.lesion'],
-    labels: [['osteo.C5-C6', 'Disco-osteófito'], ['myelo.lesion', 'Medula comprimida'], ['flav.C5-C6.R', 'Amarelo dobrado'], ['C2', 'Lordose perdida']],
+    labels: [['osteo.C5-C6', 'Disco-osteófito'], ['myelo.lesion', 'Medula comprimida'], ['flav.C5-C6.R', 'Amarelo dobrado'], ['cam:C2', 'Lordose perdida']],
     what: 'Compressão crônica da medula cervical por degeneração: complexos disco-osteófito na frente, ligamento amarelo dobrado atrás, às vezes sobre um canal congenitamente estreito.',
     why: 'Mais comum em C5-C6 e C6-C7, acima dos 55 anos. Compressão estática somada ao movimento repetido lesa tratos longos e substância cinzenta. É a causa mais comum de disfunção medular no adulto.',
     sx: 'Mãos desajeitadas (abotoar, escrever), desequilíbrio ao andar, sinal de Hoffmann, reflexos vivos, Babinski, choque ao fletir o pescoço (Lhermitte). Piora em degraus e raramente melhora sozinha.',
@@ -1862,7 +1864,7 @@ const DZ = [
     id: 'scolio', levels: ['T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'L1', 'L2', 'L3', 'L4'], cat: 1, name: 'Escoliose idiopática do adolescente', lv: 'Torácica direita',
     mods: { cor: { T12: 14, T11: 9, T10: 2, T9: -6, T8: -12, T7: -17, T6: -20, T5: -21, T4: -18, T3: -12, T2: -6, T1: -3, L1: 16, L2: 12, L3: 4, L4: -4, L5: -4 }, axial: { T5: -5, T6: -10, T7: -16, T8: -20, T9: -18, T10: -12, T11: -6, T12: 0, L1: 5, L2: 9, L3: 8, L4: 4 } },
     cam: { t: 'center', az: 180, el: 6, d: 112 }, show: 'bone disc rib', hot: [],
-    labels: [['T8', 'Ápice torácico'], ['rib.8.R', 'Giba costal (lado convexo)'], ['L2', 'Curva lombar compensatória']],
+    labels: [['cam:T8', 'Ápice torácico'], ['rib.8.R', 'Giba costal (lado convexo)'], ['cam:L2', 'Curva lombar compensatória']],
     what: 'Curvatura lateral de 10° ou mais (ângulo de Cobb) com rotação das vértebras, sem causa identificada, que aparece no estirão de crescimento.',
     why: 'Prevalência de 2% a 3%. Curvas que chegam a precisar de tratamento são cerca de 10 vezes mais comuns em meninas. O padrão mais comum é torácico com convexidade à direita. As vértebras rodam para o lado convexo, levam as costelas para trás e formam a giba.',
     sx: 'Ombros e cintura assimétricos, giba costal ao inclinar o tronco. Em geral sem dor; dor intensa ou alteração neurológica pedem investigação de causa secundária.',
@@ -1874,7 +1876,7 @@ const DZ = [
     id: 'scheuer', levels: ['T6', 'T7', 'T8', 'T9', 'T10'], cat: 1, name: 'Cifose de Scheuermann', lv: 'T7 a T9',
     mods: { sag: { 'T5-T6': 2, 'T6-T7': 3, 'T7-T8': 3, 'T8-T9': 3, 'T9-T10': 2 }, wedge: { T7: 7, T8: 8, T9: 6 }, schmorl: ['T7', 'T8', 'T9'] },
     cam: { t: 'T8', az: 90, el: 4, d: 52 }, show: 'bone disc', clip: 'sag', hot: ['T7.body', 'T8.body', 'T9.body'],
-    labels: [['T8.body', 'Vértebras em cunha'], ['schmorl.T8', 'Nódulo de Schmorl'], ['T4', 'Cifose aumentada']],
+    labels: [['T8.body', 'Vértebras em cunha'], ['schmorl.T8', 'Nódulo de Schmorl'], ['cam:T4', 'Cifose aumentada']],
     what: 'Hipercifose torácica rígida do adolescente por crescimento irregular das placas terminais, com vértebras em cunha.',
     why: 'Critério de Sorensen: 3 ou mais vértebras vizinhas com cunha de 5° ou mais. Cifose acima de 45°, nódulos de Schmorl e placas irregulares. Mais comum em meninos.',
     sx: 'Postura curvada que não corrige ao endireitar, dor torácica, encurtamento dos isquiotibiais.',
@@ -1898,7 +1900,7 @@ const DZ = [
     id: 'osteofx', levels: ['T11', 'T12', 'L1', 'L2'], cat: 2, name: 'Fratura osteoporótica por compressão', lv: 'T12-L1',
     mods: { wedge: { L1: 15 }, crush: { L1: 0.88 } },
     cam: { t: 'L1', az: 88, el: 6, d: 34 }, show: 'bone disc', focus: ['T10', 'T11', 'T12', 'L1', 'L2', 'L3'], hot: ['L1.body'],
-    labels: [['L1.body', 'L1 em cunha'], ['T12', 'Cifose local']],
+    labels: [['L1.body', 'L1 em cunha'], ['cam:T12', 'Cifose local']],
     what: 'Fratura do corpo vertebral por baixa energia (tossir, levantar peso, queda da própria altura) em osso osteoporótico.',
     why: 'É a fratura osteoporótica mais comum. Predomina na junção toracolombar (T12-L1) e na torácica média. A parede anterior cede, o corpo fica em cunha e a cifose aumenta.',
     sx: 'Dor súbita e localizada, pior em pé. Cerca de dois terços a três quartos passam sem diagnóstico (Fink, J Bone Miner Res 2005). Fraturas múltiplas trazem perda de altura e corcunda progressiva.',
@@ -1934,7 +1936,7 @@ const DZ = [
     id: 'as', cat: 3, name: 'Espondilite anquilosante', lv: 'Sacroilíacas e coluna toda',
     mods: { synd: true, ossify: true, sag: { 'L4-L5': 5, 'L3-L4': 4, 'L2-L3': 3, 'L5-S1': 4, 'T6-T7': 2, 'T7-T8': 2, 'T8-T9': 2 } },
     cam: { t: 'L1', az: 40, el: 6, d: 60 }, show: 'bone disc lig', hot: ['synd'],
-    labels: [['synd', 'Sindesmófitos (coluna em bambu)'], ['SSL', 'Ligamentos posteriores ossificados'], ['T7', 'Cifose aumentada']],
+    labels: [['synd', 'Sindesmófitos (coluna em bambu)'], ['SSL', 'Ligamentos posteriores ossificados'], ['cam:T7', 'Cifose aumentada']],
     what: 'Doença inflamatória crônica (espondiloartrite axial) que começa nas sacroilíacas e sobe pela coluna, ossificando as inserções de ligamentos e o anel do disco.',
     why: 'Ligada ao HLA-B27, presente em cerca de 90% dos pacientes brancos com espondilite. A dor inflamatória costuma começar antes dos 40 anos, e os critérios ASAS de espondiloartrite axial usam início antes dos 45. É mais comum em homens. Sindesmófitos finos e verticais unem os corpos: a coluna em bambu. Facetas e ligamentos posteriores também se fundem.',
     sx: 'Dor lombar inflamatória: começo insidioso, rigidez matinal acima de 30 minutos (critérios de Berlim, Rudwaleit 2006), melhora com exercício e não com repouso, acorda na segunda metade da noite. Uveíte e entesites.',
@@ -2230,8 +2232,11 @@ const DZ_QUIZ = [
 
   /* ---------- rótulos ---------- */
   const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog');
+  // rótulo de conceito (curvatura, ápice): chave 'cam:<nível>' só leva a câmera, sem selecionar
+  const camOnly = key => key.startsWith('cam:') ? key.slice(4) : null;
   function resolvePos(key) {
     if (!model) return null;
+    if (camOnly(key)) key = camOnly(key);
     if (model.anchors.has(key)) return model.anchors.get(key).clone();
     const ms = model.reg.get(key);
     if (ms && ms.length) { const b = new THREE.Box3(); ms.forEach(m => b.expandByObject(m)); return b.getCenter(new V3()); }
@@ -2242,11 +2247,12 @@ const DZ_QUIZ = [
     if (!has3D) return;
     (list || []).forEach(([key, text]) => {
       const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button'; el.textContent = text; el.tabIndex = -1;
-      if (S.hot.has(key) || S.hot.has(key + '.body')) el.classList.add('hot');
+      const base = camOnly(key) || key;
+      if (S.hot.has(base) || S.hot.has(base + '.body')) el.classList.add('hot');
       if (DENIS[key]) { el.style.borderColor = DENIS[key]; el.style.color = DENIS[key]; }
       el.addEventListener('click', ev => { ev.stopPropagation(); focusKey(key, text); });
       labelsEl.appendChild(el);
-      LBL.push({ el, key, pos: resolvePos(key), meshes: model.reg.get(aliasKey(key)) || [], bw: 0, bh: 0, col: DENIS[key] });
+      LBL.push({ el, key, pos: resolvePos(key), meshes: model.reg.get(aliasKey(base)) || [], bw: 0, bh: 0, col: DENIS[key] });
     });
   }
   let tmp;
@@ -2463,6 +2469,12 @@ const DZ_QUIZ = [
   const levelOf = key => /^(C[1-7]|T([1-9]|1[0-2])|L[1-5])$/.test(key) ? key : key === 'sacrum' ? 'S' : key === 'coccyx' ? 'Co' : null;
   function focusKey(key, text) {
     if (!has3D) return;
+    if (camOnly(key)) {
+      const p = resolvePos(key);
+      if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); }
+      if (!infoEl.hidden) closeCard();
+      say(text); return;
+    }
     const lv = levelOf(key); if (lv) { goLevel(lv); return; }
     const ms = model.reg.get(aliasKey(key));
     if (ms && ms.length) showInfo(ms[0]);
@@ -2563,7 +2575,7 @@ const DZ_QUIZ = [
   function bindSee() {
     scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
-      if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
+      if (has3D && !levelOf(k) && !camOnly(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
       if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
     });
