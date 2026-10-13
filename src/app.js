@@ -32,6 +32,9 @@
   }
 
   let KIND, TINT, C, getMat, hotMats = [];
+  // o laço só redesenha quando algo mudou (dirty) ou quando há destaque pulsando (pulse)
+  let dirty = 2, pulse = false;
+  function invalidate() { dirty = 2; }
   if (has3D) {
     V3 = THREE.Vector3;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
@@ -87,12 +90,20 @@
     };
   }
 
+  // guarda o modelo normal e o da última doença: alternar Normal e Com a doença não remonta a geometria
+  const models = new Map();
   function rebuild(mods) {
     if (!has3D) return;
-    if (model) { scene.remove(model.root); model.meshes.forEach(m => m.geometry.dispose()); }
-    model = buildSpine(mods || {});
-    scene.add(model.root); model.root.updateMatrixWorld(true);
-    model.meshes.forEach(m => { const b = new THREE.Box3().setFromObject(m); const c = []; for (let i = 0; i < 8; i++) c.push(new V3(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z)); m.userData.corners = c; });
+    const k = mods && Object.keys(mods).length ? mods : null;
+    if (model) scene.remove(model.root);
+    model = models.get(k);
+    if (!model) {
+      models.forEach((x, key) => { if (key !== null) { x.meshes.forEach(m => m.geometry.dispose()); models.delete(key); } });
+      model = buildSpine(mods || {}); models.set(k, model);
+      model.root.updateMatrixWorld(true);
+      model.meshes.forEach(m => { const b = new THREE.Box3().setFromObject(m); const c = []; for (let i = 0; i < 8; i++) c.push(new V3(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z)); m.userData.corners = c; });
+    }
+    scene.add(model.root); invalidate();
   }
   const plane = has3D ? new THREE.Plane() : null;
   const slabOut = m => { const c = m.userData.corners; if (!c) return false; let mn = 1e9; c.forEach(p => mn = Math.min(mn, plane.distanceToPoint(p))); return mn > 1.4; };
@@ -109,6 +120,7 @@
   let LBL = [];
   function applyVisuals() {
     if (!model) return;
+    invalidate(); pulse = false;
     model.meshes.forEach(m => {
       const u = m.userData, K = KIND[u.kind] || KIND.bone;
       let vis = K.L === 'path' ? true : !!S.layers[K.L];
@@ -124,7 +136,7 @@
       else if (S.tint && u.kind === 'bone' && u.region && TINT[u.region]) variant = 't' + u.region;
       m.material = getMat(u.kind, variant);
       m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : 0;
-      u.variant = variant;
+      u.variant = variant; if (variant === 'h') pulse = true;
     });
     view.classList.toggle('dim', !!(S.sel && S.sel.size));
     LBL.forEach(L => L.el.classList.toggle('sel', !!(S.sel && S.sel.size && L.meshes.some(m => S.sel.has(m)))));
@@ -188,7 +200,8 @@
   const DENIS = { 'denis.a': '#2F73B5', 'denis.m': '#C98410', 'denis.p': '#B5432B' };
   function setDenis(on) {
     if (!has3D) return;
-    if (overlay) { scene.remove(overlay); overlay.traverse(o => o.geometry && o.geometry.dispose()); overlay = null; }
+    invalidate();
+    if (overlay) { scene.remove(overlay); overlay.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); overlay = null; }
     if (!on) return;
     overlay = new THREE.Group();
     const fr = model.F.L1, l = LV.L1, D = l.D, H = 7.4;
@@ -212,7 +225,7 @@
     return null;
   }
   function setLabels(list) {
-    LBL.forEach(L => L.el.remove()); LBL = [];
+    LBL.forEach(L => L.el.remove()); LBL = []; invalidate();
     if (!has3D) return;
     (list || []).forEach(([key, text]) => {
       const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button'; el.textContent = text; el.tabIndex = -1;
@@ -273,11 +286,14 @@
     if (reduce || dur === 0) { controls.target.copy(T); placeCam(T, end); return; }
     const start = sph(camera.position, controls.target);
     let daz = end.az - start.az; while (daz > Math.PI) daz -= 2 * Math.PI; while (daz < -Math.PI) daz += 2 * Math.PI;
-    tween = { t0: performance.now(), dur, T0: controls.target.clone(), T1: T, s0: start, daz, end };
+    // t0 é marcado no primeiro quadro: o horário do quadro pode ser anterior a performance.now() depois de uma montagem
+    // longa, e um progresso negativo jogava a câmera para trás (ou para NaN)
+    tween = { t0: null, dur, T0: controls.target.clone(), T1: T, s0: start, daz, end };
   }
   function placeCam(T, s) { camera.position.set(T.x + s.r * Math.sin(s.az) * Math.cos(s.el), T.y + s.r * Math.sin(s.el), T.z + s.r * Math.cos(s.az) * Math.cos(s.el)); camera.lookAt(T); }
   function stepTween(now) {
-    const k = Math.min(1, (now - tween.t0) / tween.dur), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    if (tween.t0 === null) tween.t0 = now;
+    const k = Math.min(1, Math.max(0, (now - tween.t0) / tween.dur)), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     const T = tween.T0.clone().lerp(tween.T1, e);
     const lr = Math.log(tween.s0.r) + (Math.log(tween.end.r) - Math.log(tween.s0.r)) * e;
     placeCam(T, { r: Math.exp(lr), az: tween.s0.az + tween.daz * e, el: tween.s0.el + (tween.end.el - tween.s0.el) * e });
@@ -706,19 +722,22 @@
 
   /* ---------- laço ---------- */
   if (has3D) {
-    function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); }
+    function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); invalidate(); }
     new ResizeObserver(resize).observe(view);
     let visibleView = true;
-    if ('IntersectionObserver' in window) new IntersectionObserver(es => { visibleView = es[0].isIntersecting; }).observe(view);
+    if ('IntersectionObserver' in window) new IntersectionObserver(es => { visibleView = es[0].isIntersecting; invalidate(); }).observe(view);
+    // qualquer interação pode mudar rótulos, camadas ou o limite do painel de ferramentas
+    ['pointerdown', 'pointerup', 'click', 'keydown', 'wheel'].forEach(ev => addEventListener(ev, invalidate, { capture: true, passive: true }));
     const frame = t => {
       requestAnimationFrame(frame);
       if (!visibleView && !tween) return;
-      if (tween) stepTween(t);
-      controls.update();
+      if (tween) { stepTween(t); dirty = 2; }
+      if (controls.update()) dirty = 2;
+      if (!dirty && !(pulse && !reduce)) return;
       const k = reduce ? .4 : .3 + .2 * Math.sin(t / 280);
       hotMats.forEach(m => m.emissiveIntensity = k);
       renderer.render(scene, camera);
-      updateLabels();
+      if (dirty) { updateLabels(); dirty--; }
     };
     rebuild({});
     resize();

@@ -39,13 +39,20 @@ function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0) {
   return g;
 }
 
+/* junta malhas mantendo o índice: mesmos triângulos e normais, cerca de um terço dos vértices */
 function mergeGeoms(list) {
-  const arr = list.filter(Boolean).map(g => { const ng = g.index ? g.toNonIndexed() : g; if (!ng.attributes.normal) ng.computeVertexNormals(); return ng; });
-  let tot = 0; arr.forEach(g => tot += g.attributes.position.count);
-  const P = new Float32Array(tot * 3), Nn = new Float32Array(tot * 3); let o = 0;
-  arr.forEach(g => { P.set(g.attributes.position.array, o * 3); Nn.set(g.attributes.normal.array, o * 3); o += g.attributes.position.count; });
+  const arr = list.filter(Boolean); arr.forEach(g => { if (!g.attributes.normal) g.computeVertexNormals(); });
+  let tot = 0, ti = 0; arr.forEach(g => { tot += g.attributes.position.count; ti += g.index ? g.index.count : g.attributes.position.count; });
+  const P = new Float32Array(tot * 3), Nn = new Float32Array(tot * 3), I = new (tot > 65535 ? Uint32Array : Uint16Array)(ti); let o = 0, oi = 0;
+  arr.forEach(g => {
+    const n = g.attributes.position.count;
+    P.set(g.attributes.position.array, o * 3); Nn.set(g.attributes.normal.array, o * 3);
+    if (g.index) { const a = g.index.array; for (let i = 0; i < a.length; i++) I[oi++] = a[i] + o; }
+    else for (let i = 0; i < n; i++) I[oi++] = o + i;
+    o += n;
+  });
   const m = new THREE.BufferGeometry();
-  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(Nn, 3));
+  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); m.setIndex(new THREE.BufferAttribute(I, 1));
   return m;
 }
 
