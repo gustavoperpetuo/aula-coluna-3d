@@ -26,6 +26,7 @@ html, body { height: 100%; }
 body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16.5px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
 button, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
 .sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 #app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
@@ -39,8 +40,15 @@ button, select { font: inherit; color: inherit; }
 .prog .bar { width: 110px; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .prog .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform .4s; }
 
-.stage { display: grid; grid-template-columns: minmax(0, 1fr) 430px; grid-template-areas: "view panel"; min-height: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "view split panel"; min-height: 0; }
 .panel { grid-area: panel; }
+/* divisória: área de toque de 12px sobre a borda do painel, alça visível no meio */
+.split { grid-area: split; position: relative; z-index: 7; }
+.split::before { content: ""; position: absolute; top: 0; bottom: 0; left: -6px; width: 12px; cursor: col-resize; touch-action: none; }
+.split::after { content: ""; position: absolute; top: 50%; left: -3px; width: 6px; height: 44px; margin-top: -22px; border-radius: 3px; background: var(--line-strong); opacity: .55; transition: opacity .15s, background-color .15s; pointer-events: none; }
+.split:hover::after, .split:focus-visible::after, .split.drag::after { opacity: 1; background: var(--accent); }
+.split:focus-visible { outline: none; }
+body.resizing { cursor: col-resize; user-select: none; }
 .view { grid-area: view; position: relative; min-height: 0; background: radial-gradient(120% 90% at 40% 35%, var(--lightbox-a), var(--lightbox-b)); overflow: hidden; }
 .view::after { content: ""; position: absolute; inset: 0; background: rgba(24,34,31,.14); opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 0; }
 .view.dim::after { opacity: 1; }
@@ -196,7 +204,7 @@ button, select { font: inherit; color: inherit; }
   .chip { padding: 6px 9px; min-height: 40px; }
   .seg button, .chap button { min-height: 40px; }
   .lvsel { display: block; min-height: 40px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: var(--panel); }
-  .ruler, .hint { display: none; }
+  .ruler, .hint, .split { display: none; }
   .explore { display: block; position: absolute; z-index: 3; right: 12px; bottom: 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 40px; }
   .info { position: fixed; left: 8px; right: 8px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); max-height: 36svh; overflow-y: auto; z-index: 8; }
   .bars .r { grid-template-columns: 110px minmax(0, 1fr) 68px; font-size: 13.5px; }
@@ -228,6 +236,7 @@ button, select { font: inherit; color: inherit; }
       <div class="scroll" id="scroll"></div>
       <div class="nav" id="nav"></div>
     </aside>
+    <div class="split" id="split" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="panel" aria-label="Largura do texto" aria-valuemin="320" title="Arraste para mudar a largura do texto; clique duplo volta ao padrão"></div>
     <section class="view" id="view" aria-label="Modelo 3D da coluna">
       <canvas id="gl" role="img" aria-label="Modelo 3D da coluna vertebral. Use os links Localizar no 3D do painel para destacar estruturas."></canvas>
       <div id="labels" aria-hidden="true"><svg id="lines"></svg></div>
@@ -2638,6 +2647,34 @@ const DZ_QUIZ = [
     if (e.key === 'ArrowRight') goStep(S.step + 1);
     if (e.key === 'ArrowLeft') goStep(S.step - 1);
   });
+
+  /* ---------- divisória entre o 3D e o texto (o ResizeObserver do laço ajusta o 3D) ---------- */
+  const stage = $('.stage'), split = $('#split'), PW = 430;
+  let pw = PW;
+  function setPw(w) {
+    const max = Math.max(320, stage.clientWidth - 360);
+    pw = Math.round(Math.min(max, Math.max(320, w)));
+    stage.style.setProperty('--pw', pw + 'px');
+    split.setAttribute('aria-valuenow', pw); split.setAttribute('aria-valuemax', max);
+  }
+  const keepPw = () => { store.pw = pw; save(); };
+  split.onpointerdown = e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); split.setPointerCapture(e.pointerId);
+    split.classList.add('drag'); document.body.classList.add('resizing');
+    split.onpointermove = ev => setPw(stage.getBoundingClientRect().right - ev.clientX);
+    split.onpointerup = split.onpointercancel = () => {
+      split.onpointermove = split.onpointerup = split.onpointercancel = null;
+      split.classList.remove('drag'); document.body.classList.remove('resizing'); keepPw();
+    };
+  };
+  split.ondblclick = () => { setPw(PW); keepPw(); };
+  split.onkeydown = e => {
+    const d = { ArrowLeft: 40, ArrowRight: -40 }[e.key];
+    if (d) { e.preventDefault(); setPw(pw + d); keepPw(); }
+  };
+  addEventListener('resize', () => setPw(store.pw || PW));
+  setPw(store.pw || PW);
 
   /* ---------- laço ---------- */
   if (has3D) {

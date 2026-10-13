@@ -676,6 +676,34 @@
     if (e.key === 'ArrowLeft') goStep(S.step - 1);
   });
 
+  /* ---------- divisória entre o 3D e o texto (o ResizeObserver do laço ajusta o 3D) ---------- */
+  const stage = $('.stage'), split = $('#split'), PW = 430;
+  let pw = PW;
+  function setPw(w) {
+    const max = Math.max(320, stage.clientWidth - 360);
+    pw = Math.round(Math.min(max, Math.max(320, w)));
+    stage.style.setProperty('--pw', pw + 'px');
+    split.setAttribute('aria-valuenow', pw); split.setAttribute('aria-valuemax', max);
+  }
+  const keepPw = () => { store.pw = pw; save(); };
+  split.onpointerdown = e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); split.setPointerCapture(e.pointerId);
+    split.classList.add('drag'); document.body.classList.add('resizing');
+    split.onpointermove = ev => setPw(stage.getBoundingClientRect().right - ev.clientX);
+    split.onpointerup = split.onpointercancel = () => {
+      split.onpointermove = split.onpointerup = split.onpointercancel = null;
+      split.classList.remove('drag'); document.body.classList.remove('resizing'); keepPw();
+    };
+  };
+  split.ondblclick = () => { setPw(PW); keepPw(); };
+  split.onkeydown = e => {
+    const d = { ArrowLeft: 40, ArrowRight: -40 }[e.key];
+    if (d) { e.preventDefault(); setPw(pw + d); keepPw(); }
+  };
+  addEventListener('resize', () => setPw(store.pw || PW));
+  setPw(store.pw || PW);
+
   /* ---------- laço ---------- */
   if (has3D) {
     function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); }
