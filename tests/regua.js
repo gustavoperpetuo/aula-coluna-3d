@@ -7,7 +7,7 @@ const fs=require('fs');
  await p.route(/jsdelivr.*OrbitControls.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/examples/js/controls/OrbitControls.js'),contentType:'text/javascript'}));
  await p.route(/fonts\./,r=>r.abort());
  const html=fs.readFileSync(__dirname+'/../dist/coluna-vertebral.html','utf8');
- await p.route('http://local.test/',r=>r.fulfill({body:'<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head><body>'+html+'</body></html>',contentType:'text/html'}));
+ await p.route('http://local.test/',r=>r.fulfill({body:html,contentType:'text/html'}));
  await p.goto('http://local.test/'); await p.waitForTimeout(2500);
  const r=await p.evaluate(async()=>{
   const w=ms=>new Promise(r=>setTimeout(r,ms)); const info=()=>document.querySelector('#info').hidden?'closed':'open';

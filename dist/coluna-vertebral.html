@@ -2284,8 +2284,8 @@ const DZ_QUIZ = [
       placed.push([lx, ly, bw, bh]);
       L.el.style.transform = `translate(${lx.toFixed(1)}px,${ly.toFixed(1)}px)`;
       const ex = left ? lx + bw : lx, ey = ly + bh / 2;
-      const col = L.el.classList.contains('sel') ? '#127E83' : L.col || (L.el.classList.contains('hot') ? '#B5432B' : '#3F4B49');
-      svg += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${col}" stroke-width="1"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#fff" stroke="${col}" stroke-width="1.5"/>`;
+      const col = L.el.classList.contains('sel') ? 'var(--sel)' : L.col || (L.el.classList.contains('hot') ? 'var(--path)' : 'var(--ink-2)');
+      svg += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" style="stroke:${col}" stroke-width="1"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#fff" style="stroke:${col}" stroke-width="1.5"/>`;
     });
     linesEl.innerHTML = svg;
   }
