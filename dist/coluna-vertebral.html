@@ -84,14 +84,35 @@ body.resizing { cursor: col-resize; user-select: none; }
 .hint { z-index: 2; position: absolute; left: 12px; bottom: 10px; font-size: 14px; color: var(--ink-2); pointer-events: none; background: rgba(246,248,248,.85); padding: 2px 6px; border-radius: 4px; }
 .explore, .done3d { display: none; }
 
+/* sobre o modelo: no topo, comparar e localizar; embaixo, camadas e cortes. Mesma faixa horizontal
+   (12 px da borda esquerda até a régua), tudo centralizado, controles com 44 px de altura */
+.viewtop { z-index: 3; position: absolute; left: 12px; right: 68px; top: 12px; display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 8px; pointer-events: none; }
+.viewtop:empty { display: none; }
+.viewtop > * { pointer-events: auto; }
+.viewtop .dzbar { margin: 0; display: flex; }
+.viewtop .seg { box-sizing: border-box; height: 44px; align-items: stretch; background: rgba(238,241,240,.96); box-shadow: 0 1px 4px rgba(20,40,40,.08); }
+.viewtop .seg { flex: 0 0 auto; }
+.viewtop .seg button { min-height: 0; padding: 0 16px; font-size: 15px; white-space: nowrap; }
+.viewtop .see { margin: 0; box-sizing: border-box; min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 14px; padding: 4px 16px; background: rgba(255,255,255,.96); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 4px rgba(20,40,40,.08); }
+.viewtop .see .h { margin: 0; font-size: 14px; color: var(--ink-3); }
+.viewtop .see .row { gap: 0 14px; justify-content: center; }
+.viewtop .see button { padding: 0; min-height: 34px; font-size: 15px; }
+@media (min-width: 901px) {
+  .ttog, .hint { display: none; }
+  /* grade de uma coluna: as duas linhas (camadas, cortes) ficam com a mesma largura e centralizadas */
+  .tools { display: grid; grid-template-columns: minmax(0, max-content); justify-content: center; top: auto; bottom: 12px; left: 12px; right: 68px; gap: 6px; pointer-events: none; }
+  .tools .group { justify-content: center; pointer-events: auto; box-shadow: 0 1px 4px rgba(20,40,40,.08); }
+  .view .info { bottom: calc(var(--dock-h, 90px) + 24px); }
+}
+
 /* régua de níveis */
-.ruler { z-index: 3; position: absolute; right: 8px; top: 10px; bottom: 10px; width: 44px; display: flex; flex-direction: column; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
+.ruler { z-index: 3; position: absolute; right: 12px; top: 12px; bottom: 12px; width: 44px; display: flex; flex-direction: column; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
 .ruler::-webkit-scrollbar { display: none; }
 .ruler button { flex: 1 1 0; min-height: 14px; border: 0; background: transparent; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; padding: 0; font-variant-numeric: tabular-nums; }
 .ruler button::before { content: ""; position: absolute; left: 3px; top: 15%; bottom: 15%; width: 3px; border-radius: 2px; background: var(--rc); opacity: .6; }
 .ruler button:hover, .ruler button.on { color: var(--ink); background: var(--accent-soft); }
 .ruler button.on { font-weight: 700; }
-.ruler.short { bottom: auto; max-height: calc(100% - 20px); }
+.ruler.short { bottom: auto; max-height: calc(100% - 24px); }
 .ruler.short button { flex: 0 0 34px; }
 .ruler button[hidden] { display: none; }
 .ruler.short::before { content: "Níveis"; display: block; font-size: 11px; font-weight: 600; color: var(--ink-3); text-align: center; padding: 2px 0 4px; }
@@ -208,6 +229,12 @@ body.resizing { cursor: col-resize; user-select: none; }
   .seg button, .chap button { min-height: 40px; }
   .lvsel { display: block; min-height: 40px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: var(--panel); }
   .ruler, .hint, .split { display: none; }
+  .viewtop { left: 8px; right: 8px; top: 8px; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .viewtop::-webkit-scrollbar { display: none; }
+  .viewtop .see, .viewtop .see .row { flex-wrap: nowrap; white-space: nowrap; justify-content: flex-start; }
+  .viewtop .see { flex: 0 0 auto; }
+  .viewtop .see .h { display: none; }
+  .view.full .viewtop { top: calc(56px + env(safe-area-inset-top, 0px)); }
   .explore { display: block; position: absolute; z-index: 3; right: 12px; bottom: 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 40px; }
   .info { position: fixed; left: 8px; right: 8px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); max-height: 36svh; overflow-y: auto; z-index: 8; }
   .bars .r { grid-template-columns: 110px minmax(0, 1fr) 68px; font-size: 13.5px; }
@@ -252,6 +279,7 @@ body.resizing { cursor: col-resize; user-select: none; }
       </div>
       <nav class="ruler" id="ruler" aria-label="Ir para um nível da coluna"></nav>
       <button class="explore" id="explore" type="button">Explorar em 3D</button>
+      <div class="viewtop" id="viewtop"></div>
       <div class="info" id="info" hidden></div>
       <div class="hint" id="hint">Arraste para girar, role para aproximar e clique numa estrutura para ver o nome</div>
       <div class="loading" id="loading">Montando a coluna…</div>
@@ -1349,7 +1377,7 @@ const STEPS = [
   /* 1. Visão geral */
   {
     ch: 0, title: 'A coluna inteira',
-    how: 'Como usar: o texto guia a aula e o modelo ao lado acompanha cada passo. Gire e aproxime o 3D, clique ou toque numa estrutura para ver o nome, use os links "Localizar no 3D" no fim de cada passo e a régua de níveis (C1 a Co) para ir direto a uma vértebra. "Camadas e cortes" liga e desliga ossos, discos, ligamentos, nervos e vasos.',
+    how: 'Como usar: o texto guia a aula e o modelo ao lado acompanha cada passo. Gire e aproxime o 3D, clique ou toque numa estrutura para ver o nome, use os links "Localizar no 3D" no topo do modelo e a régua de níveis (C1 a Co) para ir direto a uma vértebra. A barra embaixo do modelo (no celular, o botão "Camadas e cortes") liga e desliga ossos, discos, ligamentos, nervos e vasos e abre os cortes.',
     body: ['A coluna tem em geral 33 vértebras em cinco regiões: 7 cervicais (C1 a C7), 12 torácicas (T1 a T12), 5 lombares (L1 a L5), 5 sacrais fundidas no sacro e 3 a 5 coccígeas fundidas no cóccix. As 24 vértebras acima do sacro são móveis e se ligam por 23 discos, do C2-C3 ao L5-S1. Entre o crânio e C1, e entre C1 e C2, não há disco.',
       'Ela tem três funções: sustentar o tronco e passar a carga para a pelve, permitir movimento e proteger a medula e as raízes. Quase toda doença da coluna é a falha de uma delas: dor mecânica, deformidade ou instabilidade, e compressão neural.'],
     pro: 'Vértebras e discos crescem de cima para baixo porque a carga aumenta. A placa terminal de L4 tem cerca de 15 cm², quatro a cinco vezes a de C5, perto de 3,4 cm² (média em homens, Kishimoto, J Orthop Res 2016). A lombar carrega mais peso e se move mais, e por isso concentra a maior parte das doenças degenerativas.',
@@ -2002,7 +2030,7 @@ const DZ_QUIZ = [
     const f = document.createElement('div'); f.className = 'fail';
     f.innerHTML = `<div><p>${msg} A aula em texto continua no painel.</p><button class="btn" id="retry">Tentar de novo</button></div>`;
     view.appendChild(f); $('#retry').onclick = () => location.reload();
-    ['#ttog', '#ruler', '#hint', '#explore'].forEach(s => { const e = $(s); if (e) e.hidden = true; });
+    ['#ttog', '#ruler', '#hint', '#explore', '#viewtop'].forEach(s => { const e = $(s); if (e) e.hidden = true; });
   }
   try {
     if (!window.THREE || !THREE.OrbitControls || typeof buildSpine !== 'function') throw new Error('lib');
@@ -2198,7 +2226,7 @@ const DZ_QUIZ = [
   }
 
   /* ---------- rótulos ---------- */
-  const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog');
+  const labelsEl = $('#labels'), linesEl = $('#lines'), toolsBox = $('#tools'), ttog = $('#ttog'), viewTop = $('#viewtop');
   function resolvePos(key) {
     if (!model) return null;
     if (model.anchors.has(key)) return model.anchors.get(key).clone();
@@ -2222,9 +2250,10 @@ const DZ_QUIZ = [
   function updateLabels() {
     const w = view.clientWidth, h = view.clientHeight; const placed = []; let svg = '';
     const vr = view.getBoundingClientRect();
-    let topLim = mobileQ.matches ? (view.classList.contains('full') ? 72 : 8) : 54;
-    if (toolsBox.classList.contains('open') && !mobileQ.matches) topLim = toolsBox.getBoundingClientRect().bottom - vr.top + 6;
-    const botLim = mobileQ.matches ? 60 : 40;
+    // rótulos ficam entre a faixa do topo (comparar e localizar) e a barra de ferramentas embaixo
+    let topLim = mobileQ.matches ? (view.classList.contains('full') ? 72 : 8) : 12;
+    if (viewTop.childElementCount) topLim = Math.max(topLim, viewTop.getBoundingClientRect().bottom - vr.top + 8);
+    const botLim = mobileQ.matches ? 60 : vr.bottom - toolsBox.getBoundingClientRect().top + 8;
     LBL.forEach(L => {
       let ok = S.labelsOn && L.pos;
       if (ok) { tmp.copy(L.pos).project(camera); ok = tmp.z < 1 && Math.abs(tmp.x) < 1.02 && Math.abs(tmp.y) < 1.02; }
@@ -2243,7 +2272,7 @@ const DZ_QUIZ = [
         const hit = placed.some(r => lx < r[0] + r[2] + 4 && lx + bw + 4 > r[0] && yy < r[1] + r[3] + 3 && yy + bh + 3 > r[1]);
         if (!hit) { ly = yy; break; }
       }
-      lx = Math.max(4, Math.min(w - bw - (mobileQ.matches ? 8 : 56), lx)); ly = Math.max(topLim, Math.min(h - bh - botLim, ly));
+      lx = Math.max(4, Math.min(w - bw - (mobileQ.matches ? 8 : 64), lx)); ly = Math.max(topLim, Math.min(h - bh - botLim, ly));
       placed.push([lx, ly, bw, bh]);
       L.el.style.transform = `translate(${lx.toFixed(1)}px,${ly.toFixed(1)}px)`;
       const ex = left ? lx + bw : lx, ey = ly + bh / 2;
@@ -2513,7 +2542,7 @@ const DZ_QUIZ = [
   }
   function focusTitle() { const h = scrollEl.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } }
   function bindSee() {
-    scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
+    viewTop.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
       if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
@@ -2536,9 +2565,9 @@ const DZ_QUIZ = [
       h += st.body.map(p => `<p>${esc(p)}</p>`).join('');
       if (st.extra === 'wilke') h += wilkeHtml();
       h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(st.pro)}</p></aside>`;
-      h += seeHtml(st.labels);
     }
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
+    viewTop.innerHTML = st.quiz !== undefined ? '' : seeHtml(st.labels);
     bindQuiz('q' + st.quiz, st.quiz);
     bindSee();
     const last = S.step === ALL_STEPS.length - 1;
@@ -2623,7 +2652,7 @@ const DZ_QUIZ = [
       });
       h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
       h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
-      scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
+      scrollEl.innerHTML = h; scrollEl.scrollTop = 0; viewTop.innerHTML = '';
       scrollEl.querySelectorAll('.dzi').forEach(b => b.onclick = () => openDz(b.dataset.id, true));
       bindQuiz('dz', 'dz');
       setNav(`<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
@@ -2633,12 +2662,11 @@ const DZ_QUIZ = [
       return;
     }
     const d = DZ.find(x => x.id === S.dz), i = DZ.indexOf(d);
-    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>
-      <div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
+    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>`;
     [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]].forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
-    h += seeHtml(S.dzOn ? d.labels : neutralLabels(d));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
+    viewTop.innerHTML = `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>` + seeHtml(S.dzOn ? d.labels : neutralLabels(d));
     $('#back').onclick = () => { closeDz(); focusTitle(); };
     $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
     $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
@@ -2709,6 +2737,8 @@ const DZ_QUIZ = [
   if (has3D) {
     function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); invalidate(); }
     new ResizeObserver(resize).observe(view);
+    // o cartão da estrutura fica logo acima da barra de ferramentas, qualquer que seja a altura dela
+    new ResizeObserver(() => { view.style.setProperty('--dock-h', toolsBox.offsetHeight + 'px'); invalidate(); }).observe(toolsBox);
     let visibleView = true;
     if ('IntersectionObserver' in window) new IntersectionObserver(es => { visibleView = es[0].isIntersecting; invalidate(); }).observe(view);
     // qualquer interação pode mudar rótulos, camadas ou o limite do painel de ferramentas
