@@ -1,0 +1,114 @@
+<title>Aulas de coluna</title>
+<meta name="description" content="Aulas sobre a coluna vertebral com modelo 3D: anatomia, doenças e, em preparação, implantes e técnicas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Hub das aulas: mesmo sistema da aula (papel claro, Source Sans 3, verde-petróleo); lista, não cartões. */
+:root {
+  --paper: #EEF1F0;
+  --panel: #FFFFFF;
+  --ink: #18221F;
+  --ink-2: #3F4B49;
+  --ink-3: #5F6B68;
+  --line: #D6DEDB;
+  --line-strong: #8E9A97;
+  --accent: #0D6669;
+  --accent-soft: #E1EFEE;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 72px 32px 56px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 64px; align-items: start; min-height: 100svh; box-sizing: border-box; }
+header h1 { font-size: 44px; line-height: 1.08; font-weight: 700; margin: 0 0 14px; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 0; max-width: 34em; font-size: 19px; color: var(--ink-2); }
+.aulas { list-style: none; margin: 48px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.aula { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 12px; padding: 28px 0 30px; border-bottom: 1px solid var(--line); }
+.n { font-size: 15px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; padding-top: 6px; }
+.aula h2 { margin: 0 0 6px; font-size: 26px; line-height: 1.2; font-weight: 700; }
+.aula h2 a { text-decoration: none; }
+.aula h2 a:hover { color: var(--accent); }
+.aula p { margin: 0; color: var(--ink-2); max-width: 36em; }
+.meta { margin-top: 8px; font-size: 15px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.prog { margin-top: 10px; font-size: 15px; color: var(--ink-2); }
+.prog[hidden] { display: none; }
+.acts { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; text-decoration: none; }
+.btn:hover { background: #0A5558; }
+.link { font-weight: 600; font-size: 16px; color: var(--accent); text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.soon h2 { color: var(--ink-2); }
+.soon .meta { color: var(--ink-3); }
+footer { margin-top: 36px; font-size: 14px; color: var(--ink-3); }
+figure { margin: 0; position: sticky; top: 40px; justify-self: center; }
+figure img { display: block; height: min(86svh, 860px); width: auto; }
+figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align: center; }
+@media (max-width: 800px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) 96px; gap: 20px; padding: 40px 16px 40px; }
+  header h1 { font-size: 34px; }
+  header p { font-size: 17px; }
+  .aulas { margin-top: 32px; }
+  .aula { grid-template-columns: 32px minmax(0, 1fr); }
+  .aula h2 { font-size: 22px; }
+  figure { top: 24px; }
+  figure img { height: min(70svh, 520px); }
+  figcaption { display: none; }
+}
+@media (max-width: 420px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  figure { display: none; }
+}
+</style>
+
+<div class="wrap">
+  <main>
+    <header>
+      <h1>Aulas de coluna</h1>
+      <p>Anatomia e doenças da coluna vertebral estudadas num modelo 3D, com fonte citada para cada número clínico.</p>
+    </header>
+    <ol class="aulas">
+      <li class="aula">
+        <span class="n" aria-hidden="true">01</span>
+        <div>
+          <h2><a href="coluna-vertebral.html">Coluna vertebral 3D</a></h2>
+          <p>Da vértebra típica à medula e aos vasos, e depois 18 doenças mostradas no mesmo modelo, com cortes sagital e axial.</p>
+          <div class="meta">8 capítulos, 30 passos e 7 testes; 18 doenças e um teste final</div>
+          <div class="prog" id="prog" hidden></div>
+          <div class="acts">
+            <a class="btn" id="go" href="coluna-vertebral.html">Começar</a>
+            <a class="link" href="coluna-vertebral.html#doencas">Ir direto às doenças</a>
+          </div>
+        </div>
+      </li>
+      <li class="aula soon">
+        <span class="n" aria-hidden="true">02</span>
+        <div>
+          <h2>Implantes e técnicas</h2>
+          <p>Vias de acesso, cages, parafusos e biologia da fusão.</p>
+          <div class="meta">Em preparação</div>
+        </div>
+      </li>
+    </ol>
+    <footer>O progresso fica guardado neste navegador.</footer>
+  </main>
+  <figure>
+    <img src="coluna-lateral.webp" width="244" height="1240" alt="Modelo 3D da coluna em vista lateral, do crânio ao cóccix, com as regiões cervical, torácica, lombar e sacral em cores diferentes.">
+    <figcaption>Vista lateral do modelo da aula</figcaption>
+  </figure>
+</div>
+
+<script>
+// progresso da aula 01, lido da mesma chave que a aula usa
+(function () {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return; }
+  const a = (s.seen || []).length, d = (s.dzSeen || []).length;
+  if (!a && !d) return;
+  const el = document.getElementById('prog');
+  el.textContent = `Você já viu ${a} de 37 etapas da anatomia e ${d} de 18 doenças.`;
+  el.hidden = false;
+  document.getElementById('go').textContent = 'Continuar de onde parei';
+})();
+</script>

@@ -17,3 +17,9 @@ out = (doc + head
 (root / 'dist' / 'coluna-vertebral.html').write_text(out, encoding='utf-8')
 assert '—' not in out and '–' not in out, 'travessão encontrado'
 print(len(out), 'bytes')
+# hub das aulas na raiz do site
+home = doc + (src / 'home.html').read_text(encoding='utf-8')
+assert '—' not in home and '–' not in home, 'travessão encontrado na home'
+(root / 'dist' / 'index.html').write_text(home, encoding='utf-8')
+(root / 'dist' / 'coluna-lateral.webp').write_bytes((src / 'coluna-lateral.webp').read_bytes())
+print(len(home), 'bytes (home)')
