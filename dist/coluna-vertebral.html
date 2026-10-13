@@ -1354,7 +1354,7 @@ const STEPS = [
       'Ela tem três funções: sustentar o tronco e passar a carga para a pelve, permitir movimento e proteger a medula e as raízes. Quase toda doença da coluna é a falha de uma delas: dor mecânica, deformidade ou instabilidade, e compressão neural.'],
     pro: 'Vértebras e discos crescem de cima para baixo porque a carga aumenta. A placa terminal de L4 tem cerca de 15 cm², quatro a cinco vezes a de C5, perto de 3,4 cm² (média em homens, Kishimoto, J Orthop Res 2016). A lombar carrega mais peso e se move mais, e por isso concentra a maior parte das doenças degenerativas.',
     cam: { t: 'center', az: 32, el: 8, d: 158 }, show: 'bone disc rib', tint: true,
-    labels: [['C1', 'C1 atlas'], ['C7.sp', 'C7'], ['T1', 'T1'], ['T12', 'T12'], ['L1', 'L1'], ['L5', 'L5'], ['sacrum', 'Sacro'], ['coccyx', 'Cóccix']]
+    labels: [['C1', 'C1 atlas'], ['C7', 'C7'], ['T1', 'T1'], ['T12', 'T12'], ['L1', 'L1'], ['L5', 'L5'], ['sacrum', 'Sacro'], ['coccyx', 'Cóccix']]
   },
   {
     ch: 0, title: 'Curvaturas e alinhamento sagital',
@@ -1420,7 +1420,7 @@ const STEPS = [
       'As facetas ficam inclinadas cerca de 45° em relação ao plano horizontal. Isso permite flexão, extensão, inclinação e rotação combinadas: é a região mais móvel.'],
     pro: 'Osteófitos uncovertebrais na frente e facetários atrás estreitam o forame e são a causa clássica de radiculopatia cervical. C5-C6 e C6-C7 são os níveis mais afetados. A raiz cervical sai acima da vértebra de mesmo número: hérnia C5-C6 comprime a raiz C6.',
     cam: { t: 'C5', az: 42, el: 12, d: 26 }, show: 'bone disc vessel', focus: ['C3', 'C4', 'C5', 'C6', 'C7'], hide: ['cca', 'bct', 'sca', 'plex', 'bvv'],
-    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7.sp', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
+    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
   },
   {
     ch: 2, title: 'Torácica e costelas',
@@ -1470,7 +1470,7 @@ const STEPS = [
       'A pressão dentro do disco L4-L5 muda muito com a postura. As medidas abaixo vêm de um sensor implantado em um voluntário (Wilke, 1999). Neste estudo, sentar relaxado não aumentou a pressão em relação a ficar em pé, ao contrário das medidas antigas de Nachemson; o que a eleva é fletir o tronco, sentado ou em pé, e carregar peso longe do corpo.'],
     pro: 'Ao fundir um segmento, movimento e carga migram para os vizinhos. A degeneração do segmento adjacente é uma das principais causas de reoperação a longo prazo e motiva as técnicas que preservam movimento, como a prótese de disco.',
     cam: { t: 'disc.L4-L5', az: 55, el: 10, d: 24 }, show: 'bone disc lig', focus: ['L4', 'L5'], extra: 'wilke',
-    labels: [['L4.body', 'L4'], ['disc.L4-L5', 'Disco'], ['L5.body', 'L5'], ['cap.L4-L5.L', 'Facetas']]
+    labels: [['L4', 'L4'], ['disc.L4-L5', 'Disco'], ['L5', 'L5'], ['cap.L4-L5.L', 'Facetas']]
   },
   /* 5. Ligamentos */
   {
@@ -1795,7 +1795,7 @@ const DZ = [
     id: 'dspondy', levels: ['L3', 'L4', 'L5'], cat: 0, name: 'Espondilolistese degenerativa', lv: 'L4-L5',
     mods: { slip: { L4: 0.7 }, disc: { 'L4-L5': { h: 0.7, state: 'degen' } }, facet: { 'L4-L5': 1.4 }, flavum: { 'L4-L5': 1.8 }, pinch: [{ at: 'L4-L5', f: 0.55, w: 0.5, what: 'dura' }] },
     cam: { t: 'L4', az: 90, el: 4, d: 32 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['L2', 'L3', 'L4', 'L5', 'S'], hot: ['L4.body', 'disc.L4-L5'],
-    labels: [['L4.body', 'L4 deslizou para frente'], ['L5.body', 'L5'], ['cauda', 'Canal estreitado']],
+    labels: [['L4', 'L4 deslizou para frente'], ['L5', 'L5'], ['cauda', 'Canal estreitado']],
     what: 'Escorregamento de uma vértebra sobre a de baixo com o arco posterior intacto, por degeneração do disco e das facetas.',
     why: 'Típica em L4-L5, em mulheres acima de 50 anos. Facetas mais sagitais e degeneradas deixam L4 deslizar para frente; como o arco vai junto, o canal estreita.',
     sx: 'Igual à estenose: claudicação neurogênica, dor lombar, às vezes dor na raiz L5.',
@@ -1819,7 +1819,7 @@ const DZ = [
     id: 'opll', levels: ['C3', 'C4', 'C5', 'C6', 'C7'], cat: 0, name: 'Ossificação do LLP (OPLL)', lv: 'C4 a C6',
     mods: { opll: ['C3', 'C4', 'C5', 'C6'], pinch: [{ at: 'C4-C5', f: 0.6, w: 1.3, what: 'all' }] },
     cam: { t: 'C4', az: 90, el: 4, d: 26 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['C2', 'C3', 'C4', 'C5', 'C6', 'C7'], hot: ['PLL.C3', 'PLL.C4', 'PLL.C5', 'PLL.C6'],
-    labels: [['PLL.C', 'LLP ossificado'], ['cord', 'Medula'], ['C4.body', 'C4']],
+    labels: [['PLL.C', 'LLP ossificado'], ['cord', 'Medula'], ['C4', 'C4']],
     what: 'O LLP vira osso, engrossa e comprime a medula por trás dos corpos.',
     why: 'Bem mais frequente em asiáticos orientais (cerca de 2% a 4% no Japão); associa-se ao DISH e ao diabetes. Predomina de C4 a C6. Tipos: contínuo, segmentar, misto e circunscrito.',
     sx: 'Mielopatia progressiva. Um trauma leve pode precipitar lesão medular aguda, porque o canal já está estreito.',
@@ -2211,7 +2211,7 @@ const DZ_QUIZ = [
     if (!has3D) return;
     (list || []).forEach(([key, text]) => {
       const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button'; el.textContent = text; el.tabIndex = -1;
-      if (S.hot.has(key)) el.classList.add('hot');
+      if (S.hot.has(key) || S.hot.has(key + '.body')) el.classList.add('hot');
       if (DENIS[key]) { el.style.borderColor = DENIS[key]; el.style.color = DENIS[key]; }
       el.addEventListener('click', ev => { ev.stopPropagation(); focusKey(key, text); });
       labelsEl.appendChild(el);
@@ -2428,8 +2428,11 @@ const DZ_QUIZ = [
     if (/^(C|T|L)\d+$/.test(key)) return key + '.body';
     return key;
   }
+  // chave que nomeia uma vértebra inteira (ou sacro/cóccix): mesmo nível da régua
+  const levelOf = key => /^(C[1-7]|T([1-9]|1[0-2])|L[1-5])$/.test(key) ? key : key === 'sacrum' ? 'S' : key === 'coccyx' ? 'Co' : null;
   function focusKey(key, text) {
     if (!has3D) return;
+    const lv = levelOf(key); if (lv) { goLevel(lv); return; }
     const ms = model.reg.get(aliasKey(key));
     if (ms && ms.length) showInfo(ms[0]);
     else if (S.selKey === 'txt:' + key && !infoEl.hidden) closeCard();
@@ -2512,7 +2515,7 @@ const DZ_QUIZ = [
   function bindSee() {
     scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
-      if (has3D) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
+      if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
       if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
     });

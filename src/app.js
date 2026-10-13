@@ -229,7 +229,7 @@
     if (!has3D) return;
     (list || []).forEach(([key, text]) => {
       const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button'; el.textContent = text; el.tabIndex = -1;
-      if (S.hot.has(key)) el.classList.add('hot');
+      if (S.hot.has(key) || S.hot.has(key + '.body')) el.classList.add('hot');
       if (DENIS[key]) { el.style.borderColor = DENIS[key]; el.style.color = DENIS[key]; }
       el.addEventListener('click', ev => { ev.stopPropagation(); focusKey(key, text); });
       labelsEl.appendChild(el);
@@ -446,8 +446,11 @@
     if (/^(C|T|L)\d+$/.test(key)) return key + '.body';
     return key;
   }
+  // chave que nomeia uma vértebra inteira (ou sacro/cóccix): mesmo nível da régua
+  const levelOf = key => /^(C[1-7]|T([1-9]|1[0-2])|L[1-5])$/.test(key) ? key : key === 'sacrum' ? 'S' : key === 'coccyx' ? 'Co' : null;
   function focusKey(key, text) {
     if (!has3D) return;
+    const lv = levelOf(key); if (lv) { goLevel(lv); return; }
     const ms = model.reg.get(aliasKey(key));
     if (ms && ms.length) showInfo(ms[0]);
     else if (S.selKey === 'txt:' + key && !infoEl.hidden) closeCard();
@@ -530,7 +533,7 @@
   function bindSee() {
     scrollEl.querySelectorAll('.see button').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
-      if (has3D) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
+      if (has3D && !levelOf(k)) { const p = resolvePos(k); if (p) { const s = sph(camera.position, controls.target); flyTo({ t: p, az: s.az / deg, el: s.el / deg, d: Math.min(s.r, 22) }, 800); } }
       focusKey(k, b.textContent);
       if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
     });

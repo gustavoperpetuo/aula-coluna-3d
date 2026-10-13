@@ -10,7 +10,7 @@ const STEPS = [
       'Ela tem três funções: sustentar o tronco e passar a carga para a pelve, permitir movimento e proteger a medula e as raízes. Quase toda doença da coluna é a falha de uma delas: dor mecânica, deformidade ou instabilidade, e compressão neural.'],
     pro: 'Vértebras e discos crescem de cima para baixo porque a carga aumenta. A placa terminal de L4 tem cerca de 15 cm², quatro a cinco vezes a de C5, perto de 3,4 cm² (média em homens, Kishimoto, J Orthop Res 2016). A lombar carrega mais peso e se move mais, e por isso concentra a maior parte das doenças degenerativas.',
     cam: { t: 'center', az: 32, el: 8, d: 158 }, show: 'bone disc rib', tint: true,
-    labels: [['C1', 'C1 atlas'], ['C7.sp', 'C7'], ['T1', 'T1'], ['T12', 'T12'], ['L1', 'L1'], ['L5', 'L5'], ['sacrum', 'Sacro'], ['coccyx', 'Cóccix']]
+    labels: [['C1', 'C1 atlas'], ['C7', 'C7'], ['T1', 'T1'], ['T12', 'T12'], ['L1', 'L1'], ['L5', 'L5'], ['sacrum', 'Sacro'], ['coccyx', 'Cóccix']]
   },
   {
     ch: 0, title: 'Curvaturas e alinhamento sagital',
@@ -76,7 +76,7 @@ const STEPS = [
       'As facetas ficam inclinadas cerca de 45° em relação ao plano horizontal. Isso permite flexão, extensão, inclinação e rotação combinadas: é a região mais móvel.'],
     pro: 'Osteófitos uncovertebrais na frente e facetários atrás estreitam o forame e são a causa clássica de radiculopatia cervical. C5-C6 e C6-C7 são os níveis mais afetados. A raiz cervical sai acima da vértebra de mesmo número: hérnia C5-C6 comprime a raiz C6.',
     cam: { t: 'C5', az: 42, el: 12, d: 26 }, show: 'bone disc vessel', focus: ['C3', 'C4', 'C5', 'C6', 'C7'], hide: ['cca', 'bct', 'sca', 'plex', 'bvv'],
-    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7.sp', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
+    labels: [['C5.unc.L', 'Processo unciforme'], ['C5.tf.L', 'Forame transverso'], ['C4.lm.L', 'Massa lateral (facetas)'], ['C7', 'C7 proeminente'], ['va.V2.L', 'Artéria vertebral']]
   },
   {
     ch: 2, title: 'Torácica e costelas',
@@ -126,7 +126,7 @@ const STEPS = [
       'A pressão dentro do disco L4-L5 muda muito com a postura. As medidas abaixo vêm de um sensor implantado em um voluntário (Wilke, 1999). Neste estudo, sentar relaxado não aumentou a pressão em relação a ficar em pé, ao contrário das medidas antigas de Nachemson; o que a eleva é fletir o tronco, sentado ou em pé, e carregar peso longe do corpo.'],
     pro: 'Ao fundir um segmento, movimento e carga migram para os vizinhos. A degeneração do segmento adjacente é uma das principais causas de reoperação a longo prazo e motiva as técnicas que preservam movimento, como a prótese de disco.',
     cam: { t: 'disc.L4-L5', az: 55, el: 10, d: 24 }, show: 'bone disc lig', focus: ['L4', 'L5'], extra: 'wilke',
-    labels: [['L4.body', 'L4'], ['disc.L4-L5', 'Disco'], ['L5.body', 'L5'], ['cap.L4-L5.L', 'Facetas']]
+    labels: [['L4', 'L4'], ['disc.L4-L5', 'Disco'], ['L5', 'L5'], ['cap.L4-L5.L', 'Facetas']]
   },
   /* 5. Ligamentos */
   {
