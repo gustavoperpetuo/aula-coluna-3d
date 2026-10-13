@@ -515,9 +515,17 @@
   const rail = $('#rail'), railH = $('#railh'), modeSeg = $('#m-anat').parentNode, brand = $('.brand');
   function placeNav() {
     if (mobileQ.matches) { brand.after(modeSeg); $('#panel').prepend(chapWrap); }
-    else { rail.prepend(modeSeg); railH.after(chapWrap); }
+    else { rail.prepend(modeSeg); railH.parentNode.after(chapWrap); }
   }
   placeNav();
+  const railX = $('#railx');
+  function setRail(open) {
+    $('.stage').classList.toggle('railoff', !open);
+    railX.textContent = open ? '\u00ab' : '\u00bb';
+    railX.title = open ? 'Recolher o índice' : 'Abrir o índice';
+    railX.setAttribute('aria-label', railX.title); railX.setAttribute('aria-expanded', open);
+  }
+  setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
     railH.textContent = S.mode === 'anat' ? 'Capítulos' : 'Grupos de doenças';
@@ -729,6 +737,7 @@
     const d = { ArrowLeft: 40, ArrowRight: -40 }[e.key];
     if (d) { e.preventDefault(); setPw(pw + d); keepPw(); }
   };
+  railX.onclick = () => { store.railOff = !store.railOff; save(); setRail(!store.railOff); setPw(store.pw || PW); };
   addEventListener('resize', () => setPw(store.pw || PW));
   setPw(store.pw || PW);
 

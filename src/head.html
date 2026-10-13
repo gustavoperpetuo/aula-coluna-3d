@@ -90,7 +90,14 @@ body.resizing { cursor: col-resize; user-select: none; }
   .rail .seg { display: flex; }
   .rail .seg button { flex: 1 1 0; min-height: 38px; padding: 0 6px; white-space: nowrap; }
   .hint { max-width: calc(100% - 92px); }
-  .rail-h { font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 4px 12px 0; }
+  .rail-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 0 0 0 12px; }
+  .railx { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; }
+  .railx:hover { border-color: var(--accent); color: var(--ink); }
+  /* trilha recolhida: sobra uma faixa estreita com o botão de reabrir */
+  .stage.railoff { --rail: 46px; }
+  .railoff .rail { padding: 12px 6px; }
+  .railoff .rail > :not(.rail-h), .railoff #railh { display: none; }
+  .railoff .rail-h { padding: 0; justify-content: center; }
   .rail .chapwrap { border: 0; }
   .rail .chapwrap::before, .rail .chapwrap::after { display: none; }
   .rail .chap { flex-direction: column; gap: 2px; padding: 0; overflow: visible; }
@@ -254,7 +261,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span></div>
   </header>
   <main class="stage">
-    <nav class="rail" id="rail" aria-label="Navegação da aula"><div class="rail-h" id="railh">Capítulos</div></nav>
+    <nav class="rail" id="rail" aria-label="Navegação da aula"><div class="rail-h"><span id="railh">Capítulos</span><button class="railx" id="railx" type="button" aria-controls="rail" aria-expanded="true"></button></div></nav>
     <aside class="panel" id="panel" aria-label="Aula">
       <div class="chapwrap" id="chapwrap"><nav class="chap" id="chap" aria-label="Capítulos"></nav></div>
       <div class="scroll" id="scroll"></div>
