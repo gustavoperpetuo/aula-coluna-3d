@@ -56,9 +56,9 @@
       bone: { c: '#E6D7BA', r: .62, cut: '#F0E8D8', L: 'bone', g: 1 }, boneHyp: { c: '#DDC48D', r: .7, cut: '#EADCBC', L: 'bone', g: 1 }, boneHot: { c: '#E9DDC5', r: .7, cut: '#F0E8D8', L: 'bone', g: 1 },
       rib: { c: '#E6DAC2', r: .7, cut: '#F0E8D8', L: 'rib', g: 1 }, hole: { c: '#6E5A49', r: .9, L: 'bone', g: 1 }, ctx: { c: '#E6D7BA', r: .8, op: .17, L: 'bone', noCut: 1 },
       osteo: { c: '#E3D0A3', r: .68, cut: '#EADBB8', L: 'bone', g: 1 },
-      disc: { c: '#C9DFEA', r: .45, cut: '#EEF4F7', L: 'disc' }, discDeg: { c: '#BDAE90', r: .6, cut: '#C9BEA6', L: 'disc' }, discInf: { c: '#D98E5C', r: .6, cut: '#E2A57A', L: 'disc' },
-      lamA: { c: '#BFD6E2', r: .5, cut: '#D7E7EF', L: 'disc' }, lamB: { c: '#D2E4EC', r: .5, cut: '#C3DAE6', L: 'disc' },
-      nucleus: { c: '#5B9ACB', r: .28, cut: '#6CA7D3', L: 'disc' }, nucDeg: { c: '#8F8C7E', r: .6, cut: '#9C988A', L: 'disc' }, herniation: { c: '#4F8FC4', r: .3, cut: '#5C9BCB', L: 'path' },
+      disc: { c: '#C9DFEA', r: .45, cut: '#EEF4F7', L: 'disc', order: -2 }, discDeg: { c: '#BDAE90', r: .6, cut: '#C9BEA6', L: 'disc', order: -2 }, discInf: { c: '#D98E5C', r: .6, cut: '#E2A57A', L: 'disc', order: -2 },
+      lamA: { c: '#BFD6E2', r: .5, cut: '#D7E7EF', L: 'disc', flat: 1, under: 1, order: -1 }, lamB: { c: '#D2E4EC', r: .5, cut: '#C3DAE6', L: 'disc', flat: 1, under: 1, order: -1 },
+      nucleus: { c: '#5B9ACB', r: .28, cut: '#6CA7D3', L: 'disc', flat: 1 }, nucDeg: { c: '#8F8C7E', r: .6, cut: '#9C988A', L: 'disc', flat: 1 }, herniation: { c: '#4F8FC4', r: .3, cut: '#5C9BCB', L: 'path' },
       lig: { c: '#F4F2EB', r: .42, cut: '#E8E3D7', L: 'lig' }, opll: { c: '#E2D0A3', r: .65, cut: '#D7B98A', L: 'lig' },
       flavum: { c: '#C98A2C', r: .5, cut: '#B97A22', L: 'lig' }, flavumHyp: { c: '#AE6A17', r: .5, cut: '#9C5E12', L: 'lig' },
       capsule: { c: '#EEE4CF', r: .5, op: .55, L: 'lig', noCut: 1 }, capsuleHyp: { c: '#E7CC93', r: .5, op: .78, L: 'lig', noCut: 1 }, nuchal: { c: '#F1EBDC', r: .5, op: .3, L: 'lig', noCut: 1 },
@@ -82,9 +82,14 @@
       if (variant === 'h') { m.color = C('#E35A3E'); m.emissive = C('#9A2313'); m.emissiveIntensity = .4; m.transparent = false; m.opacity = 1; m.depthWrite = true; cut = '#E88F7B'; useCut = true; hotMats.push(m); }
       if (variant === 's') { m.color = C('#2FA8AB'); m.emissive = C('#0A5E62'); m.emissiveIntensity = .45; m.roughness = .45; m.transparent = false; m.opacity = 1; m.depthWrite = true; cut = '#8FD3D5'; useCut = true; }
       if (variant === 'd') { m.color = C(K.c).lerp(C('#4A5552'), .5); m.transparent = true; m.opacity = Math.min(op, .22); m.depthWrite = false; m.side = THREE.FrontSide; useCut = false; }
+      // lamelas são o fundo do corte do disco: desenhadas depois do anel e sem gravar profundidade, núcleo e canal da hérnia ficam por cima
+      if (K.under && variant === 'n') m.depthWrite = false;
       if (useCut) {
         const cc = new THREE.Color(cut);
-        m.onBeforeCompile = sh => { sh.uniforms.cutColor = { value: cc }; sh.fragmentShader = 'uniform vec3 cutColor;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif(!gl_FrontFacing) gl_FragColor.rgb = cutColor;'); };
+        // flat: camadas de dentro do disco, que só aparecem pelo corte; cor chapada nas duas faces para o corte parecer maciço
+        const test = K.flat ? '' : 'if(!gl_FrontFacing) ';
+        m.onBeforeCompile = sh => { sh.uniforms.cutColor = { value: cc }; sh.fragmentShader = 'uniform vec3 cutColor;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n' + test + 'gl_FragColor.rgb = cutColor;'); };
+        m.customProgramCacheKey = () => K.flat ? 'cutflat' : 'cut';
       }
       return cache[id] = m;
     };
@@ -135,7 +140,7 @@
       else if (S.ghost && K.g) variant = 'g';
       else if (S.tint && u.kind === 'bone' && u.region && TINT[u.region]) variant = 't' + u.region;
       m.material = getMat(u.kind, variant);
-      m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : 0;
+      m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : variant === 'n' ? (K.order || 0) : 0;
       u.variant = variant; if (variant === 'h') pulse = true;
     });
     view.classList.toggle('dim', !!(S.sel && S.sel.size));
@@ -158,7 +163,8 @@
     if (!(S.cfg && S.cfg.sag === 'lat')) { const keys = new Set(t.map(m => m.userData.key)); t = t.filter(m => { const k = m.userData.key; return !(k.endsWith('.L') && keys.has(k.slice(0, -2) + '.R')); }); }
     let x0 = 0;
     t.forEach(m => { const b = boxOf(m); const cx = (b.min.x + b.max.x) / 2; x0 = Math.max(x0, Math.min(cx, b.min.x + 1.2)); });
-    return x0;
+    // fora da linha média e do meio das placas de fratura (0,06 de espessura): plano em cima de vértices ou faces serrilha
+    return x0 + 0.011;
   }
   // corte axial: o nível com mais lesões; sem nível declarado, a vértebra mais perto da lesão
   function focusLevel() {
@@ -187,7 +193,8 @@
       const lvl = c.slice(3); S.axLevel = lvl;
       const s = model.spineAt(model.KI[lvl]);
       const up = new V3(0, 1, 0).applyQuaternion(s.q);
-      const pt = s.p.clone(); if (!lvl.includes('-') && LV[lvl]) pt.addScaledVector(up, LV[lvl].h * 0.14);
+      // no disco, o plano sai do meio exato: lá ficam vértices do anel, do equador do núcleo e do eixo da hérnia, e o corte serrilha
+      const pt = s.p.clone(); if (!lvl.includes('-') && LV[lvl]) pt.addScaledVector(up, LV[lvl].h * 0.14); else pt.addScaledVector(up, -0.03);
       if (S.axPt && S.axPtLvl === lvl) pt.copy(S.axPt).addScaledVector(up, -0.15);
       plane.setFromNormalAndCoplanarPoint(up, pt); renderer.clippingPlanes = [plane];
     }

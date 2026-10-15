@@ -585,6 +585,9 @@ function buildSpine(mods = {}) {
       }
       R.push(r);
     }
+    // tampas do disco 0,02 para dentro: coladas na placa terminal, as duas superfícies disputam o pixel e o corte pontilha
+    const ax = new V3().subVectors(cB, cA).normalize();
+    R[0] = R[0].map(pp => pp.clone().addScaledVector(ax, 0.02)); R[4] = R[4].map(pp => pp.clone().addScaledVector(ax, -0.02));
     const kind = dm.state === 'degen' ? 'discDeg' : dm.state === 'infect' ? 'discInf' : 'disc';
     add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
     // lamelas internas (aparecem no corte)
@@ -645,15 +648,50 @@ function buildSpine(mods = {}) {
       return pts.concat(outer);
     }
   };
+  // corpos e discos que o LLA e o LLP cobrem: a faixa nunca pode ficar dentro deles (listese, cunha, abaulamento)
+  const ligRay = new THREE.Raycaster(), rayMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const ligTargets = (u0, u1) => meshes.filter(m => {
+    const k = m.userData.key;
+    if (!/^((C|T|L)\d+\.body|sacrum|disc\.)/.test(k) || !['bone', 'disc', 'discDeg', 'discInf'].includes(m.userData.kind)) return false;
+    const n = k === 'sacrum' ? 'S1' : k.startsWith('disc.') ? k.slice(5) : k.split('.')[0];
+    const ku = KI[n]; return ku !== undefined && ku >= u0 - 1.5 && ku <= u1 + 1.5;
+  });
+  // quanto cada ponto interno da faixa precisa sair para ficar fora do osso contínuo a partir do centro
+  const bandNeed = (s, ring, which, targets) => {
+    const K = ring.length / 2;
+    return ring.slice(0, K).map(([xi, zi]) => {
+      const o = which === 'ant' ? v(0, 0, 0) : v(xi, 0, 0), dl = v(xi, 0, zi).sub(o); const cur = dl.length(); dl.normalize();
+      ligRay.set(s.p.clone().add(o.clone().applyQuaternion(s.q)), dl.clone().applyQuaternion(s.q)); ligRay.far = cur + 3;
+      const hits = ligRay.intersectObjects(targets, false);
+      // blocos de osso/disco separados por vão maior que 0,6; só conta o bloco que começa antes de 0,5 além da faixa
+      // (o que começa mais longe é outra estrutura, como a lâmina atrás do canal sacral)
+      let need = 0;
+      for (let j = 0; j < hits.length;) {
+        const a = hits[j].distance; let b = a; j++;
+        while (j < hits.length && hits[j].distance - b < 0.6) b = hits[j++].distance;
+        if (a < cur + 0.5) need = Math.max(need, b + 0.08 - cur);
+      }
+      return [dl, need];
+    });
+  };
   const ligSeg = (which, u0, u1, key, hwFn, th, kind = 'lig', info) => {
-    const rr = [];
-    for (let u = u0; u <= u1 + 1e-6; u += 0.2) {
-      const s = spineAt(u); const hw = hwFn(s, u);
-      rr.push(bandRing(s, which, hw, th, 0.04).map(([x, z]) => s.p.clone().add(v(x, 0, z).applyQuaternion(s.q))));
-    }
+    const targets = ligTargets(u0, u1), S = [];
+    root.updateMatrixWorld(true); targets.forEach(m => m.material = rayMat);
+    for (let u = u0; u <= u1 + 1e-6; u += 0.1) { const s = spineAt(u), ring = bandRing(s, which, hwFn(s, u), th, 0.04); S.push({ s, ring, need: bandNeed(s, ring, which, targets) }); }
+    // a quina do corpo pode cair entre duas amostras: cada amostra herda o maior empurrão das vizinhas
+    const rr = S.map(({ s, ring }, i) => {
+      const K = ring.length / 2;
+      return ring.map(([x, z], j) => {
+        const k = j < K ? j : 2 * K - 1 - j, [dl] = S[i].need[k];
+        const n = Math.max(...[i - 1, i, i + 1].filter(t => t >= 0 && t < S.length).map(t => S[t].need[k][1]));
+        return s.p.clone().add(v(x + dl.x * n, 0, z + dl.z * n).applyQuaternion(s.q));
+      });
+    });
+    targets.forEach(m => m.material = null);
     if (rr.length < 2) return;
     const lvl = key.split('.')[1];
-    add(loft(rr, true, true), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
+    // sem tampas: os segmentos vizinhos se encontram no meio do disco e tampas coincidentes pontilham no corte
+    add(loft(rr, false, false), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
   };
   const allHW = s => s.reg === 'C' ? 0.55 : s.reg === 'T' ? 0.9 : 1.45;
   const pllHW = (s, u) => {

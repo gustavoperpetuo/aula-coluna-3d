@@ -14,6 +14,7 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
 - `tests/`: testes automáticos em Playwright.
   - `smoke.js`: desktop, celular e falha do 3D.
   - `regua.js`: régua e desfazer seleção.
+  - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
 - `docs/`: retrospectiva do projeto.
 
