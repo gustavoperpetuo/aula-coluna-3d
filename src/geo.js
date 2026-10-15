@@ -67,7 +67,8 @@ function rod(a, b, r, o = {}) {
   const M = new THREE.Matrix4().makeBasis(side, dir, third);
   const S = new THREE.Matrix4().makeScale(f, 1, 1);
   const parts = [];
-  const cyl = new THREE.CylinderGeometry(r2, r, len, seg, 1, true);
+  // fechado: a tampa do corte conta faces de dentro e de fora, e cilindro aberto visto pela ponta virava anel oco
+  const cyl = new THREE.CylinderGeometry(r2, r, len, seg, 1, false);
   cyl.applyMatrix4(S); cyl.applyMatrix4(M);
   cyl.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); parts.push(cyl);
   if (o.caps !== false) {
@@ -708,8 +709,8 @@ function buildSpine(mods = {}) {
     targets.forEach(m => m.material = null);
     if (rr.length < 2) return;
     const lvl = key.split('.')[1];
-    // sem tampas: os segmentos vizinhos se encontram no meio do disco e tampas coincidentes pontilham no corte
-    add(loft(rr, false, false), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
+    // fechado, pelo mesmo motivo do cilindro; o corte agora é tampado, então as tampas coincidentes no meio do disco não aparecem
+    add(loft(rr, true, true), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
   };
   // largura por região, interpolada entre as duas pontas do trecho: antes saltava no meio do disco C7-T1 e T12-L1
   const byReg = (s, f) => f(s.A.reg) + (f(s.B.reg) - f(s.A.reg)) * s.f;

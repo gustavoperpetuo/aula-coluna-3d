@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792093702.4901311,
-    "seen": 1792093943.4513197,
-    "ast_hash": "ec8fe5bebb24dca328ff335c45a17903",
+    "mtime": 1792095505.5005999,
+    "seen": 1792095759.6262436,
+    "ast_hash": "9060a8c400c65724f3a87f17573083c5",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "src/geo.js": {
-    "mtime": 1792092193.3561032,
-    "seen": 1792092418.276185,
-    "ast_hash": "a5cc4e3d04d116aff699b21d1f25503c",
+    "mtime": 1792094927.5598164,
+    "seen": 1792095759.6262536,
+    "ast_hash": "25a4b62319f7aac765debc989e203396",
     "semantic_hash": ""
   },
   "tests/cortes.esperado.json": {

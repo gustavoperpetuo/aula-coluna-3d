@@ -126,7 +126,8 @@
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
   const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6 };
-  const capGroups = new Map(); // 'rank|cor' -> { layer, rank, mat }
+  // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
+  const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {
     m.layers.set(0);
     if (!S.clip || !(variant === 'n' || variant === 'h' || variant === 's' || variant[0] === 't') || (K.noCut && variant !== 'h' && variant !== 's') || ((K.op ?? 1) < 1 && variant !== 'h' && variant !== 's')) return;
@@ -134,7 +135,7 @@
     if (lo > 0 || hi < 0) return; // a caixa não cruza o plano: não há tampa
     const color = variant === 'h' ? (K.L === 'neuro' ? '#C9503A' : '#E88F7B') : variant === 's' ? '#8FD3D5' : K.cut || K.c, rank = CAP_RANK[u.kind] || 0, k = rank + '|' + color;
     let g = capGroups.get(k);
-    if (!g) { if (capGroups.size >= 30) return; g = { layer: capGroups.size + 1, rank, mat: new THREE.MeshBasicMaterial({ color: C(color), side: THREE.DoubleSide, depthWrite: false, stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc }) }; capGroups.set(k, g); }
+    if (!g) { if (capGroups.size >= 30) return; g = { layer: capGroups.size + 1, rank, pri: variant === 'h' || variant === 's' ? 1 : 0, mat: new THREE.MeshBasicMaterial({ color: C(color), side: THREE.DoubleSide, depthWrite: false, stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc }) }; capGroups.set(k, g); }
     m.layers.enable(g.layer); g.used = true;
   }
   let LBL = [];
@@ -784,7 +785,7 @@
     const stFront = stBack.clone(); stFront.side = THREE.FrontSide; stFront.stencilZPass = stFront.stencilZFail = stFront.stencilFail = THREE.DecrementWrapStencilOp;
     const capScene = new THREE.Scene(), capMesh = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000)); capScene.add(capMesh);
     function renderCaps() {
-      const groups = [...capGroups.values()].filter(g => g.used).sort((a, b) => a.rank - b.rank); if (!groups.length) return;
+      const groups = [...capGroups.values()].filter(g => g.used).sort((a, b) => a.rank - b.rank || a.pri - b.pri); if (!groups.length) return;
       const planes = renderer.clippingPlanes, ac = renderer.autoClear; renderer.autoClear = false;
       capMesh.position.copy(plane.coplanarPoint(new V3())); capMesh.lookAt(capMesh.position.clone().add(plane.normal)); capMesh.updateMatrixWorld();
       groups.forEach(g => {
