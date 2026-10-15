@@ -12,6 +12,17 @@
     }
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v graphify >/dev/null || pip install -q graphifyy 2>/dev/null || pip install -q --break-system-packages graphifyy 2>/dev/null || true",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash|Grep",

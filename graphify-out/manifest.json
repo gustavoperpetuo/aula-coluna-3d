@@ -1,0 +1,116 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1792090120.241257,
+    "seen": 1792090765.6383755,
+    "ast_hash": "4ec4cf2d7db206bbf7c6230eab0fb08e",
+    "semantic_hash": ""
+  },
+  "build.py": {
+    "mtime": 1792090120.541257,
+    "seen": 1792090765.6383817,
+    "ast_hash": "dcd27f8967c136938209ba58750bbcb7",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1792026939.331249,
+    "seen": 1792090765.6383848,
+    "ast_hash": "2c5f6cea2590dfe84cde64cb59b33e7d",
+    "semantic_hash": ""
+  },
+  "src/app.js": {
+    "mtime": 1792090120.5456774,
+    "seen": 1792090765.6383872,
+    "ast_hash": "a9c79c493b4e3c0c5ff621eafc6feba6",
+    "semantic_hash": ""
+  },
+  "src/content.js": {
+    "mtime": 1791928478.1496015,
+    "seen": 1792090765.638389,
+    "ast_hash": "74c38c1364f4cceb9196939bc99039f9",
+    "semantic_hash": ""
+  },
+  "src/disease.js": {
+    "mtime": 1791928478.1490598,
+    "seen": 1792090765.6383903,
+    "ast_hash": "2c7af7be3ee499ca6d7990101ae3c657",
+    "semantic_hash": ""
+  },
+  "src/geo.js": {
+    "mtime": 1792090120.5459328,
+    "seen": 1792090765.6383917,
+    "ast_hash": "4d87fbf09b2971026cebc1ed31bf1c12",
+    "semantic_hash": ""
+  },
+  "tests/cortes.esperado.json": {
+    "mtime": 1792090120.268359,
+    "seen": 1792090765.6383934,
+    "ast_hash": "539682dae4b7cee71b50b74160c9b575",
+    "semantic_hash": ""
+  },
+  "tests/cortes.js": {
+    "mtime": 1792090120.268359,
+    "seen": 1792090765.6383946,
+    "ast_hash": "d46f4e6c21b222a6326fe19155569fd4",
+    "semantic_hash": ""
+  },
+  "tests/ligamentos.js": {
+    "mtime": 1792090120.269257,
+    "seen": 1792090765.6383965,
+    "ast_hash": "4c50cd711da0b763f1f33be28e835b10",
+    "semantic_hash": ""
+  },
+  "tests/regua.js": {
+    "mtime": 1792090120.269257,
+    "seen": 1792090765.6383982,
+    "ast_hash": "23f6ff10a58af71ce7e99d5497416c6e",
+    "semantic_hash": ""
+  },
+  "tests/smoke.js": {
+    "mtime": 1792090120.269257,
+    "seen": 1792090765.6383998,
+    "ast_hash": "e311eac70d5be365be0f95d33c55f034",
+    "semantic_hash": ""
+  },
+  ".claude/CLAUDE.md": {
+    "mtime": 1792090120.241257,
+    "seen": 1792090765.638401,
+    "ast_hash": "9b31786b637be3c13978bec4c2330752",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1792090120.2466624,
+    "seen": 1792090765.6384025,
+    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1792026939.33108,
+    "seen": 1792090765.638404,
+    "ast_hash": "64d79149cfb51fb419a4b3ddd082fd77",
+    "semantic_hash": ""
+  },
+  "docs/retro-aula-coluna-2026-10-12.md": {
+    "mtime": 1791926418.8915467,
+    "seen": 1792090765.638405,
+    "ast_hash": "3975552118d1fc595d3de51d3f3a9219",
+    "semantic_hash": ""
+  },
+  "src/head.html": {
+    "mtime": 1792090120.5465276,
+    "seen": 1792090765.6384068,
+    "ast_hash": "4e50785ad8f0928eefd3d93be6b6dd6c",
+    "semantic_hash": ""
+  },
+  "src/home.html": {
+    "mtime": 1791926418.8955467,
+    "seen": 1792090765.6384077,
+    "ast_hash": "b13528a0b8783dc7f02eb1e92ce92b45",
+    "semantic_hash": ""
+  },
+  "src/coluna-lateral.webp": {
+    "mtime": 1791926418.894064,
+    "seen": 1792090765.6384091,
+    "ast_hash": "887a11c782f8adc54c4f04db0b9bb45a",
+    "semantic_hash": ""
+  }
+}
