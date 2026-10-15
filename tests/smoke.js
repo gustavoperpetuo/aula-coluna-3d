@@ -3,9 +3,9 @@ const fs=require('fs');
 async function page(b,W,H,block){
  const p=await b.newPage({viewport:{width:W,height:H},hasTouch:W<500,isMobile:W<500});
  const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|fonts/.test(m.text()))errs.push(m.text())});
- if(block) await p.route(/cdnjs.*three.min.js|jsdelivr/,r=>r.abort()); else {
- await p.route(/cdnjs.*three.min.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/build/three.min.js'),contentType:'text/javascript'}));
- await p.route(/jsdelivr.*OrbitControls.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/examples/js/controls/OrbitControls.js'),contentType:'text/javascript'}));}
+ if(block) await p.route(/jsdelivr/,r=>r.abort()); else {
+ await p.route(/three\.min\.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/build/three.min.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
+ await p.route(/jsdelivr.*OrbitControls.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/examples/js/controls/OrbitControls.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));}
  await p.route(/fonts\./,r=>r.abort());
  const html=fs.readFileSync(__dirname+'/../dist/coluna-vertebral.html','utf8');
  await p.route('http://local.test/',r=>r.fulfill({body:html,contentType:'text/html'}));

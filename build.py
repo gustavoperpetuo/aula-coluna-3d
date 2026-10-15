@@ -10,8 +10,10 @@ js = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js'
 doc = ('<!doctype html>\n<html lang="pt-BR">\n<meta charset="utf-8">\n'
        '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n')
 out = (doc + head
-       + '\n<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>'
-       + '\n<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>'
+       # integridade: o navegador recusa o script se o CDN entregar outro conteúdo. Os dois vêm do pacote npm
+       # three@0.128.0 pelo jsDelivr, byte a byte igual a node_modules/three (hashes calculados de lá)
+       + '\n<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>'
+       + '\n<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>'
        + '\n<script>\n' + geo + '</script>\n<script>\n' + js + '</script>\n')
 (root / 'dist').mkdir(exist_ok=True)
 assert '—' not in out and '–' not in out, 'travessão encontrado'
