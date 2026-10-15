@@ -1,17 +1,17 @@
 # Graph Report - aula-coluna-3d  (2026-10-15)
 
 ## Corpus Check
-- 16 files · ~42,136 words
+- 16 files · ~42,566 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 148 nodes · 280 edges · 15 communities (12 shown, 3 thin omitted)
+- 150 nodes · 283 edges · 16 communities (13 shown, 3 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ea95eb10`
+- Built from commit: `507357a4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,6 +30,7 @@
 - invalidate
 - CLAUDE.md
 - .claude/CLAUDE.md
+- showInfo
 
 ## God Nodes (most connected - your core abstractions)
 1. `renderDz()` - 16 edges
@@ -37,8 +38,8 @@
 3. `applyConfig()` - 15 edges
 4. `renderStep()` - 12 edges
 5. `focusKey()` - 11 edges
-6. `goLevel()` - 10 edges
-7. `applyVisuals()` - 9 edges
+6. `applyVisuals()` - 10 edges
+7. `goLevel()` - 10 edges
 8. `flyTo()` - 9 edges
 9. `rebuild()` - 8 edges
 10. `v()` - 8 edges
@@ -56,19 +57,19 @@
 ## Import Cycles
 - None detected.
 
-## Communities (15 total, 3 thin omitted)
+## Communities (16 total, 3 thin omitted)
 
 ### Community 0 - "geo.js"
 Cohesion: 0.21
 Nodes (20): BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic(), centroid() (+12 more)
 
 ### Community 1 - "app.js"
-Cohesion: 0.19
+Cohesion: 0.18
 Nodes (5): cutTargets(), focusLevel(), placeCam(), sagX(), stepTween()
 
 ### Community 2 - "focusKey"
 Cohesion: 0.44
-Nodes (9): bindSee(), flyTo(), focusKey(), frameMeshes(), resolvePos(), resolveTarget(), showCard(), showInfo() (+1 more)
+Nodes (9): aliasKey(), bindSee(), flyTo(), focusKey(), frameMeshes(), resolvePos(), resolveTarget(), setLabels() (+1 more)
 
 ### Community 3 - "playwright"
 Cohesion: 0.16
@@ -88,27 +89,31 @@ Nodes (8): Ações, Começar, Continuar, Parar, Pendências da última rodada, R
 
 ### Community 7 - "renderDz"
 Cohesion: 0.19
-Nodes (19): bindQuiz(), chapterDone(), closeDz(), edgeFade(), focusTitle(), goStep(), model(), openDz() (+11 more)
+Nodes (21): applyConfig(), bindQuiz(), chapterDone(), closeDz(), edgeFade(), focusTitle(), goStep(), model() (+13 more)
 
 ### Community 8 - "content.js"
 Cohesion: 0.22
 Nodes (7): ALL_STEPS, CHAPTERS, INFO, LEVEL_NOTES, QUIZ, ROOTFN, STEPS
 
 ### Community 9 - "applyConfig"
-Cohesion: 0.29
-Nodes (11): applyConfig(), applyVisuals(), axTarget(), clearRuler(), closeCard(), goLevel(), inFocus(), plane() (+3 more)
+Cohesion: 0.27
+Nodes (10): applyVisuals(), axTarget(), capLayer(), clearRuler(), closeCard(), goLevel(), inFocus(), plane() (+2 more)
 
 ### Community 10 - "disease.js"
 Cohesion: 0.40
 Nodes (4): DZ, DZ_CATS, DZ_OTHERS, DZ_QUIZ
 
 ### Community 11 - "invalidate"
-Cohesion: 0.29
-Nodes (7): aliasKey(), describe(), invalidate(), neutralLabels(), resize(), setDenis(), setLabels()
+Cohesion: 0.67
+Nodes (3): invalidate(), resize(), setDenis()
+
+### Community 15 - "showInfo"
+Cohesion: 0.50
+Nodes (4): describe(), neutralLabels(), showCard(), showInfo()
 
 ## Knowledge Gaps
 - **1 isolated node(s):** `three`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 64 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 65 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
@@ -120,5 +125,5 @@ _Questions this graph is uniquely positioned to answer:_
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Why does `mergeGeoms()` connect `geo.js` to `Aula 3D da coluna vertebral`?**
   _High betweenness centrality (0.140) - this node is a cross-community bridge._
-- **Why does `applyVisuals()` connect `applyConfig` to `app.js`, `focusKey`, `invalidate`, `Aula 3D da coluna vertebral`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+- **Why does `applyVisuals()` connect `applyConfig` to `app.js`, `Aula 3D da coluna vertebral`, `renderDz`, `invalidate`, `showInfo`?**
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._

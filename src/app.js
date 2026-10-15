@@ -121,10 +121,26 @@
     return S.focus.has(lvlAlias(L));
   }
   const isHot = u => !!u.hot || S.hot.has(u.key);
+  /* tampa do corte: cada vértebra é feita de peças sobrepostas, e o corte mostrava as faces internas de todas.
+     Por grupo (camada de desenho = profundidade de aninhamento + cor de corte), o stencil marca onde o plano está
+     dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
+  // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6 };
+  const capGroups = new Map(); // 'rank|cor' -> { layer, rank, mat }
+  function capLayer(m, u, K, variant) {
+    m.layers.set(0);
+    if (!S.clip || !(variant === 'n' || variant === 'h' || variant === 's' || variant[0] === 't') || (K.noCut && variant !== 'h' && variant !== 's') || ((K.op ?? 1) < 1 && variant !== 'h' && variant !== 's')) return;
+    const c = u.corners; let lo = 1e9, hi = -1e9; c.forEach(p => { const d = plane.distanceToPoint(p); lo = Math.min(lo, d); hi = Math.max(hi, d); });
+    if (lo > 0 || hi < 0) return; // a caixa não cruza o plano: não há tampa
+    const color = variant === 'h' ? (K.L === 'neuro' ? '#C9503A' : '#E88F7B') : variant === 's' ? '#8FD3D5' : K.cut || K.c, rank = CAP_RANK[u.kind] || 0, k = rank + '|' + color;
+    let g = capGroups.get(k);
+    if (!g) { if (capGroups.size >= 30) return; g = { layer: capGroups.size + 1, rank, mat: new THREE.MeshBasicMaterial({ color: C(color), side: THREE.DoubleSide, depthWrite: false, stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc }) }; capGroups.set(k, g); }
+    m.layers.enable(g.layer); g.used = true;
+  }
   let LBL = [];
   function applyVisuals() {
     if (!model) return;
-    invalidate(); pulse = false;
+    invalidate(); pulse = false; capGroups.forEach(g => g.used = false);
     model.meshes.forEach(m => {
       const u = m.userData, K = KIND[u.kind] || KIND.bone;
       let vis = K.L === 'path' ? true : !!S.layers[K.L];
@@ -140,6 +156,7 @@
       else if (S.tint && u.kind === 'bone' && u.region && TINT[u.region]) variant = 't' + u.region;
       m.material = getMat(u.kind, variant);
       m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : variant === 'n' ? (K.order || 0) : 0;
+      capLayer(m, u, K, variant);
       u.variant = variant; if (variant === 'h') pulse = true;
     });
     view.classList.toggle('dim', !!(S.sel && S.sel.size));
@@ -763,6 +780,22 @@
   if (has3D) {
     function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); LBL.forEach(L => L.bw = 0); invalidate(); }
     new ResizeObserver(resize).observe(view);
+    const stBack = new THREE.MeshBasicMaterial({ side: THREE.BackSide, colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.IncrementWrapStencilOp, stencilZFail: THREE.IncrementWrapStencilOp, stencilFail: THREE.IncrementWrapStencilOp });
+    const stFront = stBack.clone(); stFront.side = THREE.FrontSide; stFront.stencilZPass = stFront.stencilZFail = stFront.stencilFail = THREE.DecrementWrapStencilOp;
+    const capScene = new THREE.Scene(), capMesh = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000)); capScene.add(capMesh);
+    function renderCaps() {
+      const groups = [...capGroups.values()].filter(g => g.used).sort((a, b) => a.rank - b.rank); if (!groups.length) return;
+      const planes = renderer.clippingPlanes, ac = renderer.autoClear; renderer.autoClear = false;
+      capMesh.position.copy(plane.coplanarPoint(new V3())); capMesh.lookAt(capMesh.position.clone().add(plane.normal)); capMesh.updateMatrixWorld();
+      groups.forEach(g => {
+        renderer.clearStencil(); renderer.clippingPlanes = planes; camera.layers.set(g.layer);
+        scene.overrideMaterial = stBack; renderer.render(scene, camera);
+        scene.overrideMaterial = stFront; renderer.render(scene, camera);
+        scene.overrideMaterial = null; camera.layers.set(0); renderer.clippingPlanes = [];
+        capMesh.material = g.mat; renderer.render(capScene, camera);
+      });
+      renderer.clippingPlanes = planes; renderer.autoClear = ac; camera.layers.set(0);
+    }
     let visibleView = true;
     if ('IntersectionObserver' in window) new IntersectionObserver(es => { visibleView = es[0].isIntersecting; invalidate(); }).observe(view);
     // qualquer interação pode mudar rótulos, camadas ou o limite do painel de ferramentas
@@ -776,6 +809,7 @@
       const k = reduce ? .4 : .3 + .2 * Math.sin(t / 280);
       hotMats.forEach(m => m.emissiveIntensity = k);
       renderer.render(scene, camera);
+      if (renderer.clippingPlanes.length) renderCaps();
       if (dirty) { updateLabels(); dirty--; }
     };
     rebuild({});
