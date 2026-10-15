@@ -272,9 +272,10 @@ function buildSpine(mods = {}) {
     pushKF(l.n, { p: fr.p, q: fr.q, W: Wv, D: Dv, cw: l.cw * md('widen', l.n, 1), ca: l.ca, zc: -Dv / 2 - l.ca / 2, reg: l.r, ant: 0.93 * Dv / 2, post: postMidZ(l.r, Dv), type: 'v' });
     const lo = i === 23 ? null : LEVELS[i + 1];
     const dn = l.n + '-' + (lo ? lo.n : 'S1'); const dk = discKF[dn];
-    const W2 = lo ? lo.W : 4.9, D2 = lo ? lo.D : 3.3, cw2 = lo ? lo.cw : 2.6, ca2 = lo ? lo.ca : 1.3;
+    // vértebra de baixo com o alargamento da doença (fratura em explosão), igual à de cima
+    const W2 = lo ? lo.W * md('widen', lo.n, 1) : 4.9, D2 = lo ? F[lo.n].Dw : 3.3, cw2 = lo ? lo.cw * md('widen', lo.n, 1) : 2.6, ca2 = lo ? lo.ca : 1.3;
     const aw = (Wv + W2) / 2, ad = (Dv + D2) / 2;
-    pushKF(dn, { p: dk.p, q: dk.q, W: aw, D: ad, cw: (l.cw + cw2) / 2, ca: (l.ca + ca2) / 2, zc: -ad / 2 - (l.ca + ca2) / 4, reg: l.r, ant: 1.05 * ad / 2, post: -0.47 * ad, type: 'd' });
+    pushKF(dn, { p: dk.p, q: dk.q, W: aw, D: ad, cw: (l.cw * md('widen', l.n, 1) + cw2) / 2, ca: (l.ca + ca2) / 2, zc: -ad / 2 - (l.ca + ca2) / 4, reg: l.r, ant: 1.05 * ad / 2, post: -0.47 * ad, type: 'd' });
   }
   for (let j = 0; j < 5; j++) { const [W, D, cw, ca] = SD[j]; const fr = F['S' + (j + 1)]; pushKF('S' + (j + 1), { p: fr.p, q: fr.q, W, D, cw, ca, zc: -D / 2 - ca / 2, reg: 'S', ant: D / 2, post: -D / 2, type: 's' }); }
   for (let j = 1; j <= 4; j++) { const fr = F['Co' + j]; pushKF('Co' + j, { p: fr.p, q: fr.q, W: 1, D: 1, cw: 0.3, ca: 0.2, zc: -0.6, reg: 'S', ant: 0.5, post: -0.5, type: 'c' }); }
