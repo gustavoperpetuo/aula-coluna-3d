@@ -34,4 +34,9 @@ const fs=require('fs');
   return res.filter(x=>x.n&&(x.lost.length||/x=[1-9]|x=0\.[1-9]/.test(x.label))).map(x=>({l:x.label,n:x.n,k:x.kept,lost:x.lost.slice(0,6)}));
  });
  console.log(JSON.stringify(r,null,0).replace(/\},\{/g,'},\n{'),errs);
- await b.close();})();
+ await b.close();
+ // perdas conhecidas e aceitas ficam em cortes.esperado.json (a posição x do plano não conta); qualquer mudança falha
+ const got=r.map(x=>({l:x.l.replace(/ x=[\d.]+/,''),lost:x.lost})), f=__dirname+'/cortes.esperado.json';
+ if(process.argv[2]==='--gravar'){fs.writeFileSync(f,JSON.stringify(got,null,1)); console.log('gravado'); return;}
+ if(errs.length||JSON.stringify(got)!==JSON.stringify(JSON.parse(fs.readFileSync(f,'utf8')))){console.log('FALHA: perdas nos cortes mudaram (compare com tests/cortes.esperado.json)',errs); process.exit(1);}
+ console.log('ok');})();

@@ -650,16 +650,18 @@ function buildSpine(mods = {}) {
   };
   // corpos e discos que o LLA e o LLP cobrem: a faixa nunca pode ficar dentro deles (listese, cunha, abaulamento)
   const ligRay = new THREE.Raycaster(), rayMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-  const ligTargets = (u0, u1) => meshes.filter(m => {
+  // o canal sacral não é oco no modelo (o sacro é um bloco): o LLP corre dentro dele por construção, então só o LLA testa o sacro
+  const ligTargets = (u0, u1, which) => meshes.filter(m => {
     const k = m.userData.key;
-    if (!/^((C|T|L)\d+\.body|sacrum|disc\.)/.test(k) || !['bone', 'disc', 'discDeg', 'discInf'].includes(m.userData.kind)) return false;
+    if (!(which === 'ant' ? /^((C|T|L|S)\d+\.body|sacrum|disc\.)/ : /^((C|T|L|S)\d+\.body|disc\.)/).test(k) || !['bone', 'disc', 'discDeg', 'discInf'].includes(m.userData.kind)) return false;
     const n = k === 'sacrum' ? 'S1' : k.startsWith('disc.') ? k.slice(5) : k.split('.')[0];
-    const ku = KI[n]; return ku !== undefined && ku >= u0 - 1.5 && ku <= u1 + 1.5;
+    m.userData.ku = KI[n]; return KI[n] !== undefined && KI[n] >= u0 - 1.5 && KI[n] <= u1 + 1.5;
   });
-  // quanto cada ponto interno da faixa precisa sair para ficar fora do osso contínuo a partir do centro
+  // quanto a faixa precisa sair para ficar fora do osso contínuo a partir do centro: raios só nas bordas e no meio
+  // (os 8 pontos custavam ~0,35 s por montagem); o anel inteiro sai pelo maior valor, o que nunca empurra de menos nesses três
   const bandNeed = (s, ring, which, targets) => {
     const K = ring.length / 2;
-    return ring.slice(0, K).map(([xi, zi]) => {
+    return Math.max(...[0, K >> 1, K - 1].map(i => ring[i]).map(([xi, zi]) => {
       const o = which === 'ant' ? v(0, 0, 0) : v(xi, 0, 0), dl = v(xi, 0, zi).sub(o); const cur = dl.length(); dl.normalize();
       ligRay.set(s.p.clone().add(o.clone().applyQuaternion(s.q)), dl.clone().applyQuaternion(s.q)); ligRay.far = cur + 3;
       const hits = ligRay.intersectObjects(targets, false);
@@ -671,19 +673,20 @@ function buildSpine(mods = {}) {
         while (j < hits.length && hits[j].distance - b < 0.6) b = hits[j++].distance;
         if (a < cur + 0.5) need = Math.max(need, b + 0.08 - cur);
       }
-      return [dl, need];
-    });
+      return need;
+    }));
   };
   const ligSeg = (which, u0, u1, key, hwFn, th, kind = 'lig', info) => {
-    const targets = ligTargets(u0, u1), S = [];
+    const targets = ligTargets(u0, u1, which), S = [];
     root.updateMatrixWorld(true); targets.forEach(m => m.material = rayMat);
-    for (let u = u0; u <= u1 + 1e-6; u += 0.1) { const s = spineAt(u), ring = bandRing(s, which, hwFn(s, u), th, 0.04); S.push({ s, ring, need: bandNeed(s, ring, which, targets) }); }
+    // a cada 0,2 e só com os corpos/discos vizinhos da amostra: com 0,1 e todos os alvos do segmento a montagem levava ~1 s
+    for (let u = u0; u <= u1 + 1e-6; u += 0.2) { const s = spineAt(u), ring = bandRing(s, which, hwFn(s, u), th, 0.04); S.push({ s, ring, need: bandNeed(s, ring, which, targets.filter(m => Math.abs(m.userData.ku - u) <= 1.05)) }); }
     // a quina do corpo pode cair entre duas amostras: cada amostra herda o maior empurrão das vizinhas
     const rr = S.map(({ s, ring }, i) => {
-      const K = ring.length / 2;
+      const K = ring.length / 2, n = Math.max(...[i - 1, i, i + 1].filter(t => t >= 0 && t < S.length).map(t => S[t].need));
       return ring.map(([x, z], j) => {
-        const k = j < K ? j : 2 * K - 1 - j, [dl] = S[i].need[k];
-        const n = Math.max(...[i - 1, i, i + 1].filter(t => t >= 0 && t < S.length).map(t => S[t].need[k][1]));
+        const k = j < K ? j : 2 * K - 1 - j, [xi, zi] = ring[k];
+        const dl = (which === 'ant' ? v(xi, 0, zi) : v(0, 0, zi)).normalize();
         return s.p.clone().add(v(x + dl.x * n, 0, z + dl.z * n).applyQuaternion(s.q));
       });
     });

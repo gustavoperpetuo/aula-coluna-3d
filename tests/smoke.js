@@ -28,7 +28,7 @@ async function page(b,W,H,block){
  await p.evaluate(()=>document.activeElement.blur()); 
  let stops=[]; for(let i=0;i<14;i++){await p.keyboard.press('Tab'); stops.push(await p.evaluate(()=>{const e=document.activeElement;return (e.id||e.className||e.tagName)+':'+(e.textContent||'').trim().slice(0,18)}));}
  console.log('denis idx',denis,'afterNext',afterNext); console.log('tabs',stops.join(' | '));
- console.log('desk errs',p.errs);
+ console.log('desk errs',p.errs); const bad=[]; if(p.errs.length) bad.push('erros no desktop'); if(afterNext!=='next|2') bad.push('Próximo pelo teclado: '+afterNext);
  await p.close();
  // mobile
  p=await page(b,390,844);
@@ -36,8 +36,11 @@ async function page(b,W,H,block){
  await p.evaluate(()=>{window.scrollTo(0,0); __spine.setFull(true)}); await shot(p,'m1');
  await p.evaluate(()=>{__spine.setFull(false); __spine.openDz('sten')}); await shot(p,'m2');
  const tgt=await p.evaluate(()=>[...document.querySelectorAll('button,select,summary')].filter(e=>e.offsetParent).map(e=>{const r=e.getBoundingClientRect();return [r.width,r.height,(e.id||e.className)+':'+e.textContent.trim().slice(0,12)]}).filter(([w,h])=>h<36||w<36).slice(0,20));
- console.log('small targets',JSON.stringify(tgt)); console.log('mob errs',p.errs);
+ console.log('small targets',JSON.stringify(tgt)); console.log('mob errs',p.errs); if(p.errs.length) bad.push('erros no celular');
  await p.close();
  // failure
- p=await page(b,1440,900,true); await shot(p,'f0'); console.log('fail errs',p.errs, await p.evaluate(()=>document.querySelector('#scroll').innerText.slice(0,60)));
- await b.close();})();
+ p=await page(b,1440,900,true); await shot(p,'f0'); const txt=await p.evaluate(()=>document.querySelector('#scroll').innerText.slice(0,60)); console.log('fail errs',p.errs,txt);
+ // sem a biblioteca 3D a aula em texto tem de continuar
+ if(!/Capítulo 1/.test(txt)||!await p.evaluate(()=>!!document.querySelector('.fail'))) bad.push('aula sem 3D não abriu');
+ await b.close();
+ if(bad.length){console.log('FALHA:',bad.join('; ')); process.exit(1);} console.log('ok');})();

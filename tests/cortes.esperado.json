@@ -1,0 +1,135 @@
+[
+ {
+  "l": "ddd ax L4-L5",
+  "lost": [
+   "disc.L5-S1",
+   "nuc.L5-S1",
+   "osteo.L5-S1"
+  ]
+ },
+ {
+  "l": "hernia sag",
+  "lost": [
+   "drg.L5.L"
+  ]
+ },
+ {
+  "l": "hernia ax L4-L5",
+  "lost": [
+   "drg.L5.L"
+  ]
+ },
+ {
+  "l": "sten sag",
+  "lost": [
+   "flav.L4-L5.L",
+   "cap.L4-L5.L"
+  ]
+ },
+ {
+  "l": "sten ax L4-L5",
+  "lost": [
+   "flav.L4-L5.L"
+  ]
+ },
+ {
+  "l": "facet sag",
+  "lost": []
+ },
+ {
+  "l": "facet ax L4-L5",
+  "lost": [
+   "cap.L5-S1.L",
+   "cap.L5-S1.R"
+  ]
+ },
+ {
+  "l": "myelo ax C5-C6",
+  "lost": [
+   "osteo.C6-C7"
+  ]
+ },
+ {
+  "l": "opll ax C4",
+  "lost": [
+   "PLL.C5",
+   "PLL.C6"
+  ]
+ },
+ {
+  "l": "scheuer sag [cfg]",
+  "lost": []
+ },
+ {
+  "l": "scheuer ax T8",
+  "lost": [
+   "T9.body",
+   "schmorl.T8",
+   "schmorl.T9"
+  ]
+ },
+ {
+  "l": "isthmic sag",
+  "lost": [
+   "drg.L5.L"
+  ]
+ },
+ {
+  "l": "isthmic ax L5",
+  "lost": [
+   "drg.L5.L",
+   "drg.L5.R"
+  ]
+ },
+ {
+  "l": "burst sag [cfg]",
+  "lost": []
+ },
+ {
+  "l": "discitis sag",
+  "lost": []
+ },
+ {
+  "l": "mets sag",
+  "lost": []
+ },
+ {
+  "l": "mets ax T10",
+  "lost": [
+   "tumor.L2"
+  ]
+ },
+ {
+  "l": "cauda sag [cfg]",
+  "lost": [
+   "root.L1.L",
+   "drg.L1.L",
+   "root.L2.L",
+   "drg.L2.L",
+   "root.L3.L",
+   "drg.L3.L"
+  ]
+ },
+ {
+  "l": "cauda ax L4-L5",
+  "lost": [
+   "drg.L5.L",
+   "drg.L5.R",
+   "drg.S1.L",
+   "drg.S1.R",
+   "drg.S2.L",
+   "drg.S2.R"
+  ]
+ },
+ {
+  "l": "step28 sag",
+  "lost": []
+ },
+ {
+  "l": "step28 ax L4",
+  "lost": [
+   "drg.L4.L",
+   "drg.L5.L"
+  ]
+ }
+]

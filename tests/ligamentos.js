@@ -1,4 +1,4 @@
-// LLA e LLP nunca podem ser atravessados por corpo vertebral, sacro ou disco, na coluna normal e em todas as doenças.
+// LLA e LLP nunca podem ser atravessados por corpo vertebral (S1 incluído), sacro (só o LLA) ou disco, na coluna normal e em todas as doenças.
 // Raios a cada 0,02 do eixo da coluna (C2 a S1), do centro para fora; falha se osso ou disco ocupar a espessura da faixa.
 const { chromium } = require('playwright');
 const fs=require('fs');
@@ -16,7 +16,7 @@ const fs=require('fs');
   for(const id of [null,...DZ.map(d=>d.id)]){
    if(id){sp.openDz(id); await w(300);}
    const M=sp.model; M.root.updateMatrixWorld(true);
-   const bodies=M.meshes.filter(m=>/^((C|T|L)\d+\.body|sacrum|disc\.)/.test(m.userData.key)&&['bone','disc','discDeg','discInf'].includes(m.userData.kind));
+   const bodies=M.meshes.filter(m=>/^((C|T|L|S)\d+\.body|sacrum|disc\.)/.test(m.userData.key)&&['bone','disc','discDeg','discInf'].includes(m.userData.kind));
    const ligs=M.meshes.filter(m=>/^(ALL|PLL)\./.test(m.userData.key));
    const saved=new Map(); [...bodies,...ligs].forEach(m=>{saved.set(m,m.material); m.material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});});
    const ray=new THREE.Raycaster(); let worst=0, where='';
@@ -27,7 +27,8 @@ const fs=require('fs');
     for(const [L,o,d] of dirs){
      ray.set(s.p.clone().add(o.applyQuaternion(s.q)),d.applyQuaternion(s.q)); ray.far=8;
      const lh=ray.intersectObjects(ligs.filter(m=>m.userData.key.startsWith(L)),false); if(!lh.length) continue;
-     const bh=ray.intersectObjects(bodies,false), l0=lh[0].distance, l1=lh.length>1?lh[1].distance:l0+0.1;
+     // o canal sacral não é oco no modelo: o LLP corre dentro do bloco do sacro por construção
+     const bh=ray.intersectObjects(L==='PLL'?bodies.filter(m=>m.userData.key!=='sacrum'):bodies,false), l0=lh[0].distance, l1=lh.length>1?lh[1].distance:l0+0.1;
      // blocos de osso/disco separados por vão maior que 0,6; mede quanto cada bloco ocupa da espessura da faixa
      for(let a=0;a<bh.length;){const st=bh[a].distance, o2=bh[a].object; let en=st; a++; while(a<bh.length&&bh[a].distance-en<0.6) en=bh[a++].distance;
       const ov=Math.min(en,l1)-Math.max(st,l0); if(ov>worst){worst=ov; where=L+' u='+u.toFixed(2)+' '+o2.userData.key;}}

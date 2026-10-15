@@ -22,5 +22,8 @@ const fs=require('fs');
   __spine.openDz('mets'); await w(300); out.mets=vis(); out.sel=[...document.querySelectorAll('#lvsel option')].map(o=>o.textContent).join('|');
   return out;});
  console.log(JSON.stringify(r),errs);
+ const want={anat:26,hernia:'L4,L5,S',c1:'open',c2:'closed',s1:'open',s2:'closed',normal:'L4,L5,S',list:26,mets:'T7,T10,L2',sel:'Níveis desta doença…|T7|T10|L2'};
+ const bad=Object.keys(want).filter(k=>r[k]!==want[k]);
+ if(bad.length||errs.length){console.log('FALHA:',bad.map(k=>k+'='+r[k]+' (esperado '+want[k]+')').join('; '),errs); await b.close(); process.exit(1);}
  await p.screenshot({path:__dirname+'/out/v_r.png',timeout:120000});
  await b.close();})();
