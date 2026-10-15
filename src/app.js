@@ -1,7 +1,6 @@
 /* ================= Aplicação ================= */
 (function () {
   const $ = s => document.querySelector(s);
-  document.documentElement.lang = 'pt-BR';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const mobileQ = matchMedia('(max-width: 900px)');
   const view = $('#view'), canvas = $('#gl'), live = $('#live');
@@ -471,7 +470,7 @@
     const ms = model.reg.get(aliasKey(key));
     if (ms && ms.length) showInfo(ms[0]);
     else if (S.selKey === 'txt:' + key && !infoEl.hidden) closeCard();
-    else { showCard(`<h3>${text}</h3>`); S.selKey = 'txt:' + key; say(text); }
+    else { showCard(`<h3>${esc(text)}</h3>`); S.selKey = 'txt:' + key; say(text); }
   }
   if (has3D) {
     const ray = new THREE.Raycaster(); const pd = { x: 0, y: 0, t: 0 };
@@ -700,7 +699,7 @@
     const lastDz = i === DZ.length - 1;
     setNav(`<button class="btn" id="prev" ${i === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next">${lastDz ? 'Concluir e ir ao teste final' : 'Próxima'}</button>`);
     $('#prev').onclick = () => openDz(DZ[i - 1].id);
-    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button'); if (f) f.focus({ preventScroll: true }); } } else openDz(DZ[i + 1].id); };
+    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(DZ[i + 1].id); };
     if (moveFocus) focusTitle();
   }
   function openDz(id, moveFocus) {

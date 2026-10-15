@@ -194,7 +194,6 @@ function buildSpine(mods = {}) {
   const relQ = (sag, cor, ax) => new THREE.Quaternion().setFromEuler(new THREE.Euler(sag * deg, ax * deg, cor * deg, 'YXZ'));
   const cor = mods.cor || {}, axr = mods.axial || {};
   const tiltAt = (o, n) => o[n] || 0;
-  const seqNames = LEVELS.map(l => l.n);
   for (let k = 23; k >= 1; k--) {
     const U = LEVELS[k];
     const lowName = k === 23 ? 'S1' : LEVELS[k + 1].n;
@@ -289,7 +288,6 @@ function buildSpine(mods = {}) {
   };
   const SP = (u, x, y, z) => { const s = typeof u === 'string' ? spineAt(KI[u]) : spineAt(u); return s.p.clone().add(v(x, y, z).applyQuaternion(s.q)); };
   const SPf = (u, fn) => { const s = typeof u === 'string' ? spineAt(KI[u]) : spineAt(u); const [x, y, z] = fn(s); return s.p.clone().add(v(x, y, z).applyQuaternion(s.q)); };
-  const KIu = n => KI[n];
 
   /* ---- vértebras ---- */
   const VP = {}; // pontos locais úteis por vértebra
@@ -413,7 +411,7 @@ function buildSpine(mods = {}) {
     P.sap = {}; P.iap = {}; P.tpTip = {};
     S.forEach(s => {
       const side = sd(s), px = l.px;
-      part(rod(v(s * px, py, -D / 2 + 0.3), v(s * px, py, zP), l.pw / 2 + 0.05, { f: (l.pw / 2 + 0.05) / (l.ph / 2), side: v(1, 0, 0) }).scale(1, 1, 1), 'bone', `${l.n}.ped.${side}`, 'pedicle');
+      part(rod(v(s * px, py, -D / 2 + 0.3), v(s * px, py, zP), l.pw / 2 + 0.05, { f: (l.pw / 2 + 0.05) / (l.ph / 2), side: v(1, 0, 0) }), 'bone', `${l.n}.ped.${side}`, 'pedicle');
       // lâmina
       const lamA = v(s * (px - 0.05), -0.1 * h, zP - 0.25), lamB = v(s * 0.06, -0.32 * h, -D / 2 - l.ca - 0.3);
       part(rod(lamA, lamB, 0.72, { f: 0.42 }), 'bone', `${l.n}.lam.${side}`, 'lamina');
@@ -470,7 +468,7 @@ function buildSpine(mods = {}) {
         const mid = parsA.clone().lerp(parsB, 0.5);
         part(rod(parsA, parsA.clone().lerp(parsB, 0.36), 0.4), 'bone', `${l.n}.pars.${side}`, 'pars');
         part(rod(parsB.clone().lerp(parsA, 0.36), parsB, 0.4), 'bone', `${l.n}.pars.${side}`, 'pars');
-        const cr = new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16); cr.lookAt && 0;
+        const cr = new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16);
         const qq = new THREE.Quaternion().setFromUnitVectors(v(0, 1, 0), new V3().subVectors(parsB, parsA).normalize());
         cr.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(qq)); cr.translate(mid.x, mid.y, mid.z);
         part(cr, 'lesion', `crack.${l.n}.${side}`, 'parsdefect');
@@ -530,15 +528,13 @@ function buildSpine(mods = {}) {
     for (let j = 1; j <= 4; j++) {
       [1, -1].forEach(s => {
         const side = s > 0 ? 'L' : 'R';
-        const zf = za[j] * (1 - 0.45 * Math.max(0, (fx[j - 1] - SD[Math.min(j, 4)][0] / 2) / (Wt[j] / 2 - SD[Math.min(j, 4)][0] / 2))) + 0.02;
-        const pz = (za[j] - T[j] / 2) + Math.max(zf - (za[j] - T[j] / 2), 0) * 0.98;
         const fzz = frontZ(j, s * fx[j - 1]);
         const c = toW(SB[j], s * fx[j - 1], 0, fzz - 0.13);
         hole.push(ellip(c, 0.42 - 0.05 * j, 0.36 - 0.04 * j, 0.16, 14, SB[j].q));
         SF[j + '.' + side] = c;
         anchors.set(`sf.${j}.${side}`, c);
       });
-      const crest = toW(SB[j - 1 >= 0 ? j : 0], 0, 0.6, za[j] - T[j] + 0.05);
+      const crest = toW(SB[j], 0, 0.6, za[j] - T[j] + 0.05);
       add(ellip(crest, 0.32, 0.6, 0.3, 12, SB[j].q), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
     }
     add(mergeGeoms(hole), 'hole', 'sacrum', 'sforamen', { level: 'S', region: 'S' });
@@ -569,7 +565,6 @@ function buildSpine(mods = {}) {
     const upper = rings[DD.up].bot;
     return { lower, upper };
   };
-  const discFrame = {};
   Object.keys(DISCS).forEach(dn => {
     const DD = DISCS[dn], dm = discMod(dn), kf = KF[KI[dn]];
     const { lower, upper } = discRings(dn);
@@ -593,7 +588,7 @@ function buildSpine(mods = {}) {
     add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
     // lamelas internas (aparecem no corte)
     [0.8, 0.62].forEach((sc, li) => {
-      const R2 = R.map((r, k) => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, sc).addScaledVector(new V3().subVectors(cB, cA).normalize(), 0)); });
+      const R2 = R.map((r, k) => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, sc)); });
       // encolhe verticalmente para não vazar das placas
       const R3 = [R2[0].map((p, i) => p.clone().lerp(R2[1][i], 0.25)), R2[1], R2[2], R2[3], R2[4].map((p, i) => p.clone().lerp(R2[3][i], 0.25))];
       add(loft(R3, true, true), li === 0 ? 'lamA' : 'lamB', 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r });
@@ -602,7 +597,6 @@ function buildSpine(mods = {}) {
     const nucC = kf.p.clone().add(v(0, 0, -0.08 * kf.D).applyQuaternion(qd));
     const ns = dm.state === 'degen' ? 0.6 : 1;
     add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
-    discFrame[dn] = { p: kf.p, q: qd, W: kf.W, D: kf.D };
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
