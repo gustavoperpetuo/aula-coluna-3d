@@ -8,9 +8,9 @@
   "6": "Retrospectiva: aula 3D da coluna (12/10/2026)",
   "7": "renderDz",
   "8": "content.js",
-  "9": "rebuild",
+  "9": "applyConfig",
   "10": "disease.js",
-  "11": "renderChapters",
+  "11": "invalidate",
   "12": "build.py",
   "13": "CLAUDE.md",
   "14": ".claude/CLAUDE.md"

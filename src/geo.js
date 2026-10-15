@@ -174,6 +174,9 @@ function bodyOutline(reg, W, D, N = 40) {
 function postMidZ(reg, D) { const conc = reg === 'C' ? 0.05 : reg === 'T' ? 0.15 : 0.13; return -D / 2 + conc * D; }
 
 /* ---------- construção ---------- */
+// folga dos ligamentos por amostra, entre montagens: cada doença altera poucos níveis, e o resto repete o cálculo
+// shortcut: cresce com cada doença aberta (milhares de números no total), sem limite; limpar se passar a ter centenas de modelos
+const LIG_CACHE = new Map();
 function buildSpine(mods = {}) {
   const root = new THREE.Group();
   const reg = new Map(); const anchors = new Map(); const meshes = [];
@@ -676,7 +679,23 @@ function buildSpine(mods = {}) {
     const targets = ligTargets(u0, u1, which), S = [];
     root.updateMatrixWorld(true); targets.forEach(m => m.material = rayMat);
     // a cada 0,2 e só com os corpos/discos vizinhos da amostra: com 0,1 e todos os alvos do segmento a montagem levava ~1 s
-    for (let u = u0; u <= u1 + 1e-6; u += 0.2) { const s = spineAt(u), ring = bandRing(s, which, hwFn(s, u), th, 0.04); S.push({ s, ring, need: bandNeed(s, ring, which, targets.filter(m => Math.abs(m.userData.ku - u) <= 1.05)) }); }
+    // chave: geometria dos alvos e sua posição relativa à amostra (o que fica acima de um nível alterado só se desloca
+    // em bloco, então continua igual); amostra com a mesma chave reaproveita o resultado
+    // discos são montados em coordenadas do mundo: o referencial deles é o quadro do disco, não a matriz da malha
+    const frameOf = m => m.userData.fr || (m.userData.fr = m.userData.key.startsWith('disc.') ? new THREE.Matrix4().compose(discKF[m.userData.key.slice(5)].p, discKF[m.userData.key.slice(5)].q, new V3(1, 1, 1)) : m.matrixWorld);
+    const geo = m => m.userData.gh ?? (m.userData.gh = (() => {
+      const a = m.geometry.attributes.position.array, t = new THREE.Matrix4().copy(frameOf(m)).invert().multiply(m.matrixWorld), p = new V3(); let h = a.length;
+      for (let i = 0; i < a.length; i += 3) { p.set(a[i], a[i + 1], a[i + 2]).applyMatrix4(t); h = (h * 31 + Math.round(p.x * 997 + p.y * 991 + p.z * 983)) | 0; }
+      return h;
+    })());
+    const fx = a => a.map(x => x.toFixed(3)).join(','), inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+    for (let u = u0; u <= u1 + 1e-6; u += 0.2) {
+      const s = spineAt(u), hw = hwFn(s, u), ring = bandRing(s, which, hw, th, 0.04), tg = targets.filter(m => Math.abs(m.userData.ku - u) <= 1.05);
+      inv.compose(s.p, s.q, new V3(1, 1, 1)).invert();
+      const ck = [which, hw.toFixed(4), th, fx([s.W, s.ant, s.post]), ...tg.map(m => geo(m) + ':' + fx(rel.multiplyMatrices(inv, frameOf(m)).elements))].join('|');
+      let need = LIG_CACHE.get(ck); if (need === undefined) LIG_CACHE.set(ck, need = bandNeed(s, ring, which, tg));
+      S.push({ s, ring, need });
+    }
     // a quina do corpo pode cair entre duas amostras: cada amostra herda o maior empurrão das vizinhas
     const rr = S.map(({ s, ring }, i) => {
       const K = ring.length / 2, n = Math.max(...[i - 1, i, i + 1].filter(t => t >= 0 && t < S.length).map(t => S[t].need));

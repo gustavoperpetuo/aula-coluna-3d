@@ -1,14 +1,14 @@
 {
   ".claude/settings.json": {
-    "mtime": 1792090120.241257,
-    "seen": 1792090765.6383755,
-    "ast_hash": "4ec4cf2d7db206bbf7c6230eab0fb08e",
+    "mtime": 1792090834.8897314,
+    "seen": 1792092418.2761612,
+    "ast_hash": "8c62a464d3fb2164dfffe35462a09c65",
     "semantic_hash": ""
   },
   "build.py": {
-    "mtime": 1792090120.541257,
-    "seen": 1792090765.6383817,
-    "ast_hash": "dcd27f8967c136938209ba58750bbcb7",
+    "mtime": 1792091053.7325206,
+    "seen": 1792092418.2761686,
+    "ast_hash": "6405c6d8005ac644fd114b06d7430abb",
     "semantic_hash": ""
   },
   "package.json": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "src/geo.js": {
-    "mtime": 1792090120.5459328,
-    "seen": 1792090765.6383917,
-    "ast_hash": "4d87fbf09b2971026cebc1ed31bf1c12",
+    "mtime": 1792092193.3561032,
+    "seen": 1792092418.276185,
+    "ast_hash": "a5cc4e3d04d116aff699b21d1f25503c",
     "semantic_hash": ""
   },
   "tests/cortes.esperado.json": {
@@ -48,27 +48,27 @@
     "semantic_hash": ""
   },
   "tests/cortes.js": {
-    "mtime": 1792090120.268359,
-    "seen": 1792090765.6383946,
-    "ast_hash": "d46f4e6c21b222a6326fe19155569fd4",
+    "mtime": 1792091060.3545766,
+    "seen": 1792092418.2761898,
+    "ast_hash": "2b35de2a904c78bd46b04ba22ffb5a22",
     "semantic_hash": ""
   },
   "tests/ligamentos.js": {
-    "mtime": 1792090120.269257,
-    "seen": 1792090765.6383965,
-    "ast_hash": "4c50cd711da0b763f1f33be28e835b10",
+    "mtime": 1792091060.355275,
+    "seen": 1792092418.2761924,
+    "ast_hash": "718226e3597c389f5837ee3fb0710129",
     "semantic_hash": ""
   },
   "tests/regua.js": {
-    "mtime": 1792090120.269257,
-    "seen": 1792090765.6383982,
-    "ast_hash": "23f6ff10a58af71ce7e99d5497416c6e",
+    "mtime": 1792091060.355628,
+    "seen": 1792092418.276194,
+    "ast_hash": "946af0201d8f05ffec12e39cd972d126",
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1792090120.269257,
-    "seen": 1792090765.6383998,
-    "ast_hash": "e311eac70d5be365be0f95d33c55f034",
+    "mtime": 1792091060.3558881,
+    "seen": 1792092418.276196,
+    "ast_hash": "529b45af90ccabc5c773655e3c765a4d",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
