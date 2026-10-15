@@ -15,6 +15,7 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
   - `smoke.js`: desktop, celular e falha do 3D.
   - `regua.js`: régua e desfazer seleção.
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
+  - `fechadas.js`: falha se alguma peça sólida tiver borda aberta, em todas as doenças, ou se duas partes da mesma peça correrem quase coladas na coluna normal; as duas coisas viram fenda na tela.
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
 - `docs/`: retrospectiva do projeto.
 

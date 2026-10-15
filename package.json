@@ -5,7 +5,7 @@
   "description": "Aula interativa em 3D de anatomia e doenças da coluna vertebral (Three.js r128).",
   "scripts": {
     "build": "python3 build.py",
-    "test": "npm run build && node tests/smoke.js && node tests/regua.js && node tests/ligamentos.js && node tests/cortes.js"
+    "test": "npm run build && node tests/smoke.js && node tests/regua.js && node tests/ligamentos.js && node tests/fechadas.js && node tests/cortes.js"
   },
   "devDependencies": {
     "playwright": "1.56.1",

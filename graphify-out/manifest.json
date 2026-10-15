@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792026939.331249,
-    "seen": 1792090765.6383848,
-    "ast_hash": "2c5f6cea2590dfe84cde64cb59b33e7d",
+    "mtime": 1792097483.8262715,
+    "seen": 1792098563.7632833,
+    "ast_hash": "f1137571fcaeab10c5a1d764ecb94f1e",
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792095505.5005999,
-    "seen": 1792095759.6262436,
-    "ast_hash": "9060a8c400c65724f3a87f17573083c5",
+    "mtime": 1792097466.5880804,
+    "seen": 1792098563.7632868,
+    "ast_hash": "83eadbdc878f4bac6322e1b714e9d8e3",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "src/geo.js": {
-    "mtime": 1792094927.5598164,
-    "seen": 1792095759.6262536,
-    "ast_hash": "25a4b62319f7aac765debc989e203396",
+    "mtime": 1792098529.0136268,
+    "seen": 1792098563.7632935,
+    "ast_hash": "cd329e37b1ac2f267fd887bea6be54cf",
     "semantic_hash": ""
   },
   "tests/cortes.esperado.json": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792026939.33108,
-    "seen": 1792090765.638404,
-    "ast_hash": "64d79149cfb51fb419a4b3ddd082fd77",
+    "mtime": 1792098556.5849903,
+    "seen": 1792098563.7633114,
+    "ast_hash": "cfc7762aa1075ffd9e9ab80ce26704c5",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -111,6 +111,12 @@
     "mtime": 1791926418.894064,
     "seen": 1792090765.6384091,
     "ast_hash": "887a11c782f8adc54c4f04db0b9bb45a",
+    "semantic_hash": ""
+  },
+  "tests/fechadas.js": {
+    "mtime": 1792098194.3931623,
+    "seen": 1792098563.7632995,
+    "ast_hash": "473904cd3c5bec94c6824b8247963cf3",
     "semantic_hash": ""
   }
 }

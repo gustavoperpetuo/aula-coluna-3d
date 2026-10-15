@@ -130,7 +130,7 @@
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {
     m.layers.set(0);
-    if (!S.clip || !(variant === 'n' || variant === 'h' || variant === 's' || variant[0] === 't') || (K.noCut && variant !== 'h' && variant !== 's') || ((K.op ?? 1) < 1 && variant !== 'h' && variant !== 's')) return;
+    if (!S.clip || u.shell || !(variant === 'n' || variant === 'h' || variant === 's' || variant[0] === 't') || (K.noCut && variant !== 'h' && variant !== 's') || ((K.op ?? 1) < 1 && variant !== 'h' && variant !== 's')) return;
     const c = u.corners; let lo = 1e9, hi = -1e9; c.forEach(p => { const d = plane.distanceToPoint(p); lo = Math.min(lo, d); hi = Math.max(hi, d); });
     if (lo > 0 || hi < 0) return; // a caixa não cruza o plano: não há tampa
     const color = variant === 'h' ? (K.L === 'neuro' ? '#C9503A' : '#E88F7B') : variant === 's' ? '#8FD3D5' : K.cut || K.c, rank = CAP_RANK[u.kind] || 0, k = rank + '|' + color;

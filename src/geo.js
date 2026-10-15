@@ -66,15 +66,20 @@ function rod(a, b, r, o = {}) {
   const third = new V3().crossVectors(side, dir).normalize();
   const M = new THREE.Matrix4().makeBasis(side, dir, third);
   const S = new THREE.Matrix4().makeScale(f, 1, 1);
-  const parts = [];
-  // fechado: a tampa do corte conta faces de dentro e de fora, e cilindro aberto visto pela ponta virava anel oco
-  const cyl = new THREE.CylinderGeometry(r2, r, len, seg, 1, false);
+  const parts = [], caps = o.caps !== false;
+  // sem pontas, o cilindro se fecha sozinho; a tampa do corte precisa de peça fechada
+  const cyl = new THREE.CylinderGeometry(r2, r, len, seg, 1, caps);
   cyl.applyMatrix4(S); cyl.applyMatrix4(M);
   cyl.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); parts.push(cyl);
-  if (o.caps !== false) {
-    [[a, r], [b, r2]].forEach(([p, rr]) => {
-      const s = new THREE.SphereGeometry(rr, seg, Math.max(6, seg / 2));
-      s.applyMatrix4(S); s.applyMatrix4(M); s.translate(p.x, p.y, p.z); parts.push(s);
+  if (caps) {
+    /* pontas: calota tangente ao cone, começando exatamente na boca do cilindro (mesmos vértices).
+       Esfera inteira no extremo saía para fora do cone que afina e virava fenda; tampa do cilindro por dentro dela vazava pelas facetas. */
+    const be = Math.atan2(r - r2, len), hs = Math.max(3, Math.ceil(seg / 4));
+    [[a, r, -1], [b, r2, 1]].forEach(([p, rr, e]) => {
+      const R = rr / Math.cos(be), c = p.clone().addScaledVector(dir, -rr * Math.tan(be));
+      const s = e > 0 ? new THREE.SphereGeometry(R, seg, hs, Math.PI / 2, Math.PI * 2, 0, Math.PI / 2 - be)
+        : new THREE.SphereGeometry(R, seg, hs, Math.PI / 2, Math.PI * 2, Math.PI / 2 - be, Math.PI / 2 + be);
+      s.applyMatrix4(S); s.applyMatrix4(M); s.translate(c.x, c.y, c.z); parts.push(s);
     });
   }
   return mergeGeoms(parts);
@@ -484,7 +489,7 @@ function buildSpine(mods = {}) {
     // espinhoso em machadinha
     const root_ = v(0, -0.26 * h - 0.4, -D / 2 - l.ca - 0.55);
     const tip = root_.clone().add(v(0, -0.35, -2.7 + (k === 5 ? 0.6 : 0)));
-    part(mergeGeoms([rod(root_, tip, 0.95, { r2: 0.85, f: 0.33 }), ellip(tip, 0.38, 0.85, 0.35)]), 'bone', `${l.n}.sp`, 'spinous');
+    part(mergeGeoms([rod(root_, tip, 0.95, { r2: 0.85, f: 0.33 }), ellip(tip, 0.38, 0.7, 0.35)]), 'bone', `${l.n}.sp`, 'spinous');
     P.spRoot = root_; P.spTip = tip; P.spR = 0.9;
   }
 
@@ -557,7 +562,7 @@ function buildSpine(mods = {}) {
     const fo = F.Occ; const N = 40; const rs = [];
     const spec = [[1.45, 1.7, 0, -1.2], [3.4, 3.4, 0.55, -1.6], [5.0, 4.9, 1.8, -2.3], [5.8, 5.6, 3.6, -3.0]];
     spec.forEach(([rx, rz, y, cz]) => { const r = []; for (let i = 0; i < N; i++) { const t = 2 * Math.PI * i / N; r.push(toW(fo, rx * Math.sin(t), y + (rz > 3 ? 0.9 * Math.cos(t) : 0) + (Math.cos(t) > 0 ? Math.cos(t) * y * 0.6 : 0), cz + rz * Math.cos(t))); } rs.push(r); });
-    add(loft(rs, false, false), 'ctx', 'occ', 'occ', { level: 'Occ', region: 'C' });
+    add(loft(rs, false, false), 'ctx', 'occ', 'occ', { level: 'Occ', region: 'C', shell: 1 }); // casca aberta: o forame magno é um furo
     [1, -1].forEach(s => add(ellip(toW(fo, s * 1.3, -0.3, -0.55), 0.48, 0.34, 0.85, 14, fo.q), 'ctx', 'occ.cond.' + (s > 0 ? 'L' : 'R'), 'occ', { level: 'Occ', region: 'C' }));
     anchors.set('occ', toW(fo, 0, 1.6, -3.4));
     anchors.set('EOP', toW(fo, 0, 3.0, -5.8));
@@ -883,7 +888,7 @@ function buildSpine(mods = {}) {
     }
     const s0 = spineAt(0); const top = []; for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; top.push(SP(0, 1.5 * Math.cos(t), 0.6, -1.25 + 1.7 * Math.sin(t))); }
     rr.unshift(top);
-    add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null });
+    add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 }); // bainha aberta em cima, onde entra no crânio
     anchors.set('dura', SP('L3', LV.L3.cw / 2 * 0.8, 0, -LV.L3.D / 2 - LV.L3.ca / 2));
     anchors.set('duraEnd', SP(uEnd - 0.4, 0, 0, spineAt(uEnd - 0.4).zc));
     anchors.set('cauda', SP('L3-L4', 0, 0, spineAt(KI['L3-L4']).zc - 0.1));
