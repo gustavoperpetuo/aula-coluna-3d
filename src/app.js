@@ -513,6 +513,8 @@
     setRulerLevels(S.mode === 'dz' && S.dz && cfg.levels ? cfg.levels : null);
     S.axUser = false; S.axPt = null;
     if (cfg.clip && cfg.clip.startsWith('ax:')) S.axLevel = cfg.clip.slice(3);
+    // o botão já mostra o nível que o clique vai usar (o mesmo cálculo do clique), não o último usado
+    else { const f = focusLevel(); if (f) S.axLevel = f; }
     setClip(cfg.clip || null);
     setDenis(cfg.extra === 'denis');
     applyVisuals();

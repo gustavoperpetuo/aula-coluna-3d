@@ -520,7 +520,8 @@ function buildSpine(mods = {}) {
     // processos articulares superiores de S1
     [1, -1].forEach(s => {
       const side = s > 0 ? 'L' : 'R';
-      const m = add(rod(v(s * 2.35, -0.4, -2.55), v(s * 2.5, 1.05, -2.75), 0.55, { f: 0.62, side: v(1, 0, 0.35) }), 'bone', 'S1.sap.' + side, 'sap', { level: 'S', region: 'S' }); g.add(m);
+      const fs = (mods.facet || {})['L5-S1'] || 1;
+      const m = add(rod(v(s * 2.35, -0.4, -2.55), v(s * 2.5, 1.05, -2.75), 0.55 * fs, { f: 0.62, side: v(1, 0, 0.35) }), fs > 1 ? 'boneHyp' : 'bone', 'S1.sap.' + side, 'sap', { level: 'S', region: 'S' }); g.add(m);
     });
     VP.S1 = { sap: { L: { top: v(2.5, 1.05, -2.75) }, R: { top: v(-2.5, 1.05, -2.75) } }, lam: { y: -0.6, z: -3.0, r: 0.6 }, spRoot: v(0, -0.8, -3.1), spTip: v(0, -1.2, -3.6), spR: 0.4 };
     // forames sacrais anteriores e crista
@@ -696,10 +697,12 @@ function buildSpine(mods = {}) {
     // sem tampas: os segmentos vizinhos se encontram no meio do disco e tampas coincidentes pontilham no corte
     add(loft(rr, false, false), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
   };
-  const allHW = s => s.reg === 'C' ? 0.55 : s.reg === 'T' ? 0.9 : 1.45;
+  // largura por região, interpolada entre as duas pontas do trecho: antes saltava no meio do disco C7-T1 e T12-L1
+  const byReg = (s, f) => f(s.A.reg) + (f(s.B.reg) - f(s.A.reg)) * s.f;
+  const allHW = s => byReg(s, r => r === 'C' ? 0.55 : r === 'T' ? 0.9 : 1.45);
   const pllHW = (s, u) => {
     const fr = u - Math.floor(u); const isD = s.A.type === 'd' ? 1 - fr : s.B.type === 'd' ? fr : 0;
-    const base = s.reg === 'C' ? 0.65 : s.reg === 'T' ? 0.45 : 0.32, flare = s.reg === 'L' ? 0.95 : s.reg === 'T' ? 0.65 : 0.8;
+    const base = byReg(s, r => r === 'C' ? 0.65 : r === 'T' ? 0.45 : 0.32), flare = byReg(s, r => r === 'L' ? 0.95 : r === 'T' ? 0.65 : 0.8);
     return base + (flare - base) * Math.pow(Math.max(0, isD), 2);
   };
   const opll = mods.opll || [];
