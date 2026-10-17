@@ -413,7 +413,7 @@
     if (l && n !== 'C1') {
       const mm = x => Math.round(x * 10);
       html += `<ul><li>Corpo: altura ${mm(l.h)} mm, largura ${mm(l.W)} mm, profundidade ${mm(l.D)} mm</li><li>Canal: ${mm(l.cw)} × ${mm(l.ca)} mm (transverso × AP)</li>`;
-      if (l.r === 'C') { const k = +n.slice(1); html += `<li>Raiz que sai acima: C${k}; abaixo: C${k + 1}</li>`; }
+      if (l.r === 'C') { const k = +n.slice(1); html += `<li>Raiz que sai acima: C${k}; Abaixo: C${k + 1}</li>`; }
       else { const k = +n.slice(1); const nx = l.r === 'T' ? (k === 12 ? 'L1' : 'T' + (k + 1)) : (k === 5 ? 'S1' : 'L' + (k + 1)); html += `<li>Raiz que sai abaixo: ${n} (forame ${n}-${nx})</li>`; }
       html += `</ul><div class="note">Medidas médias de adulto usadas no modelo, aproximadas.</div>`;
     }

@@ -12,27 +12,27 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792097483.8262715,
-    "seen": 1792098563.7632833,
-    "ast_hash": "f1137571fcaeab10c5a1d764ecb94f1e",
+    "mtime": 1792248482.4870255,
+    "seen": 1792248773.269695,
+    "ast_hash": "6e721d661fcb167b121bac49d6ddbaaf",
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792244213.0244062,
-    "seen": 1792244214.9916198,
-    "ast_hash": "eb47ae428e91815e252b6d27f3cf3c09",
+    "mtime": 1792248450.4269745,
+    "seen": 1792248773.2696974,
+    "ast_hash": "6637bd19f449808c01de70af35cbcbc1",
     "semantic_hash": ""
   },
   "src/content.js": {
-    "mtime": 1791928478.1496015,
-    "seen": 1792090765.638389,
-    "ast_hash": "74c38c1364f4cceb9196939bc99039f9",
+    "mtime": 1792248450.4135928,
+    "seen": 1792248773.2696996,
+    "ast_hash": "964e70b221d86ea5ac9bb64a7bb15cfc",
     "semantic_hash": ""
   },
   "src/disease.js": {
-    "mtime": 1791928478.1490598,
-    "seen": 1792090765.6383903,
-    "ast_hash": "2c7af7be3ee499ca6d7990101ae3c657",
+    "mtime": 1792248450.419098,
+    "seen": 1792248773.269701,
+    "ast_hash": "44da85afe6347f8798c33d2cf1155739",
     "semantic_hash": ""
   },
   "src/geo.js": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792098556.5849903,
-    "seen": 1792098563.7633114,
-    "ast_hash": "cfc7762aa1075ffd9e9ab80ce26704c5",
+    "mtime": 1792248482.5017476,
+    "seen": 1792248773.2697213,
+    "ast_hash": "37293de4ad39d7aa416c66569991711d",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1792244215.3364062,
-    "seen": 1792244500.148572,
-    "ast_hash": "d4cee4f8c84c86bc16eb978864117d7e",
+    "mtime": 1792248450.4299393,
+    "seen": 1792248773.2697241,
+    "ast_hash": "d10a0090577328543962ea8588d595fc",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -117,6 +117,12 @@
     "mtime": 1792098194.3931623,
     "seen": 1792098563.7632995,
     "ast_hash": "473904cd3c5bec94c6824b8247963cf3",
+    "semantic_hash": ""
+  },
+  "tests/maiusculas.js": {
+    "mtime": 1792248402.1515071,
+    "seen": 1792248773.2697127,
+    "ast_hash": "8c74dfbca31e79616439d69029ec0a5f",
     "semantic_hash": ""
   }
 }

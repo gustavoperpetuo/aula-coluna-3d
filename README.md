@@ -16,6 +16,7 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
   - `regua.js`: régua e desfazer seleção.
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
   - `fechadas.js`: falha se alguma peça sólida tiver borda aberta, em todas as doenças, ou se duas partes da mesma peça correrem quase coladas na coluna normal; as duas coisas viram fenda na tela.
+  - `maiusculas.js`: falha se algum texto exibido, na aula ou no hub, tiver minúscula depois de ponto ou de ponto e vírgula.
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
 - `docs/`: retrospectiva do projeto.
 
@@ -46,7 +47,7 @@ Abra `dist/coluna-vertebral.html` no navegador. O arquivo carrega o Three.js por
 
 - Todo número clínico tem fonte citada no texto.
 - Sem travessões (o build falha se encontrar um).
-- Depois de ponto, maiúscula; depois de ponto e vírgula, minúscula.
+- Depois de ponto e de ponto e vírgula, maiúscula.
 - Fundo claro, fonte de leitura (Source Sans 3), pouca caixa alta.
 
 ## Pendências
