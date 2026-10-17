@@ -7,7 +7,7 @@ const v = (x, y, z) => new V3(x, y, z);
 /* ---------- utilidades de malha ---------- */
 function centroid(pts) { const c = new V3(); pts.forEach(p => c.add(p)); return c.multiplyScalar(1 / pts.length); }
 
-function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0) {
+function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0, strip = false) {
   const R = rings.length, N = rings[0].length;
   const pos = [], idx = [];
   rings.forEach(r => r.forEach(p => pos.push(p.x, p.y, p.z)));
@@ -28,11 +28,19 @@ function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0) {
     ring.forEach(p => pos.push(p.x, p.y, p.z));
     const ci = pos.length / 3; pos.push(center.x, center.y, center.z);
     const t0 = new V3().subVectors(ring[0], center).cross(new V3().subVectors(ring[1], center));
-    const f = t0.dot(dir) < 0;
-    for (let i = 0; i < N; i++) { const j = (i + 1) % N; if (!f) idx.push(ci, base + i, base + j); else idx.push(ci, base + j, base + i); }
+    // faixa curva: o centro cai fora dela e o leque se sobrepõe (listras no corte), então a tampa liga borda de dentro e de fora, no sentido das paredes
+    const f = strip ? (ri === 0) !== flip : t0.dot(dir) < 0;
+    if (strip) for (let i = 0; i < N / 2 - 1; i++) { const a = base + i, b = base + i + 1, c = base + N - 2 - i, d = base + N - 1 - i; if (!f) idx.push(a, b, d, b, c, d); else idx.push(a, d, b, b, d, c); }
+    else for (let i = 0; i < N; i++) { const j = (i + 1) % N; if (!f) idx.push(ci, base + i, base + j); else idx.push(ci, base + j, base + i); }
   };
   if (capS) cap(0, 1, insetS);
   if (capE) cap(R - 1, R - 2, insetE);
+  // o teste pelo centroide do anel erra em faixas curvas (LLA): malha fechada com volume negativo tem as normais para dentro
+  if (capS && capE) {
+    let vol = 0;
+    for (let t = 0; t < idx.length; t += 3) { const [a, b, c] = [idx[t], idx[t + 1], idx[t + 2]].map(k => new V3(pos[3 * k], pos[3 * k + 1], pos[3 * k + 2])); vol += a.dot(b.cross(c)); }
+    if (vol < 0) for (let t = 0; t < idx.length; t += 3) [idx[t + 1], idx[t + 2]] = [idx[t + 2], idx[t + 1]];
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx); g.computeVertexNormals();
@@ -715,7 +723,7 @@ function buildSpine(mods = {}) {
     if (rr.length < 2) return;
     const lvl = key.split('.')[1];
     // fechado, pelo mesmo motivo do cilindro; o corte agora é tampado, então as tampas coincidentes no meio do disco não aparecem
-    add(loft(rr, true, true), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
+    add(loft(rr, true, true, 0, 0, true), kind, key, info || which, { level: lvl, region: LV[lvl] ? LV[lvl].r : 'S' });
   };
   // largura por região, interpolada entre as duas pontas do trecho: antes saltava no meio do disco C7-T1 e T12-L1
   const byReg = (s, f) => f(s.A.reg) + (f(s.B.reg) - f(s.A.reg)) * s.f;

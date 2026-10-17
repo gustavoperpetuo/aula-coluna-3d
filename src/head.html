@@ -41,6 +41,8 @@ button, select { font: inherit; color: inherit; }
 .prog { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .prog .bar { width: 110px; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .prog .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform .4s; }
+.progreset { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font-size: 15px; line-height: 1; cursor: pointer; }
+.progreset:hover, .progreset:focus-visible { color: var(--accent); }
 
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "view split panel"; min-height: 0; }
 .panel { grid-area: panel; }
@@ -260,7 +262,7 @@ body.resizing { cursor: col-resize; user-select: none; }
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
     </div>
-    <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span></div>
+    <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span><button type="button" class="progreset" id="progreset" title="Limpar progresso" aria-label="Limpar progresso">↺</button></div>
   </header>
   <main class="stage">
     <nav class="rail" id="rail" aria-label="Navegação da aula"><div class="rail-h"><span id="railh">Capítulos</span><button class="railx" id="railx" type="button" aria-controls="rail" aria-expanded="true"></button></div></nav>

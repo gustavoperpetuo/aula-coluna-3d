@@ -740,6 +740,11 @@
     $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
     $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
   }
+  $('#progreset').onclick = () => {
+    if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
+    store.seen = []; store.dzSeen = []; save();
+    if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
+  };
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if (view.classList.contains('full')) setFull(false); else if (!infoEl.hidden) closeCard(); return; }
     const t = e.target, free = t === document.body || t === canvas || (t.closest && t.closest('.nav'));

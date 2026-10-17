@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792097466.5880804,
-    "seen": 1792098563.7632868,
-    "ast_hash": "83eadbdc878f4bac6322e1b714e9d8e3",
+    "mtime": 1792244213.0244062,
+    "seen": 1792244214.9916198,
+    "ast_hash": "eb47ae428e91815e252b6d27f3cf3c09",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "src/geo.js": {
-    "mtime": 1792098529.0136268,
-    "seen": 1792098563.7632935,
-    "ast_hash": "cd329e37b1ac2f267fd887bea6be54cf",
+    "mtime": 1792244655.2684324,
+    "seen": 1792245219.839442,
+    "ast_hash": "a63e397f6d7d5789aabe28469cb75140",
     "semantic_hash": ""
   },
   "tests/cortes.esperado.json": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1792090120.5465276,
-    "seen": 1792090765.6384068,
-    "ast_hash": "4e50785ad8f0928eefd3d93be6b6dd6c",
+    "mtime": 1792244215.3364062,
+    "seen": 1792244500.148572,
+    "ast_hash": "d4cee4f8c84c86bc16eb978864117d7e",
     "semantic_hash": ""
   },
   "src/home.html": {
