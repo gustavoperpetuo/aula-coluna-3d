@@ -2868,7 +2868,8 @@ const DZ_QUIZ = [
       try {
         const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', 'x-senha': senha }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
-        ans.textContent = d.texto || d.erro || 'Sem resposta.';
+        // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
+        ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
       } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
       out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
