@@ -753,7 +753,15 @@
     if (senha) fab.hidden = false;
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
     // a janela é ancorada embaixo à direita, então a alça fica no canto de cima à esquerda: puxar para cima e para a esquerda aumenta
-    const grip = $('#askgrip'), size = (w, h) => { win.style.width = Math.max(300, Math.min(w, innerWidth - 32)) + 'px'; win.style.height = Math.max(260, Math.min(h, innerHeight - 120)) + 'px'; win.style.maxHeight = 'none'; };
+    const grip = $('#askgrip'), size = (w, h) => {
+      const r = win.getBoundingClientRect();
+      win.style.width = Math.max(300, Math.min(w, innerWidth - 32)) + 'px'; win.style.height = Math.max(260, Math.min(h, innerHeight - 120)) + 'px'; win.style.maxHeight = 'none';
+      if (win.style.left) place(r.right - win.offsetWidth, r.bottom - win.offsetHeight); // já movida: mantém o canto de baixo à direita no lugar
+    };
+    // arrastar pelo cabeçalho troca a âncora de baixo/direita para esquerda/topo, sempre dentro da tela
+    const place = (x, y) => Object.assign(win.style, { left: Math.max(0, Math.min(x, innerWidth - win.offsetWidth)) + 'px', top: Math.max(0, Math.min(y, innerHeight - win.offsetHeight)) + 'px', right: 'auto', bottom: 'auto' });
+    const hd = win.querySelector('.askhd');
+    hd.onpointerdown = e => { if (mobileQ.matches || e.target.closest('button')) return; e.preventDefault(); hd.setPointerCapture(e.pointerId); const r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; hd.onpointermove = m => place(m.clientX - dx, m.clientY - dy); hd.onpointerup = () => hd.onpointermove = null; };
     grip.onpointerdown = e => { e.preventDefault(); grip.setPointerCapture(e.pointerId); const x = e.clientX, y = e.clientY, w = win.offsetWidth, h = win.offsetHeight; grip.onpointermove = m => size(w + x - m.clientX, h + y - m.clientY); grip.onpointerup = () => grip.onpointermove = null; };
     grip.onkeydown = e => { const d = { ArrowLeft: [24, 0], ArrowRight: [-24, 0], ArrowUp: [0, 24], ArrowDown: [0, -24] }[e.key]; if (d) { e.preventDefault(); size(win.offsetWidth + d[0], win.offsetHeight + d[1]); } };
     ask.onsubmit = async e => {

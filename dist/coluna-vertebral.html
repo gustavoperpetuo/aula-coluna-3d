@@ -178,6 +178,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .askgrip:hover, .askgrip:focus-visible { color: var(--accent); }
 .askhd { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 28px; border-bottom: 1px solid var(--line); }
 .askhd span { color: var(--ink-3); font-size: 13px; }
+@media (min-width: 900.02px) { .askhd { cursor: move; touch-action: none; user-select: none; } }
 .askx { margin-left: auto; width: 36px; height: 36px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); font-size: 16px; cursor: pointer; }
 .askout { flex: 1 1 auto; min-height: 60px; overflow-y: auto; padding: 12px 16px; font-size: 15px; }
 .askout p { margin: 0 0 12px; white-space: pre-wrap; }
@@ -2859,7 +2860,15 @@ const DZ_QUIZ = [
     if (senha) fab.hidden = false;
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
     // a janela é ancorada embaixo à direita, então a alça fica no canto de cima à esquerda: puxar para cima e para a esquerda aumenta
-    const grip = $('#askgrip'), size = (w, h) => { win.style.width = Math.max(300, Math.min(w, innerWidth - 32)) + 'px'; win.style.height = Math.max(260, Math.min(h, innerHeight - 120)) + 'px'; win.style.maxHeight = 'none'; };
+    const grip = $('#askgrip'), size = (w, h) => {
+      const r = win.getBoundingClientRect();
+      win.style.width = Math.max(300, Math.min(w, innerWidth - 32)) + 'px'; win.style.height = Math.max(260, Math.min(h, innerHeight - 120)) + 'px'; win.style.maxHeight = 'none';
+      if (win.style.left) place(r.right - win.offsetWidth, r.bottom - win.offsetHeight); // já movida: mantém o canto de baixo à direita no lugar
+    };
+    // arrastar pelo cabeçalho troca a âncora de baixo/direita para esquerda/topo, sempre dentro da tela
+    const place = (x, y) => Object.assign(win.style, { left: Math.max(0, Math.min(x, innerWidth - win.offsetWidth)) + 'px', top: Math.max(0, Math.min(y, innerHeight - win.offsetHeight)) + 'px', right: 'auto', bottom: 'auto' });
+    const hd = win.querySelector('.askhd');
+    hd.onpointerdown = e => { if (mobileQ.matches || e.target.closest('button')) return; e.preventDefault(); hd.setPointerCapture(e.pointerId); const r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; hd.onpointermove = m => place(m.clientX - dx, m.clientY - dy); hd.onpointerup = () => hd.onpointermove = null; };
     grip.onpointerdown = e => { e.preventDefault(); grip.setPointerCapture(e.pointerId); const x = e.clientX, y = e.clientY, w = win.offsetWidth, h = win.offsetHeight; grip.onpointermove = m => size(w + x - m.clientX, h + y - m.clientY); grip.onpointerup = () => grip.onpointermove = null; };
     grip.onkeydown = e => { const d = { ArrowLeft: [24, 0], ArrowRight: [-24, 0], ArrowUp: [0, 24], ArrowDown: [0, -24] }[e.key]; if (d) { e.preventDefault(); size(win.offsetWidth + d[0], win.offsetHeight + d[1]); } };
     ask.onsubmit = async e => {
