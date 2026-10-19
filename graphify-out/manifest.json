@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792413479.349766,
-    "seen": 1792413781.60756,
-    "ast_hash": "958ae058052fe69d9df676a38deb5c45",
+    "mtime": 1792414031.059013,
+    "seen": 1792414039.7265134,
+    "ast_hash": "14cbb347c15022ec3b1617bd458744c3",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -126,15 +126,15 @@
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
-    "mtime": 1792413431.2344537,
-    "seen": 1792413781.6075256,
-    "ast_hash": "8e6045abcb6669d674fa7c9a7d947186",
+    "mtime": 1792414031.0521626,
+    "seen": 1792414039.7264173,
+    "ast_hash": "42051a13fd44b900b73a4c277a106b18",
     "semantic_hash": ""
   },
   "tests/pergunta.mjs": {
-    "mtime": 1792413431.2372427,
-    "seen": 1792413781.6075516,
-    "ast_hash": "26c61772489b0dffba2074fb9fd9b4ae",
+    "mtime": 1792414031.055827,
+    "seen": 1792414039.7264967,
+    "ast_hash": "a6f64ff655c2940fa9b5897691a5d2a2",
     "semantic_hash": ""
   }
 }

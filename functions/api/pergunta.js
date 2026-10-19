@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env }) {
   if (!pergunta) return json({ erro: 'Escreva a pergunta.' }, 400);
   try {
     const r = await new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }).beta.messages.create({
-      model: 'claude-opus-5-5',
+      model: 'claude-sonnet-5-5',
       max_tokens: 4000,
       output_config: { effort: 'low' },
       betas: ['server-side-fallback-2026-07-01'],
