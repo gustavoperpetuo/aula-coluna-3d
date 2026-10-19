@@ -1,7 +1,7 @@
 # Graph Report - aula-coluna-3d  (2026-10-19)
 
 ## Corpus Check
-- 20 files · ~44,563 words
+- 20 files · ~44,834 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7b08de9f`
+- Built from commit: `271bb8af`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

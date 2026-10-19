@@ -740,22 +740,27 @@
     $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
     $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
   }
+  let closeAsk = () => false;
   // tira-dúvidas: só aparece com ?duvidas=<senha>, guardada na aba; a senha confere no servidor (functions/api/pergunta.js)
   {
     const q = new URLSearchParams(location.search), k = q.get('duvidas');
     if (k) { try { sessionStorage.setItem('duvidas', k); } catch (e) { } q.delete('duvidas'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
     let senha = k; try { senha = senha || sessionStorage.getItem('duvidas'); } catch (e) { }
-    const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button');
-    if (senha) ask.hidden = false;
+    const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button'), fab = $('#askfab'), win = $('#askwin');
+    const line = (t, cls) => { const p = document.createElement('p'); if (cls) p.className = cls; p.textContent = t; out.appendChild(p); out.scrollTop = out.scrollHeight; return p; };
+    const show = on => { win.hidden = !on; fab.hidden = on; fab.setAttribute('aria-expanded', on); (on ? inp : fab).focus(); };
+    closeAsk = () => !win.hidden && (show(false), true);
+    if (senha) fab.hidden = false;
+    fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
     ask.onsubmit = async e => {
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
-      btn.disabled = true; out.textContent = 'Pensando…';
+      btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
         const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', 'x-senha': senha }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
-        out.textContent = d.texto || d.erro || 'Sem resposta.';
-      } catch (err) { out.textContent = 'Sem conexão com o servidor.'; }
-      btn.disabled = false;
+        ans.textContent = d.texto || d.erro || 'Sem resposta.';
+      } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
+      out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
   }
   $('#progreset').onclick = () => {
@@ -764,7 +769,7 @@
     if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
   };
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { if (view.classList.contains('full')) setFull(false); else if (!infoEl.hidden) closeCard(); return; }
+    if (e.key === 'Escape') { if (closeAsk()) return; if (view.classList.contains('full')) setFull(false); else if (!infoEl.hidden) closeCard(); return; }
     const t = e.target, free = t === document.body || t === canvas || (t.closest && t.closest('.nav'));
     if (!free || S.mode !== 'anat') return;
     if (e.key === 'ArrowRight') goStep(S.step + 1);
