@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792248482.4870255,
-    "seen": 1792248773.269695,
-    "ast_hash": "6e721d661fcb167b121bac49d6ddbaaf",
+    "mtime": 1792413479.3344398,
+    "seen": 1792413781.607531,
+    "ast_hash": "e825134f82790d13db69359ece425b08",
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792248450.4269745,
-    "seen": 1792248773.2696974,
-    "ast_hash": "6637bd19f449808c01de70af35cbcbc1",
+    "mtime": 1792413420.0968633,
+    "seen": 1792413781.6075335,
+    "ast_hash": "0382666824bb893e23337e5e6a818f21",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792248482.5017476,
-    "seen": 1792248773.2697213,
-    "ast_hash": "37293de4ad39d7aa416c66569991711d",
+    "mtime": 1792413479.349766,
+    "seen": 1792413781.60756,
+    "ast_hash": "958ae058052fe69d9df676a38deb5c45",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1792248450.4299393,
-    "seen": 1792248773.2697241,
-    "ast_hash": "d10a0090577328543962ea8588d595fc",
+    "mtime": 1792413420.0958254,
+    "seen": 1792413781.6075633,
+    "ast_hash": "38a7209864afbf8ab7f858173b8cab19",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -123,6 +123,18 @@
     "mtime": 1792248402.1515071,
     "seen": 1792248773.2697127,
     "ast_hash": "8c74dfbca31e79616439d69029ec0a5f",
+    "semantic_hash": ""
+  },
+  "functions/api/pergunta.js": {
+    "mtime": 1792413431.2344537,
+    "seen": 1792413781.6075256,
+    "ast_hash": "8e6045abcb6669d674fa7c9a7d947186",
+    "semantic_hash": ""
+  },
+  "tests/pergunta.mjs": {
+    "mtime": 1792413431.2372427,
+    "seen": 1792413781.6075516,
+    "ast_hash": "26c61772489b0dffba2074fb9fd9b4ae",
     "semantic_hash": ""
   }
 }

@@ -167,6 +167,11 @@ body.resizing { cursor: col-resize; user-select: none; }
 .see .row { display: flex; flex-wrap: wrap; gap: 0 18px; }
 .see button { border: 0; background: none; padding: 7px 0; min-height: 36px; font-size: 15.5px; cursor: pointer; color: var(--accent); text-decoration: underline; text-decoration-color: rgba(13,102,105,.4); text-underline-offset: 3px; }
 .see button:hover { text-decoration-color: var(--accent); }
+.ask { padding: 10px 18px; border-top: 1px solid var(--line); background: var(--panel); }
+.askrow { display: flex; gap: 8px; }
+.askrow input { flex: 1; min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font: inherit; }
+.askout { max-height: 30vh; overflow-y: auto; font-size: 15px; white-space: pre-wrap; }
+.askout:not(:empty) { margin-bottom: 8px; }
 .nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--panel); }
 .btn { border: 1px solid var(--line-strong); background: var(--panel); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; font-size: 15px; min-height: 42px; }
 .btn:hover { border-color: var(--ink-2); }
@@ -269,6 +274,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <aside class="panel" id="panel" aria-label="Aula">
       <div class="chapwrap" id="chapwrap"><nav class="chap" id="chap" aria-label="Capítulos"></nav></div>
       <div class="scroll" id="scroll"></div>
+      <form class="ask" id="ask" hidden><div class="askout" id="askout" aria-live="polite"></div><div class="askrow"><input id="askq" type="text" maxlength="1000" placeholder="Dúvida sobre esta tela" aria-label="Dúvida sobre esta tela" autocomplete="off"><button class="btn" type="submit">Perguntar</button></div></form>
       <div class="nav" id="nav"></div>
     </aside>
     <div class="split" id="split" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="panel" aria-label="Largura do texto" aria-valuemin="320" title="Arraste para mudar a largura do texto; Clique duplo volta ao padrão"></div>

@@ -17,6 +17,7 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
   - `fechadas.js`: falha se alguma peça sólida tiver borda aberta, em todas as doenças, ou se duas partes da mesma peça correrem quase coladas na coluna normal; as duas coisas viram fenda na tela.
   - `maiusculas.js`: falha se algum texto exibido, na aula ou no hub, tiver minúscula depois de ponto ou de ponto e vírgula.
+  - `pergunta.mjs`: função do tira-dúvidas sem rede (senha, validação, resposta e erro da API simulados).
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
 - `docs/`: retrospectiva do projeto.
 
@@ -49,6 +50,10 @@ Abra `dist/coluna-vertebral.html` no navegador. O arquivo carrega o Three.js por
 - Sem travessões (o build falha se encontrar um).
 - Depois de ponto e de ponto e vírgula, maiúscula.
 - Fundo claro, fonte de leitura (Source Sans 3), pouca caixa alta.
+
+## Tira-dúvidas (teste)
+
+Caixa "Dúvida sobre esta tela" acima da navegação, ligada a `functions/api/pergunta.js` (Cloudflare Pages Function, Claude Opus 5.5 com esforço baixo). Só aparece abrindo a aula com `?duvidas=<senha>`; a senha fica na aba e o servidor confere. Segredos no painel da Cloudflare (Settings, Variables and Secrets, Production): `ANTHROPIC_API_KEY` e `SENHA_DUVIDAS`. Antes de abrir ao público, trocar a senha única por limite por pessoa.
 
 ## Pendências
 

@@ -740,6 +740,24 @@
     $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
     $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
   }
+  // tira-dúvidas: só aparece com ?duvidas=<senha>, guardada na aba; a senha confere no servidor (functions/api/pergunta.js)
+  {
+    const q = new URLSearchParams(location.search), k = q.get('duvidas');
+    if (k) { try { sessionStorage.setItem('duvidas', k); } catch (e) { } q.delete('duvidas'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
+    let senha = k; try { senha = senha || sessionStorage.getItem('duvidas'); } catch (e) { }
+    const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button');
+    if (senha) ask.hidden = false;
+    ask.onsubmit = async e => {
+      e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
+      btn.disabled = true; out.textContent = 'Pensando…';
+      try {
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', 'x-senha': senha }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
+        out.textContent = d.texto || d.erro || 'Sem resposta.';
+      } catch (err) { out.textContent = 'Sem conexão com o servidor.'; }
+      btn.disabled = false;
+    };
+  }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
     store.seen = []; store.dzSeen = []; save();
