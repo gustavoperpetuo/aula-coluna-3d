@@ -53,7 +53,7 @@ Abra `dist/coluna-vertebral.html` no navegador. O arquivo carrega o Three.js por
 
 ## Tira-dúvidas (teste)
 
-Botão flutuante "Dúvida?" que abre uma janela de perguntas (Esc ou ✕ fecha; a alça ⤡ no canto de cima redimensiona; arrastar o cabeçalho move a janela), ligado a `functions/api/pergunta.js` (Cloudflare Pages Function, Claude Sonnet 5.5 com esforço baixo). Só aparece abrindo a aula com `?duvidas=<senha>`; a senha fica na aba e o servidor confere. Segredos no painel da Cloudflare (Settings, Variables and Secrets, Production): `ANTHROPIC_API_KEY` e `SENHA_DUVIDAS`. Antes de abrir ao público, trocar a senha única por limite por pessoa.
+Botão flutuante "Dúvida?" que abre uma janela de perguntas (Esc ou ✕ fecha; arrastar o canto de cima à esquerda redimensiona; arrastar o cabeçalho move a janela), ligado a `functions/api/pergunta.js` (Cloudflare Pages Function, Claude Sonnet 5.5 com esforço baixo). Só aparece abrindo a aula com `?duvidas=<senha>`; a senha fica na aba e o servidor confere. Segredos no painel da Cloudflare (Settings, Variables and Secrets, Production): `ANTHROPIC_API_KEY` e `SENHA_DUVIDAS`. Antes de abrir ao público, trocar a senha única por limite por pessoa.
 
 ## Pendências
 
