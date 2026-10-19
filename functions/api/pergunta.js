@@ -9,7 +9,9 @@ const SYSTEM = 'Você é monitor de uma aula interativa de anatomia e doenças d
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
 export async function onRequestPost({ request, env }) {
-  if (!env.SENHA_DUVIDAS || request.headers.get('x-senha') !== env.SENHA_DUVIDAS) return json({ erro: 'Sem acesso.' }, 401);
+  // mensagens distintas para saber se o segredo não chegou ao deploy ou se a senha digitada não confere
+  if (!env.SENHA_DUVIDAS || !env.ANTHROPIC_API_KEY) return json({ erro: 'Servidor sem ' + (env.SENHA_DUVIDAS ? 'ANTHROPIC_API_KEY' : 'SENHA_DUVIDAS') + ' configurada.' }, 503);
+  if ((request.headers.get('x-senha') || '').trim() !== env.SENHA_DUVIDAS.trim()) return json({ erro: 'Senha não confere.' }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ erro: 'Pedido inválido.' }, 400); }
   const pergunta = String(body.pergunta || '').trim().slice(0, 1000), contexto = String(body.contexto || '').slice(0, 8000);

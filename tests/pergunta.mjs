@@ -6,7 +6,7 @@ const eq = (nome, a, b) => { if (a !== b) falhas.push(`${nome}: ${a} != ${b}`); 
 let enviado;
 globalThis.fetch = async (url, init) => { enviado = JSON.parse(init.body); return new Response(JSON.stringify({ id: 'm', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: 'end_turn', content: [{ type: 'text', text: 'O LLA corre na frente dos corpos.' }], usage: { input_tokens: 1, output_tokens: 1 } }), { status: 200, headers: { 'content-type': 'application/json', 'request-id': 'r' } }); };
 eq('senha errada', (await onRequestPost(req('{"pergunta":"a"}', 'x'))).status, 401);
-eq('sem senha no servidor', (await onRequestPost({ ...req('{"pergunta":"a"}'), env: {} })).status, 401);
+eq('sem senha no servidor', (await onRequestPost({ ...req('{"pergunta":"a"}'), env: {} })).status, 503);
 eq('json inválido', (await onRequestPost(req('{'))).status, 400);
 eq('pergunta vazia', (await onRequestPost(req('{"pergunta":"  "}'))).status, 400);
 const ok = await onRequestPost(req(JSON.stringify({ pergunta: 'O que é o LLA?', contexto: 'Ligamentos' })));

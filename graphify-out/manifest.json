@@ -126,15 +126,15 @@
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
-    "mtime": 1792414031.0521626,
-    "seen": 1792414039.7264173,
-    "ast_hash": "42051a13fd44b900b73a4c277a106b18",
+    "mtime": 1792414178.5943933,
+    "seen": 1792414186.4391801,
+    "ast_hash": "18ea896a926052c6d35cc156fa65ca36",
     "semantic_hash": ""
   },
   "tests/pergunta.mjs": {
-    "mtime": 1792414031.055827,
-    "seen": 1792414039.7264967,
-    "ast_hash": "a6f64ff655c2940fa9b5897691a5d2a2",
+    "mtime": 1792414178.5960786,
+    "seen": 1792414186.4392054,
+    "ast_hash": "bdc463c62e221ac4462efdab5f8ef7f0",
     "semantic_hash": ""
   }
 }
