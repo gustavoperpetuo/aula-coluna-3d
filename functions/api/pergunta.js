@@ -2,9 +2,9 @@
 // Segredos no painel da Cloudflare: ANTHROPIC_API_KEY e SENHA_DUVIDAS (shortcut: senha única, só para teste; trocar por limite por pessoa antes de abrir ao público).
 import Anthropic from '@anthropic-ai/sdk';
 
-const SYSTEM = 'Você é monitor de uma aula interativa de anatomia e doenças da coluna vertebral, para estudantes e profissionais de saúde. ' +
-  'Responda em português do Brasil, em até 6 frases, com base no trecho da aula enviado e em conhecimento médico estabelecido. ' +
-  'Se a pergunta fugir da coluna, diga isso em uma frase. Não indique conduta para um paciente específico. Texto corrido, sem markdown.';
+const SYSTEM = 'Monitor de uma aula de anatomia e doenças da coluna vertebral. Responda em português do Brasil, direto e didático: ' +
+  'a resposta na primeira frase, depois só o que ajuda a entender, em até 5 frases. Sem introdução, sem repetir a pergunta, sem fechamento. ' +
+  'Use o trecho da aula como base. Fora da coluna, diga em uma frase. Sem conduta para paciente específico. Texto corrido, sem markdown.';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
