@@ -752,6 +752,10 @@
     closeAsk = () => !win.hidden && (show(false), true);
     if (senha) fab.hidden = false;
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
+    // a janela é ancorada embaixo à direita, então a alça fica no canto de cima à esquerda: puxar para cima e para a esquerda aumenta
+    const grip = $('#askgrip'), size = (w, h) => { win.style.width = Math.max(300, Math.min(w, innerWidth - 32)) + 'px'; win.style.height = Math.max(260, Math.min(h, innerHeight - 120)) + 'px'; win.style.maxHeight = 'none'; };
+    grip.onpointerdown = e => { e.preventDefault(); grip.setPointerCapture(e.pointerId); const x = e.clientX, y = e.clientY, w = win.offsetWidth, h = win.offsetHeight; grip.onpointermove = m => size(w + x - m.clientX, h + y - m.clientY); grip.onpointerup = () => grip.onpointermove = null; };
+    grip.onkeydown = e => { const d = { ArrowLeft: [24, 0], ArrowRight: [-24, 0], ArrowUp: [0, 24], ArrowDown: [0, -24] }[e.key]; if (d) { e.preventDefault(); size(win.offsetWidth + d[0], win.offsetHeight + d[1]); } };
     ask.onsubmit = async e => {
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');

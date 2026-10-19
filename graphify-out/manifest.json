@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1792414540.089625,
-    "seen": 1792414707.0421333,
-    "ast_hash": "ef1780f0e44bbd14849b1d4854f6826f",
+    "mtime": 1792419847.273165,
+    "seen": 1792420004.640509,
+    "ast_hash": "57a1d8164ee5926a1cd7dd4876503782",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792414031.059013,
-    "seen": 1792414039.7265134,
-    "ast_hash": "14cbb347c15022ec3b1617bd458744c3",
+    "mtime": 1792414707.172296,
+    "seen": 1792420004.640541,
+    "ast_hash": "182bc21532f1df8eb8f36b3c39b61cc9",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1792414540.0847583,
-    "seen": 1792414707.0421767,
-    "ast_hash": "962eec5b1922a416dccdc51b3d5ec7e3",
+    "mtime": 1792419847.2723277,
+    "seen": 1792420004.6405454,
+    "ast_hash": "0f44b520d6195285801199a370f1190a",
     "semantic_hash": ""
   },
   "src/home.html": {
