@@ -8,7 +8,9 @@ js = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js'
 # doctype, charset e viewport: sem eles o navegador abre em modo de compatibilidade,
 # troca os acentos quando o servidor não manda charset e o celular recebe o layout de desktop
 doc = ('<!doctype html>\n<html lang="pt-BR">\n<meta charset="utf-8">\n'
-       '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n')
+       '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+       '<link rel="icon" type="image/png" sizes="32x32" href="/icone-32.png">\n'
+       '<link rel="apple-touch-icon" href="/icone-180.png">\n')
 out = (doc + head
        # integridade: o navegador recusa o script se o CDN entregar outro conteúdo. Os dois vêm do pacote npm
        # three@0.128.0 pelo jsDelivr, byte a byte igual a node_modules/three (hashes calculados de lá)
@@ -23,5 +25,5 @@ print(len(out), 'bytes')
 home = doc + (src / 'home.html').read_text(encoding='utf-8')
 assert '—' not in home and '–' not in home, 'travessão encontrado na home'
 (root / 'dist' / 'index.html').write_text(home, encoding='utf-8')
-(root / 'dist' / 'coluna-lateral.webp').write_bytes((src / 'coluna-lateral.webp').read_bytes())
+for f in ('coluna-lateral.webp', 'icone-32.png', 'icone-180.png'): (root / 'dist' / f).write_bytes((src / f).read_bytes())
 print(len(home), 'bytes (home)')
