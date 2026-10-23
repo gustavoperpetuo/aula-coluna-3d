@@ -21,6 +21,7 @@ async function page(b,W,H,block){
  await p.evaluate(()=>{__spine.goStep(6); setTimeout(()=>document.querySelector('.see button').click(),1200)}); await p.waitForTimeout(800); await shot(p,'d3');
  await p.evaluate(()=>__spine.openDz('hernia')); await shot(p,'d4');
  await p.evaluate(()=>document.querySelector('#t-n').click()); await shot(p,'d5');
+ await p.evaluate(()=>__spine.openDz('tlif')); await shot(p,'d6');
  // keyboard checks
  const kb=await p.evaluate(()=>{__spine.goStep(1); return 1;});
  await p.waitForTimeout(500); await p.focus('#next'); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
@@ -35,6 +36,9 @@ async function page(b,W,H,block){
  await shot(p,'m0');
  await p.evaluate(()=>{window.scrollTo(0,0); __spine.setFull(true)}); await shot(p,'m1');
  await p.evaluate(()=>{__spine.setFull(false); __spine.openDz('sten')}); await shot(p,'m2');
+ await p.evaluate(()=>{window.scrollTo(0,0); __spine.openDz('tfesi')}); await shot(p,'m3');
+ // a barra Anatomia/Doenças/Procedimentos tem de caber na largura do celular, sem rolagem lateral
+ const fits=await p.evaluate(()=>document.querySelector('#m-proc').getBoundingClientRect().right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth); if(!fits) bad.push('barra de partes não cabe em 390 px');
  const tgt=await p.evaluate(()=>[...document.querySelectorAll('button,select,summary')].filter(e=>e.offsetParent).map(e=>{const r=e.getBoundingClientRect();return [r.width,r.height,(e.id||e.className)+':'+e.textContent.trim().slice(0,12)]}).filter(([w,h])=>h<36||w<36).slice(0,20));
  console.log('small targets',JSON.stringify(tgt)); console.log('mob errs',p.errs); if(p.errs.length) bad.push('erros no celular');
  await p.close();

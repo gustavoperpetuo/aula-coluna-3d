@@ -43,6 +43,7 @@ Abra `dist/coluna-vertebral.html` no navegador. O arquivo carrega o Three.js por
 - Chaves de rótulo: chave de nível (C1 a L5, `sacrum`, `coccyx`) seleciona a vértebra inteira, igual à régua; chave de parte (`disc.L4-L5`, `C7.sp`) seleciona só a parte; `cam:<nível>` só leva a câmera, para conceitos como curvaturas e ápices.
 - Layout no desktop (acima de 900 px): trilha à esquerda com Anatomia/Doenças e capítulos (`placeNav()` os devolve ao topo e ao painel no celular), recolhível pelo botão « com estado salvo; camadas e cortes sempre abertos no topo do 3D; divisória arrastável entre 3D e texto. Preferências ficam em `localStorage`, chave `coluna3d.v1`.
 - O título da aula leva ao hub.
+- Procedimentos (`src/proc.js`, `PROC`) usam o fluxo das doenças com outros campos de texto. Peças por `mods` em `buildSpine`: `needles` (`{ to, from }` ou `{ to, via, len }`, calibre `g`; ponto é âncora como `'L1.ped.L'` ou `[quadro, x, y, z]` no referencial de uma vértebra ou disco), `contrast`, `mbranch`, `rf`, `cement`, `cage`, `screws` (hastes automáticas) e `facetectomy`.
 
 ## Regras de conteúdo
 

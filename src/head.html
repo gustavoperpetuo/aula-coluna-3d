@@ -91,8 +91,9 @@ body.resizing { cursor: col-resize; user-select: none; }
 @media (min-width: 900.02px) {
   .stage { grid-template-columns: var(--rail, 232px) minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "rail view split panel"; }
   .rail { grid-area: rail; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); box-sizing: border-box; }
-  .rail .seg { display: flex; }
-  .rail .seg button { flex: 1 1 0; min-height: 38px; padding: 0 6px; white-space: nowrap; }
+  /* três partes não cabem numa linha da trilha: a que sobra desce para a linha de baixo, sem cortar o texto */
+  .rail .seg { display: flex; flex-wrap: wrap; }
+  .rail .seg button { flex: 1 1 auto; min-height: 38px; padding: 0 6px; white-space: nowrap; }
   .hint { max-width: calc(100% - 92px); }
   .rail-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 0 0 0 12px; }
   .railx { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; }
@@ -276,6 +277,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="seg" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
+      <button id="m-proc" aria-pressed="false">Procedimentos</button>
     </div>
     <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span><button type="button" class="progreset" id="progreset" title="Limpar progresso" aria-label="Limpar progresso">↺</button></div>
   </header>

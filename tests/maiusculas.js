@@ -17,13 +17,15 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
  const texts=await p.evaluate(async()=>{
   const w=ms=>new Promise(r=>setTimeout(r,ms)); const out=[];
   const walk=(v,k)=>{if(typeof v==='string')out.push([k,v]);else if(Array.isArray(v))v.forEach((x,i)=>walk(x,k+'['+i+']'));else if(v&&typeof v==='object'&&!v.isVector3)for(const [kk,x] of Object.entries(v))walk(x,k+'.'+kk);};
-  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ},'dados');
+  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ,PROC_CATS,PROC},'dados');
   const dom=where=>{out.push([where,document.body.innerText]);document.querySelectorAll('[title],[aria-label],[alt],[placeholder]').forEach(e=>['title','aria-label','alt','placeholder'].forEach(a=>e.hasAttribute(a)&&out.push([where+' @'+a,e.getAttribute(a)])));};
   const ruler=async where=>{for(const bt of document.querySelectorAll('#ruler button')){if(bt.hidden)continue;bt.click();await w(30);dom(where+' régua '+bt.dataset.lv);}};
   for(let i=0;i<ALL_STEPS.length;i++){__spine.goStep(i);await w(30);dom('passo '+i);}
   await ruler('anatomia');
   for(const d of DZ){__spine.openDz(d.id);await w(30);dom('doença '+d.id);document.querySelector('#t-n').click();await w(30);dom('doença '+d.id+' normal');}
   __spine.setMode('dz');await w(30);dom('lista de doenças');
+  for(const d of PROC){__spine.openDz(d.id);await w(30);dom('procedimento '+d.id);}
+  __spine.setMode('proc');await w(30);dom('lista de procedimentos');
   return out;});
  const bad=[...new Set(texts.flatMap(([k,v])=>hits(v,k)))];
  const home=fs.readFileSync(__dirname+'/../dist/index.html','utf8').replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g,'');

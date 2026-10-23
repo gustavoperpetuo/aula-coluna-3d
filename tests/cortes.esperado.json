@@ -122,6 +122,42 @@
   ]
  },
  {
+  "l": "tfesi sag",
+  "lost": []
+ },
+ {
+  "l": "rfface sag",
+  "lost": []
+ },
+ {
+  "l": "rfface ax L3",
+  "lost": [
+   "rf.L4.L",
+   "rflesion.L4.L"
+  ]
+ },
+ {
+  "l": "vplasty sag [cfg]",
+  "lost": [
+   "trocar.L"
+  ]
+ },
+ {
+  "l": "tlif sag",
+  "lost": [
+   "screw.L4.L",
+   "screw.L5.L",
+   "rod.L"
+  ]
+ },
+ {
+  "l": "tlif ax L4-L5",
+  "lost": [
+   "screw.L5.L",
+   "screw.L5.R"
+  ]
+ },
+ {
   "l": "step28 sag",
   "lost": []
  },

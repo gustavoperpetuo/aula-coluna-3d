@@ -97,8 +97,9 @@ body.resizing { cursor: col-resize; user-select: none; }
 @media (min-width: 900.02px) {
   .stage { grid-template-columns: var(--rail, 232px) minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "rail view split panel"; }
   .rail { grid-area: rail; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); box-sizing: border-box; }
-  .rail .seg { display: flex; }
-  .rail .seg button { flex: 1 1 0; min-height: 38px; padding: 0 6px; white-space: nowrap; }
+  /* três partes não cabem numa linha da trilha: a que sobra desce para a linha de baixo, sem cortar o texto */
+  .rail .seg { display: flex; flex-wrap: wrap; }
+  .rail .seg button { flex: 1 1 auto; min-height: 38px; padding: 0 6px; white-space: nowrap; }
   .hint { max-width: calc(100% - 92px); }
   .rail-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 0 0 0 12px; }
   .railx { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; }
@@ -282,6 +283,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="seg" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
+      <button id="m-proc" aria-pressed="false">Procedimentos</button>
     </div>
     <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span><button type="button" class="progreset" id="progreset" title="Limpar progresso" aria-label="Limpar progresso">↺</button></div>
   </header>
@@ -654,7 +656,9 @@ function buildSpine(mods = {}) {
     else buildLumbar(part, l, P, S, sd, h, W, D, dA, dB);
     // âncoras de forame (abaixo da vértebra, exceto cervical que é acima)
     S.forEach(s => {
-      if (P.sap) anchors.set(`facet.${l.n}.${sd(s)}`, toW(fr, P.sap[sd(s)].top.x, P.sap[sd(s)].top.y - 0.2, P.sap[sd(s)].top.z));
+      if (P.sap && P.sap[sd(s)]) anchors.set(`facet.${l.n}.${sd(s)}`, toW(fr, P.sap[sd(s)].top.x, P.sap[sd(s)].top.y - 0.2, P.sap[sd(s)].top.z));
+      // centro do pedículo: alvo de trajetórias transpediculares (cânula, parafuso)
+      if (l.r !== 'C') anchors.set(`${l.n}.ped.${sd(s)}`, toW(fr, s * l.px, 0.12 * h, (-D / 2 + 0.35 - D / 2 - l.pl) / 2));
     });
   }
 
@@ -795,11 +799,14 @@ function buildSpine(mods = {}) {
       // processos articulares (facetas quase sagitais)
       const up = l.n + '-' + (k === 5 ? 'S1' : 'L' + (k + 1)); const upAbove = (k === 1 ? 'T12' : 'L' + (k - 1)) + '-' + l.n;
       const fsA = fh[upAbove] || 1, fsB = fh[up] || 1;
+      // facetectomia ('L4-L5.L'): o processo articular inferior de cima sai inteiro, o superior de baixo fica só na base
+      const cutA = (mods.facetectomy || []).includes(upAbove + '.' + side), cutB = (mods.facetectomy || []).includes(up + '.' + side);
       const sapB = v(s * (px + 0.3), py + 0.2 * h, zP - 0.1), sapT = v(s * (px + 0.4), h / 2 + dA * 0.9, zP - 0.25);
-      part(rod(sapB, sapT, 0.55 * fsA, { f: 0.48, side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
+      part(rod(sapB, cutA ? sapB.clone().lerp(sapT, 0.2) : sapT, 0.55 * fsA, { f: 0.48, side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
       part(ellip(v(s * (px + 0.55), py + 0.4 * h, zP - 0.65), 0.32, 0.35, 0.3), 'bone', `${l.n}.mam.${side}`, 'mamm');
       const iapT = v(s * (px - 0.15), -0.3 * h, zP - 0.7), iapB = v(s * (px - 0.05), -h / 2 - dB * 0.85, zP - 0.62);
-      part(rod(iapT, iapB, 0.5 * fsB, { f: 0.48, side: v(1, 0, -0.35) }), fsB > 1 ? 'boneHyp' : 'bone', `${l.n}.iap.${side}`, 'iap');
+      if (!cutB) part(rod(iapT, iapB, 0.5 * fsB, { f: 0.48, side: v(1, 0, -0.35) }), fsB > 1 ? 'boneHyp' : 'bone', `${l.n}.iap.${side}`, 'iap');
+      else anchors.set(`fxt.${up}.${side}`, toW(F[l.n], ...iapT.clone().lerp(iapB, 0.5).toArray()));
       // pars interarticularis
       const parsA = v(s * (px + 0.05), -0.02 * h, zP - 0.2), parsB = v(s * (px - 0.1), -0.3 * h, zP - 0.65);
       if (mods.pars && mods.pars.includes(l.n)) {
@@ -811,7 +818,8 @@ function buildSpine(mods = {}) {
         cr.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(qq)); cr.translate(mid.x, mid.y, mid.z);
         part(cr, 'lesion', `crack.${l.n}.${side}`, 'parsdefect');
       } else part(rod(parsA, parsB, 0.42), 'bone', `${l.n}.pars.${side}`, 'pars');
-      P.sap[side] = { top: sapT }; P.iap[side] = { bot: iapB };
+      // sem a faceta não há cápsula nem âncora de faceta desse lado
+      P.sap[side] = cutA ? null : { top: sapT }; P.iap[side] = cutB ? null : { bot: iapB };
     });
     P.lam = { y: -0.26 * h - 0.3, z: -D / 2 - l.ca - 0.35, r: 1.05 };
     // espinhoso em machadinha
@@ -923,9 +931,15 @@ function buildSpine(mods = {}) {
     const ax = new V3().subVectors(cB, cA).normalize();
     R[0] = R[0].map(pp => pp.clone().addScaledVector(ax, 0.02)); R[4] = R[4].map(pp => pp.clone().addScaledVector(ax, -0.02));
     const kind = dm.state === 'degen' ? 'discDeg' : dm.state === 'infect' ? 'discInf' : 'disc';
-    add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
+    if (dm.discectomy) {
+      // discectomia: sobra o anel externo (de 85% do raio para fora), sem lamelas nem núcleo, e o miolo fica vazio para a cage.
+      // cada ângulo dá uma seção (parede de fora subindo, de dentro descendo); girar a seção fecha o anel. g: fica transparente com os ossos
+      const I = R.map(r => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, 0.85)); });
+      const sec = R[0].map((_, i) => R.map(r => r[i]).concat(I.map(r => r[i]).reverse()));
+      add(loft(sec.concat([sec[0]]), false, false), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true, g: 1 });
+    } else add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
     // lamelas internas (aparecem no corte)
-    [0.8, 0.62].forEach((sc, li) => {
+    if (!dm.discectomy) [0.8, 0.62].forEach((sc, li) => {
       const R2 = R.map((r, k) => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, sc)); });
       // encolhe verticalmente para não vazar das placas
       const R3 = [R2[0].map((p, i) => p.clone().lerp(R2[1][i], 0.25)), R2[1], R2[2], R2[3], R2[4].map((p, i) => p.clone().lerp(R2[3][i], 0.25))];
@@ -934,7 +948,7 @@ function buildSpine(mods = {}) {
     const qd = kf.q, th = kf.p.distanceTo(cA) * 2;
     const nucC = kf.p.clone().add(v(0, 0, -0.08 * kf.D).applyQuaternion(qd));
     const ns = dm.state === 'degen' ? 0.6 : 1;
-    add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
+    if (!dm.discectomy) add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
@@ -1236,6 +1250,7 @@ function buildSpine(mods = {}) {
   lin(['L1', 'L2', 'L3', 'L4', 'L5'], KI.T10, KI.T12 + 0.4);
   lin(['S1', 'S2', 'S3', 'S4', 'S5', 'Co1'], KI.T12 + 0.4, uConus - 0.15);
   const hot = new Set(mods.hotRoots || []);
+  const ROOTS = {}; // trajeto de cada raiz, para o contraste que corre na bainha
   NERVES.forEach(nv => {
     [1, -1].forEach(s => {
       const side = s > 0 ? 'L' : 'R';
@@ -1285,6 +1300,7 @@ function buildSpine(mods = {}) {
       const rFn = t => t < tf - 0.04 ? rIn : t < tf + 0.04 ? rIn + (r - rIn) * (t - tf + 0.04) / 0.08 : r;
       const isHot = hot.has(n) || hot.has(n + '.' + side) || hot.has('*cauda') && (nv.reg === 'L' || nv.reg === 'S');
       add(tube(pts, rFn, { N: 7, density: 2.2 }), 'root', key, 'root', { level: n, nerve: n, side, region: nv.reg, hot: isHot });
+      ROOTS[key] = { pts, r, uExit };
       // gânglio
       const gq = new THREE.Quaternion().setFromUnitVectors(v(0, 1, 0), new V3().subVectors(e1, fl).normalize());
       const gc = fl.clone().lerp(e1, 0.35);
@@ -1455,6 +1471,91 @@ function buildSpine(mods = {}) {
     anchors.set('myelo.lesion', SP(u0, 0, 0, spineAt(u0).zc));
   }
   if (mods.erosion) mods.erosion.forEach(([n, s]) => { const f = F[n], l = LV[n]; const c = toW(f, 0, s * (f.h / 2 - 0.2), 0); add(ellip(c, l.W * 0.36, 0.3, l.D * 0.34, 16, f.q), 'tumor', 'erosion.' + n, 'erosion', { level: n }); anchors.set('erosion.' + n, c); });
+
+  /* ---- procedimentos: agulhas, contraste, ramo medial e radiofrequência, cimento, implantes ---- */
+  // ponto: vetor, chave de âncora ('L1.ped.L') ou [quadro, x, y, z] no referencial de uma vértebra ou de um disco ('L4', 'L4-L5')
+  const ptOf = a => a instanceof V3 ? a.clone() : typeof a === 'string' ? anchors.get(a).clone() : toW(F[a[0]] || discKF[a[0]], a[1], a[2], a[3]);
+  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 11: 0.15 }; // raio externo (cm) por calibre
+  // agulha da pele (from) até a ponta (to), ou to + via (um ponto do trajeto) + len; ponta na cor de destaque, canhão do lado da pele
+  const needle = o => {
+    const to = ptOf(o.to), r = GAUGE[o.g || 22], k = o.key || 'needle';
+    const from = o.from ? ptOf(o.from) : to.clone().add(new V3().subVectors(ptOf(o.via), to).setLength(o.len || 9));
+    const d = new V3().subVectors(to, from).normalize(), neck = to.clone().addScaledVector(d, -Math.max(0.3, 3 * r));
+    const ex = { level: o.level || (Array.isArray(o.to) ? o.to[0] : typeof o.to === 'string' ? o.to.split('.')[0] : null) };
+    add(mergeGeoms([rod(from, neck, r, { seg: 10 }), rod(from.clone().addScaledVector(d, -1.1), from, Math.max(0.16, 2 * r), { seg: 12 })]), 'metal', k, o.info || 'needle', ex);
+    add(rod(neck, to, r, { r2: r * 0.3, seg: 10 }), 'needleTip', k, o.info || 'needle', ex);
+    anchors.set(k, to.clone()); anchors.set(k + '.meio', from.clone().lerp(to, 0.5)); // ponta e meio do trajeto (fora do osso, para rótulo em corte)
+  };
+  (mods.needles || []).forEach(needle);
+  // contraste ('L4.L'): na ponta da agulha, ao longo da bainha da raiz e no espaço epidural anterior do mesmo lado
+  (mods.contrast || []).forEach(c => {
+    const R = ROOTS['root.' + c.root], s = c.root.endsWith('.L') ? 1 : -1, n = R.pts.length, k = c.key || 'contrast';
+    const sheath = [R.pts[n - 4], R.pts[n - 3], R.pts[n - 2], R.pts[n - 2].clone().lerp(R.pts[n - 1], 0.35)];
+    const sp = spineAt(R.uExit + 0.4), epi = sp.p.clone().add(v(s * sp.cw * 0.25, 0, sp.post - 0.12).applyQuaternion(sp.q));
+    // a bainha envolve também o gânglio (1,9 vez o raio da raiz)
+    add(mergeGeoms([ellip(ptOf(c.at), 0.22, 0.22, 0.22, 14), tube(sheath, () => R.r * 1.9 + 0.06, { N: 10 }), ellip(epi, 0.6, 1.5, 0.1, 18, sp.q)]), 'contrast', k, 'contrast', { level: c.root.split('.')[0] });
+    anchors.set(k, R.pts[n - 3].clone().lerp(R.pts[n - 2], 0.4));
+  });
+  // ramo medial do ramo dorsal (L1 a L4): sai da raiz, passa sobre a borda superior do transverso de baixo, na junção com o
+  // processo articular superior, e desce para a faceta abaixo. shortcut: sem L5 (cruza a asa do sacro) e sem cervical ou torácica
+  const MB = {};
+  (mods.mbranch || []).forEach(n => {
+    const Vn = 'L' + (+n.slice(1) + 1), f = F[Vn], l = LV[Vn];
+    // rP: raio do pedículo do modelo; o transverso nasce dele, então a junção fica na borda de cima e de fora do pedículo
+    const py = 0.12 * f.h, zP = -f.Dw / 2 - l.pl, rTP = Vn === 'L5' ? 0.52 : 0.4, rP = l.pw / 2 + 0.08, dx = rP - 0.115;
+    [1, -1].forEach(s => {
+      const side = s > 0 ? 'L' : 'R', L = (x, y, z) => toW(f, s * x, y, z);
+      // direção da agulha da pele para a ponta: 15° de lateral para medial e 25° de caudal para cranial; o nervo corre paralelo a ela
+      const d = v(-s * Math.sin(15 * deg) * Math.cos(25 * deg), Math.sin(25 * deg), Math.cos(15 * deg) * Math.cos(25 * deg)).applyQuaternion(f.q);
+      const J = L(l.px + dx, py + Math.max(rTP, Math.sqrt(rP * rP - dx * dx)) + 0.1, zP + 0.18);
+      const pts = [anchors.get(`root.${n}.${side}`), J.clone().addScaledVector(d, 1.1), J.clone().addScaledVector(d, 0.5), J, J.clone().addScaledVector(d, -0.6), L(l.px + dx + 0.3, py - 0.45, zP - 0.95), L(l.px + 0.55, py - 1.7, zP - 1.05)];
+      add(tube(pts, () => 0.06, { N: 8 }), 'mbranch', `mb.${n}.${side}`, 'mbranch', { level: n });
+      anchors.set(`mb.${n}.${side}`, pts[5]); // no trecho que desce, longe do rótulo da lesão
+      MB[n + '.' + side] = { J, d, off: v(s, 0.2, -0.5).normalize().applyQuaternion(f.q), level: n };
+    });
+  });
+  // radiofrequência do ramo medial ('L3.L'): agulha paralela ao nervo, com a ponta ao lado dele; lesão em volta da parte ativa
+  (mods.rf || []).forEach(k => {
+    const m = MB[k], to = m.J.clone().addScaledVector(m.d, 0.1).addScaledVector(m.off, 0.1), c = to.clone().addScaledVector(m.d, -0.4);
+    needle({ from: to.clone().addScaledVector(m.d, -9), to, g: 20, key: 'rf.' + k, level: m.level, info: 'rfneedle' });
+    add(ellip(c, 0.24, 0.47, 0.24, 16, new THREE.Quaternion().setFromUnitVectors(v(0, 1, 0), m.d)), 'rfLesion', 'rflesion.' + k, 'rflesion', { level: m.level });
+    anchors.set('rflesion.' + k, c);
+  });
+  // cimento ('L1'): massa irregular na metade anterior do corpo, abaixo da placa de cima já em cunha
+  if (mods.cement) {
+    const n = mods.cement, f = F[n], D = f.Dw, W = LV[n].W * md('widen', n, 1), z0 = 0.08 * D;
+    const top = f.h / 2 - (z0 + D / 2) * Math.tan(f.w * deg), yc = (top - f.h / 2) / 2, ry = 0.68 * (top + f.h / 2) / 2;
+    const g = new THREE.SphereGeometry(1, 28, 18), a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), q = 1 + 0.13 * Math.sin(5 * x + 1.3) * Math.sin(4 * y + 0.7) * Math.sin(4.5 * z + 2.1) + 0.06 * Math.sin(9 * x + 6 * z); a.setXYZ(i, x * q * 0.33 * W, yc + y * q * ry, z0 + z * q * 0.28 * D); }
+    g.applyMatrix4(Msh(f)); g.computeVertexNormals();
+    add(g, 'cement', 'cement', 'cement', { level: n });
+    anchors.set('cement', toW(f, 0, yc, z0));
+  }
+  // cage em banana ({ at: 'L4-L5', side: 'L' }): arco na metade anterior do disco, de um lado ao outro, girado para o lado do acesso
+  if (mods.cage) {
+    const kf = discKF[mods.cage.at], rot = (mods.cage.side === 'R' ? 15 : -15) * deg, pts = [];
+    for (let a = -55; a <= 55; a += 11) { const t = a * deg, x = 1.5 * Math.sin(t), z = -0.55 + 1.5 * Math.cos(t); pts.push(toW(kf, x * Math.cos(rot) - z * Math.sin(rot), 0, x * Math.sin(rot) + z * Math.cos(rot))); }
+    const up = v(0, 1, 0).applyQuaternion(kf.q);
+    add(tube(pts, () => kf.th / 2 - 0.07, { N: 12, flat: 0.85, upFn: () => up }), 'cage', 'cage', 'cage', { level: mods.cage.at });
+    anchors.set('cage', toW(kf, 0, 0, 0.9));
+  }
+  // parafusos pediculares ('L4.L'): pelo centro do pedículo, convergindo para medial, paralelos à placa terminal; haste liga as cabeças de cada lado
+  const heads = { L: [], R: [] };
+  (mods.screws || []).forEach(k => {
+    const [n, side] = k.split('.'), s = side === 'L' ? 1 : -1, f = F[n], l = LV[n], D = f.Dw, zP = -D / 2 - l.pl, M = Msh(f), W = p => p.clone().applyMatrix4(M);
+    const c = v(s * l.px, 0.12 * f.h, (-D / 2 + 0.35 + zP) / 2), a = (l.r === 'L' ? 5 + 3 * +n.slice(1) : 8) * deg, d = v(-s * Math.sin(a), 0, Math.cos(a));
+    const e = c.clone().addScaledVector(d, (zP - 0.6 - c.z) / d.z), tip = c.clone().addScaledVector(d, (0.3 * D - c.z) / d.z);
+    add(mergeGeoms([rod(W(e), W(tip), 0.3, { r2: 0.16, seg: 14 }), rod(W(e.clone().addScaledVector(d, 0.1)), W(e.clone().addScaledVector(d, -1.1)), 0.46, { seg: 14 })]), 'metal', `screw.${k}`, 'screw', { level: n });
+    anchors.set(`screw.${k}`, W(c));
+    heads[side].push([KI[n], W(e.clone().addScaledVector(d, -0.55))]);
+  });
+  Object.entries(heads).forEach(([side, hs]) => {
+    if (hs.length < 2) return;
+    hs.sort((a, b) => a[0] - b[0]);
+    const a = hs[0][1], b = hs[hs.length - 1][1], u = new V3().subVectors(b, a).normalize();
+    add(rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
+    anchors.set('rod.' + side, a.clone().lerp(b, 0.5));
+  });
 
   // âncora de centros e metadados
   anchors.set('center', SP(KI.T10, 0, 0, 0));
@@ -2107,6 +2208,77 @@ const DZ_QUIZ = [
   ['Qual sinal exige ressonância imediata?', ['Anestesia em sela com retenção urinária', 'Dor lombar que piora ao ficar sentado', 'Rigidez matinal de 15 minutos ao acordar', 'Dor muscular no dia seguinte à academia'], 0, 'Suspeita de síndrome da cauda equina.']
 ];
 
+/* ================= Procedimentos ================= */
+// mesmo formato de DZ, com campos de texto próprios (ind, alvo, tec, inj, risco, evid, pro)
+const PROC_CATS = ['Bloqueios', 'Radiofrequência', 'Disco', 'Endoscopia', 'Corpo vertebral', 'Cirurgia de coluna'];
+const PROC = [
+  {
+    id: 'tfesi', levels: ['L3', 'L4', 'L5'], cat: 0, name: 'Bloqueio radicular transforaminal', lv: 'L4-L5 esquerdo, raiz L4',
+    mods: { needles: [{ to: ['L4', 2.35, -0.25, -1.65], via: ['L4', 2.9, -0.15, -2.48] }], contrast: [{ root: 'L4.L', at: ['L4', 2.19, -0.28, -1.4] }] },
+    cam: { t: 'needle', az: 165, el: 4, d: 26 }, show: 'bone disc neuro', ghost: true, focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['needle', 'Ponta no triângulo de segurança'], ['contrast', 'Contraste na bainha da raiz'], ['root.L4.L', 'Raiz L4'], ['L4.ped.L', 'Pedículo de L4']],
+    ind: 'Dor radicular lombar (ciática) por hérnia de disco ou estenose foraminal que não cedeu com tratamento conservador, com dor na perna maior que a lombar. Serve para aliviar a dor por algumas semanas enquanto a história natural age e, como bloqueio seletivo, para confirmar qual raiz gera a dor antes de uma cirurgia.',
+    alvo: 'O espaço epidural anterior no forame L4-L5, ao redor da raiz L4, que sai logo abaixo do pedículo de L4, e do seu gânglio da raiz dorsal. É ali que a hérnia foraminal toca a raiz e a inflamação química se concentra, por isso o fármaco é levado direto à interface disco-raiz, e não ao espaço epidural posterior como na via interlaminar.',
+    tec: 'Decúbito ventral, radioscopia em oblíqua ipsilateral (vista do cachorrinho escocês) e agulha em visão de túnel. Na via clássica a ponta para no triângulo de segurança, logo abaixo do pedículo de L4 e acima da raiz; Na via infraneural (retrodiscal) entra no triângulo de Kambin, abaixo da raiz e atrás do disco L4-L5, longe das artérias que costumam correr na parte alta do forame. A posição é conferida em AP e perfil com contraste sob fluoroscopia em tempo real ou subtração digital (DSA), que deve contornar a raiz e entrar no espaço epidural sem padrão vascular (Rathmell, Anesthesiology 2015).',
+    inj: 'Corticoide não particulado, em geral dexametasona 10 mg, dose usada na maior comparação com os particulados (El-Yahchouchi, Pain Med 2013), em pequeno volume com anestésico local ou soro. Os particulados (triamcinolona, metilprednisolona, betametasona de depósito) formam agregados capazes de ocluir arteríolas e não são a primeira escolha na via transforaminal lombar (Rathmell, Anesthesiology 2015).',
+    risco: 'A injeção intravascular ocorre em 11,2% das transforaminais lombossacras e em 21,3% em S1, e o refluxo de sangue na aspiração detecta só 44,7% delas (Furman, Spine 2000). A complicação mais temida é o infarto medular com paraplegia, por corticoide particulado injetado numa artéria radiculomedular dominante (Adamkiewicz) de origem baixa: ela nasce entre T9 e L2 em 85% das pessoas, mas pode entrar por um forame lombar (Houten, Spine J 2002). Na via infraneural sobem as injeções intradiscais (4,7%) e intratecais (3,1%) (Levi, Pain Med 2016).',
+    evid: 'Num ensaio duplo-cego, 54% dos tratados com corticoide transforaminal tiveram pelo menos 50% de alívio em 1 mês, contra 7% a 21% com anestésico, soro ou corticoide intramuscular (Ghahreman, Pain Med 2010). Na revisão Cochrane de 25 ensaios, o ganho do corticoide epidural sobre placebo foi pequeno e de curto prazo, cerca de 5 pontos em 100 na dor da perna (Oliveira, Cochrane 2020). Dexametasona e triamcinolona tiveram eficácia parecida em ensaio randomizado, com mais reinjeções no grupo dexametasona (Kennedy, Pain Med 2014).',
+    pro: 'Aspiração negativa não protege, porque deixa passar mais da metade das injeções intravasculares (Furman, Spine 2000). O contraste em tempo real ou DSA vem antes do corticoide; Se ele some em segundos ou desenha um vaso fino que sobe em direção à linha média, a agulha é reposicionada.'
+  },
+  {
+    id: 'rfface', levels: ['L3', 'L4', 'L5'], cat: 1, name: 'Radiofrequência do ramo medial', lv: 'Faceta L4-L5 esquerda',
+    mods: { mbranch: ['L3', 'L4'], rf: ['L3.L', 'L4.L'] },
+    cam: { t: 'L4.tp.L', az: 145, el: 18, d: 24 }, show: 'bone neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['mb.L3.L', 'Ramo medial de L3'], ['mb.L4.L', 'Ramo medial de L4'], ['rflesion.L3.L', 'Lesão de radiofrequência'], ['rf.L4.L', 'Agulha paralela ao nervo'], ['L4.tp.L', 'Transverso de L4']],
+    ind: 'Dor lombar axial crônica de origem facetária, sem radiculopatia, que persiste após cerca de 3 meses de tratamento conservador (Cohen, Reg Anesth Pain Med 2020). Exige bloqueio diagnóstico do ramo medial positivo antes, porque exame e imagem não apontam a faceta dolorosa: o padrão clássico é alívio de pelo menos 80% em dois bloqueios comparativos, e a diretriz multissociedade aceita um único bloqueio com 50% (Cohen, Reg Anesth Pain Med 2020).',
+    alvo: 'O ramo medial do ramo dorsal, onde cruza a junção do processo articular superior com a base do processo transverso, sob o ligamento mamilo-acessório. Cada faceta recebe dois ramos: a L4-L5 é inervada pelos ramos mediais de L3 e de L4, que cruzam os transversos de L4 e L5, e a L5-S1 pelo ramo medial de L4 e pelo ramo dorsal de L5, que corre na asa do sacro.',
+    tec: 'Decúbito ventral, radioscopia com inclinação caudal e oblíqua, para que a agulha de RF corra paralela ao nervo pela goteira entre o articular superior e o transverso, com a ponta ativa sobre o colo do articular superior. A lesão térmica cresce em volta da ponta ativa e pouco à frente dela, e a agulha perpendicular, usada em parte do MINT, tende a errar o nervo (Cohen, Reg Anesth Pain Med 2020). A posição é conferida em AP, oblíqua e perfil; Estimulação motora com contração do multífido e sem resposta na perna afasta a proximidade da raiz.',
+    inj: 'No bloqueio diagnóstico, pequeno volume de anestésico local, de 0,3 a 1 mL por ramo medial (Cohen, Reg Anesth Pain Med 2020). Na neurotomia, após anestesia local do trajeto, a radiofrequência aquece a ponta a 80 °C a 90 °C por 1 a 3 min em cada lesão (Cohen, Reg Anesth Pain Med 2020); Agulhas mais calibrosas e tempos maiores fazem lesões maiores e mais previsíveis.',
+    risco: 'Complicações graves são raras; O mais comum é dor ou disestesia transitória no local e dormência na pele inervada pelo ramo lesado. Na cervical, 5 de 12 tratados tiveram dormência na área dos nervos lesados, nenhum incomodado por ela (Lord, NEJM 1996). Há ainda risco de queimadura pela placa de dispersão e de lesão da raiz se a ponta estiver ventral demais, e a denervação do multífido é esperada (Dreyfuss, Spine 2000).',
+    evid: 'Com seleção por bloqueios controlados, 60% tiveram pelo menos 90% de alívio em 12 meses (Dreyfuss, Spine 2000), e 53% a 58% ficaram sem dor por pelo menos 6 meses, com alívio de cerca de 15 meses após a primeira neurotomia (MacVicar, Pain Med 2013). O MINT, com 251 pacientes no braço facetário, não mostrou diferença clinicamente importante sobre exercício isolado (menos 0,18 ponto na escala de 0 a 10 em 3 meses), num desenho aberto e com seleção por um único bloqueio (Juch, JAMA 2017), e foi criticado por usar agulha perpendicular ao nervo (Cohen, Reg Anesth Pain Med 2020). Na cervical, o ensaio contra simulação mostrou mediana de 263 dias até a dor voltar a 50%, contra 8 dias (Lord, NEJM 1996).',
+    pro: 'Em L5-S1 o alvo de L5 não é um ramo medial e sim o ramo dorsal na goteira entre a asa do sacro e o articular superior de S1, e a crista ilíaca limita a angulação. Agulha paralela e lesão grande valem mais que a estimulação sensitiva antes de lesar (Dreyfuss, Spine 2000).'
+  },
+  {
+    id: 'vplasty', levels: ['T12', 'L1', 'L2'], cat: 4, name: 'Vertebroplastia e cifoplastia', lv: 'L1',
+    mods: { ...DZ.find(d => d.id === 'osteofx').mods, cement: 'L1', needles: [{ to: ['L1', 0.45, 0, 0.6], via: 'L1.ped.L', g: 11, len: 8.5, key: 'trocar.L', info: 'trocar' }, { to: ['L1', -0.45, 0, 0.6], via: 'L1.ped.R', g: 11, len: 8.5, key: 'trocar.R', info: 'trocar' }] },
+    cam: { t: 'L1', az: 90, el: 4, d: 24 }, show: 'bone disc', clip: 'sag', focus: ['T11', 'T12', 'L1', 'L2', 'L3'], hot: [],
+    labels: [['cement', 'Cimento no corpo'], ['trocar.R.meio', 'Trocarte pelo pedículo'], ['L1.body', 'L1 em cunha']],
+    ind: 'Fratura vertebral por compressão osteoporótica dolorosa e recente, com edema da medula óssea na RM (hipersinal em STIR) que mostra fratura não consolidada, e dor que não cede com analgesia. Também se usa em metástase ou mieloma com dor ou risco de colapso; Fratura sem edema em STIR já consolidou e não é alvo.',
+    alvo: 'O osso esponjoso do corpo vertebral fraturado, do terço anterior ao médio, porque a dor vem do micromovimento da fratura e o cimento a estabiliza por dentro. A parede posterior precisa estar íntegra, pois é ela que separa o cimento do canal e da medula.',
+    tec: 'Decúbito ventral, radioscopia biplanar ou TC, trocarte por via transpedicular uni ou bilateral, e em AP a ponta não pode cruzar a borda medial do pedículo antes de, no perfil, passar a parede posterior do corpo. A ponta para no terço anterior do corpo; Na cifoplastia um balão é inflado para criar uma cavidade e recuperar parte da altura antes do cimento. O cimento entra devagar sob fluoroscopia contínua em perfil, e a injeção para quando ele chega perto da parede posterior ou aparece numa veia.',
+    inj: 'Polimetilmetacrilato (PMMA) viscoso com contraste radiopaco, em média 3 a 4 mL por vértebra (Venmans, AJNR 2008). Na cifoplastia o cimento, mais espesso, preenche a cavidade do balão com menos pressão.',
+    risco: 'O vazamento de cimento ocorre em 41% das vértebras na vertebroplastia e em 9% na cifoplastia, quase sempre sem sintoma (Hulme, Spine 2006). Embolia pulmonar de cimento apareceu na TC de 26% dos tratados no VERTOS II, toda assintomática e ligada a vazamento para a veia ázigos (Venmans, AJNR 2010); Compressão medular ou radicular pelo cimento é rara, mas grave. Novas fraturas sintomáticas ocorreram em 9,5% contra 7,3% nos controles, diferença incerta (Buchbinder, Cochrane 2018).',
+    evid: 'Os ensaios contra procedimento simulado de 2009 foram negativos (Buchbinder, NEJM 2009), inclusive o INVEST (Kallmes, NEJM 2009), e o VERTOS IV também não mostrou benefício em 12 meses (Firanescu, BMJ 2018). Os positivos são abertos e contra tratamento conservador: o VERTOS II deu 2,6 pontos a mais de queda da dor na escala de 0 a 10 em 1 mês (Klazen, Lancet 2010), e o FREE, com cifoplastia, 5,2 pontos a mais no componente físico do SF-36 em 1 mês (Wardlaw, Lancet 2009). A revisão Cochrane conclui que, contra simulação, não há benefício clinicamente importante (Buchbinder, Cochrane 2018).',
+    pro: 'A exceção contra simulação é o VAPOUR, positivo em fraturas de menos de 6 semanas com enchimento amplo do corpo (Clark, Lancet 2016). O conjunto aponta forte efeito placebo e história natural favorável, por isso a RM com STIR é o filtro mínimo, e na metástase o mesmo trocarte permite biópsia antes do cimento.'
+  },
+  {
+    id: 'tlif', levels: ['L3', 'L4', 'L5', 'S'], cat: 5, name: 'Artrodese intersomática com cage (TLIF)', lv: 'L4-L5',
+    mods: { disc: { 'L4-L5': { discectomy: true } }, cage: { at: 'L4-L5', side: 'L' }, screws: ['L4.L', 'L4.R', 'L5.L', 'L5.R'], facetectomy: ['L4-L5.L'] },
+    cam: { t: 'cage', az: 115, el: 22, d: 30 }, show: 'bone disc', ghost: true, ax: 'L4-L5', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['cage', 'Cage no espaço discal'], ['screw.L4.L', 'Parafuso pedicular de L4'], ['screw.L5.L', 'Parafuso pedicular de L5'], ['rod.L', 'Haste'], ['fxt.L4-L5.L', 'Faceta retirada (acesso)']],
+    ind: 'Espondilolistese degenerativa ou ístmica com instabilidade dinâmica e dor radicular ou claudicação, estenose cuja descompressão desestabiliza o segmento, recidiva de hérnia no mesmo nível e, em casos muito selecionados, discopatia com dor lombar. A fusão intersomática soma à descompressão a restauração da altura do disco e do forame e o apoio da coluna anterior.',
+    alvo: 'O espaço discal do segmento instável, por exemplo L4-L5, acessado no triângulo entre a raiz que sai (L4), a raiz que desce (L5) e o saco dural. A coluna anterior carrega a maior parte da carga axial, por isso o cage com enxerto no disco consolida sob compressão e devolve altura ao forame, descomprimindo a raiz de forma indireta.',
+    tec: 'Decúbito ventral, acesso posterior mediano ou paramediano minimamente invasivo, com parafusos pediculares guiados por radioscopia ou navegação por TC. No TLIF retira-se toda a faceta de um lado e o disco é abordado pelo forame, lateral ao saco dural, quase sem retraí-lo; No PLIF a laminectomia é bilateral e o disco é abordado dos dois lados do canal, afastando a dura e a raiz para a linha média. Após discectomia e preparo das placas terminais, o cage é colocado sob radioscopia em AP e perfil e as hastes comprimem o segmento sobre ele.',
+    inj: 'Cage de PEEK ou titânio cheio de enxerto ósseo autólogo, em geral o osso local da laminectomia e da faceta, às vezes crista ilíaca ou substitutos, mais parafusos pediculares em cada vértebra ligados por duas hastes. No PLIF costumam ser dois cages, um de cada lado; No TLIF, um cage oblíquo ou curvo levado à parte anterior do disco.',
+    risco: 'Numa meta-análise de espondilolistese, as complicações somaram 8,7% no TLIF e 17,0% no PLIF (de Kunder, Spine J 2017), e o TLIF teve menos lesão de raiz e menos rotura dural (Lan, World Neurosurg 2018). Outros riscos são parafuso mal posicionado, infecção, migração do cage e pseudoartrose. A doença do segmento adjacente que exigiu nova cirurgia chegou a 16,5% em 5 anos e 36,1% em 10 anos após artrodese posterior (Ghiselli, JBJS 2004).',
+    evid: 'No SLIP, em listese degenerativa grau I, somar fusão posterolateral instrumentada à laminectomia deu 5,7 pontos a mais no SF-36 físico em 2 anos, sem diferença no ODI, e menos reoperação (14% contra 34%) (Ghogawala, NEJM 2016). No estudo sueco, com 247 pacientes com estenose, pouco mais da metade com listese, a fusão não melhorou o ODI em 2 e 5 anos, alongou a internação (7,4 contra 4,1 dias) e não reduziu reoperação (22% contra 21%) (Försth, NEJM 2016). TLIF e PLIF têm taxa de fusão e satisfação semelhantes (Lan, World Neurosurg 2018); Nenhum dos dois ensaios grandes testou o cage, e sim a fusão em si.',
+    pro: 'No TLIF, a facetectomia completa de um lado expõe o triângulo entre a raiz que sai, a que desce e a dura, por onde se entra no disco sem afastar o saco. Cage bem anterior e compressão das hastes sobre ele ajudam a recuperar a lordose do segmento.'
+  }
+];
+// nomes das peças novas no cartão de estrutura (clique no 3D)
+Object.assign(INFO, {
+  needle: ['Agulha', 'Agulha espinhal fina, de aço, levada até o alvo sob radioscopia.'],
+  trocar: ['Trocarte', 'Cânula grossa que passa pelo pedículo até o corpo vertebral.'],
+  rfneedle: ['Agulha de radiofrequência', 'Cânula isolada com a ponta ativa exposta, que aquece o tecido em volta.'],
+  contrast: ['Contraste', 'Mostra na radioscopia para onde o injetado se espalha.'],
+  mbranch: ['Ramo medial do ramo dorsal', 'Nervo fino que leva a sensibilidade da faceta.'],
+  rflesion: ['Lesão de radiofrequência', 'Volume aquecido em volta da parte ativa da agulha.'],
+  cement: ['Cimento ósseo', 'Polimetilmetacrilato que endurece dentro do corpo vertebral.'],
+  cage: ['Cage intersomática', 'Espaçador no lugar do disco, com enxerto, para a fusão entre os corpos.'],
+  screw: ['Parafuso pedicular', 'Entra pelo pedículo até o corpo vertebral.'],
+  rod: ['Haste', 'Liga os parafusos do mesmo lado e fixa o segmento.']
+});
+
 /* ================= Aplicação ================= */
 (function () {
   const $ = s => document.querySelector(s);
@@ -2118,7 +2290,7 @@ const DZ_QUIZ = [
   /* ---------- estado e progresso (independem do 3D) ---------- */
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
-  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.quiz = store.quiz || {};
+  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
   const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
@@ -2173,7 +2345,12 @@ const DZ_QUIZ = [
       cord: { c: '#F2E3C4', r: .55, cut: '#E6CDA0', L: 'neuro' }, cordLesion: { c: '#E04E36', r: .5, op: .82, L: 'path', noCut: 1 },
       dura: { c: '#B4ACD6', r: .4, op: .24, L: 'neuro', noCut: 1 }, root: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }, drg: { c: '#DDA61B', r: .5, cut: '#C98F12', L: 'neuro' },
       artery: { c: '#C9403F', r: .36, cut: '#8E2626', L: 'vessel' }, vein: { c: '#3F63AA', r: .36, cut: '#2B4A88', L: 'vessel' },
-      lesion: { c: '#C8361F', r: .5, L: 'path' }, tumor: { c: '#7D2236', r: .55, cut: '#6C1B2C', L: 'path' }, abscess: { c: '#E2903A', r: .4, op: .6, L: 'path', noCut: 1 }
+      lesion: { c: '#C8361F', r: .5, L: 'path' }, tumor: { c: '#7D2236', r: .55, cut: '#6C1B2C', L: 'path' }, abscess: { c: '#E2903A', r: .4, op: .6, L: 'path', noCut: 1 },
+      // procedimentos: instrumento e o que entra no paciente ficam sempre visíveis, como as lesões; m é o metalness
+      metal: { c: '#D3D8DD', r: .3, m: .25, cut: '#E4E7EA', L: 'path' }, needleTip: { c: '#E35A3E', r: .4, cut: '#E88F7B', L: 'path' },
+      contrast: { c: '#2F6FD6', r: .35, op: .5, L: 'path', noCut: 1 }, rfLesion: { c: '#F08A24', r: .5, op: .55, L: 'path', noCut: 1 },
+      cement: { c: '#D5D9D6', r: .75, cut: '#AEB4B2', L: 'path' }, cage: { c: '#5F7184', r: .45, cut: '#8496A8', L: 'path' },
+      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }
     };
     TINT = { C: '#C9D8E8', T: '#D3E2C8', L: '#EBD3A6', S: '#E6C8BE' };
     C = h => new THREE.Color(h).convertSRGBToLinear();
@@ -2183,7 +2360,7 @@ const DZ_QUIZ = [
       const K = KIND[kind] || KIND.bone;
       let color = K.c, op = K.op ?? 1;
       if (variant[0] === 't') color = TINT[variant[1]] || K.c;
-      const m = new THREE.MeshStandardMaterial({ color: C(color), roughness: K.r ?? .6, metalness: 0, side: THREE.DoubleSide, transparent: op < 1, opacity: op, depthWrite: op >= 1 });
+      const m = new THREE.MeshStandardMaterial({ color: C(color), roughness: K.r ?? .6, metalness: K.m ?? 0, side: THREE.DoubleSide, transparent: op < 1, opacity: op, depthWrite: op >= 1 });
       let cut = K.cut || K.c, useCut = !K.noCut;
       if (variant === 'f') { m.transparent = true; m.opacity = Math.min(op, .055); m.depthWrite = false; m.side = THREE.FrontSide; useCut = false; }
       if (variant === 'g') { m.transparent = true; m.opacity = .13; m.depthWrite = false; m.side = THREE.FrontSide; useCut = false; }
@@ -2234,7 +2411,8 @@ const DZ_QUIZ = [
      Por grupo (camada de desenho = profundidade de aninhamento + cor de corte), o stencil marca onde o plano está
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
-  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6 };
+  // cimento, cage e metal ficam por cima do osso e do disco onde estão
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6 };
   // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {
@@ -2262,7 +2440,7 @@ const DZ_QUIZ = [
       if (selOn) variant = S.sel.has(m) ? 's' : (inFocus(u) ? 'd' : 'f');
       else if (isHot(u)) variant = 'h';
       else if (!inFocus(u)) variant = 'f';
-      else if (S.ghost && K.g) variant = 'g';
+      else if (S.ghost && (K.g || u.g)) variant = 'g';
       else if (S.tint && u.kind === 'bone' && u.region && TINT[u.region]) variant = 't' + u.region;
       m.material = getMat(u.kind, variant);
       m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : variant === 'n' ? (K.order || 0) : 0;
@@ -2453,7 +2631,7 @@ const DZ_QUIZ = [
     b.addEventListener('click', () => {
       if (k === 'ghost') { S.ghost = !S.ghost; applyVisuals(); }
       if (k === 'sag') { const on = S.clip !== 'sag'; setClip(on ? 'sag' : null); if (on) { const s = sph(camera.position, controls.target); const tg = cutTargets(); let t = controls.target.clone(), d = s.r; if (tg.length) { t = new V3(); tg.forEach(m => t.add(boxOf(m).getCenter(new V3()))); t.multiplyScalar(1 / tg.length); d = Math.max(16, Math.min(s.r, 40)); } flyTo({ t: t.setX(S.sagX || 0), az: 90, el: 4, d }, 800); if ((S.sagX || 0) > 0.3) say('Corte sagital fora da linha média, passando pela lesão.'); } }
-      if (k === 'ax') { const on = !(S.clip && S.clip.startsWith('ax:')); if (on && !S.axUser && !(S.cfg && S.cfg.clip && S.cfg.clip.startsWith('ax:'))) { S.axPt = null; const f = focusLevel(); if (f) S.axLevel = f; } setClip(on ? 'ax:' + S.axLevel : null); if (on) flyTo({ t: axTarget(S.axLevel), az: 0, el: -78, d: 24 }, 900); }
+      if (k === 'ax') { const on = !(S.clip && S.clip.startsWith('ax:')); if (on && !S.axUser && !(S.cfg && S.cfg.clip && S.cfg.clip.startsWith('ax:'))) { S.axPt = null; const f = (S.cfg && S.cfg.ax) || focusLevel(); if (f) S.axLevel = f; } setClip(on ? 'ax:' + S.axLevel : null); if (on) flyTo({ t: axTarget(S.axLevel), az: 0, el: -78, d: 24 }, 900); }
       if (k === 'labels') S.labelsOn = !S.labelsOn;
       if (k === 'reset' && S.cfg) applyConfig(S.cfg, true, true);
       syncTools();
@@ -2501,9 +2679,10 @@ const DZ_QUIZ = [
     bs.forEach(b => { b.hidden = !!list && !list.includes(b.dataset.lv); b.tabIndex = -1; });
     const firstVis = bs.find(b => !b.hidden); if (firstVis) firstVis.tabIndex = 0;
     rulerEl.classList.toggle('short', !!list);
-    rulerEl.setAttribute('aria-label', list ? 'Níveis envolvidos nesta doença' : 'Ir para um nível da coluna');
+    const P = S.mode === 'proc';
+    rulerEl.setAttribute('aria-label', list ? 'Níveis envolvidos ' + (P ? 'neste procedimento' : 'nesta doença') : 'Ir para um nível da coluna');
     const opts = RULER.filter(([n]) => !list || list.includes(n));
-    lvsel.innerHTML = `<option value="">${list ? 'Níveis desta doença…' : 'Ir para nível…'}</option>` + opts.map(([n]) => `<option value="${n}">${n === 'S' ? 'Sacro' : n === 'Co' ? 'Cóccix' : n}</option>`).join('');
+    lvsel.innerHTML = `<option value="">${list ? (P ? 'Níveis deste procedimento…' : 'Níveis desta doença…') : 'Ir para nível…'}</option>` + opts.map(([n]) => `<option value="${n}">${n === 'S' ? 'Sacro' : n === 'Co' ? 'Cóccix' : n}</option>`).join('');
   }
   function clearRuler() { rulerEl.querySelectorAll('button').forEach(b => b.classList.remove('on')); lvsel.value = ''; }
   function goLevel(n) {
@@ -2636,11 +2815,12 @@ const DZ_QUIZ = [
     S.focusIdx = []; (cfg.focus || []).forEach(n => { const KI = model.KI; if (n === 'S') S.focusIdx.push(KI.S1, KI.S2, KI.S3, KI.S4, KI.S5); else if (n === 'Co') S.focusIdx.push(KI.Co1, KI.Co2, KI.Co3, KI.Co4); else if (n === 'Occ') S.focusIdx.push(0); else if (KI[n] !== undefined) S.focusIdx.push(KI[n]); });
     S.hot = new Set(cfg.hot || []);
     S.sel = null; S.selKey = null; infoEl.hidden = true; hintEl.hidden = false; clearRuler();
-    setRulerLevels(S.mode === 'dz' && S.dz && cfg.levels ? cfg.levels : null);
+    setRulerLevels(S.mode !== 'anat' && S.dz && cfg.levels ? cfg.levels : null);
     S.axUser = false; S.axPt = null;
     if (cfg.clip && cfg.clip.startsWith('ax:')) S.axLevel = cfg.clip.slice(3);
     // o botão já mostra o nível que o clique vai usar (o mesmo cálculo do clique), não o último usado
-    else { const f = focusLevel(); if (f) S.axLevel = f; }
+    // ax: nível do corte axial da barra quando o passo não abre cortado (sem ele, o nível com mais lesões)
+    else { const f = cfg.ax || focusLevel(); if (f) S.axLevel = f; }
     setClip(cfg.clip || null);
     setDenis(cfg.extra === 'denis');
     applyVisuals();
@@ -2673,12 +2853,14 @@ const DZ_QUIZ = [
   setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
-    railH.textContent = S.mode === 'anat' ? 'Capítulos' : 'Grupos de doenças';
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : 'Grupos de doenças';
     if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goStep(ALL_STEPS.findIndex(s => s.ch === +b.dataset.ch), true));
     } else {
-      chapEl.innerHTML = DZ_CATS.map((c, i) => `<button data-c="${i}" aria-current="${S.dz && DZ.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>`).join('');
+      // só os grupos que têm itens (a lista de procedimentos ainda é parcial)
+      const L = items();
+      chapEl.innerHTML = cats().map((c, i) => L.some(d => d.cat === i) ? `<button data-c="${i}" aria-current="${S.dz && L.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>` : '').join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => { if (S.dz) closeDz(); const t = scrollEl.querySelector(`[data-cat="${b.dataset.c}"]`); if (t) { t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); } });
     }
     const cur = chapEl.querySelector('[aria-current="step"]');
@@ -2790,53 +2972,71 @@ const DZ_QUIZ = [
       const x = describe(ms[0]); return [k, x.title + (x.meta ? ', ' + x.meta.split(',')[0] : '')];
     }).filter(Boolean);
   }
+  // procedimentos reaproveitam o fluxo das doenças (lista, ficha, régua, rótulos); só os campos de texto mudam
+  function items() { return S.mode === 'proc' ? PROC : DZ; }
+  function cats() { return S.mode === 'proc' ? PROC_CATS : DZ_CATS; }
   function closeDz() { S.dz = null; rebuild({}); applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(); }
   function renderDz(moveFocus) {
     renderChapters(); progress();
+    const P = S.mode === 'proc', L = items(), seen = P ? store.procSeen : store.dzSeen;
     if (!S.dz) {
-      const allSeen = DZ.every(d => store.dzSeen.includes(d.id)) && ALL_STEPS.every((s, i) => store.seen.includes(i));
-      let h = `<h2>Doenças da coluna</h2>`;
-      if (allSeen) h += `<div class="donebox"><p><strong>Você passou pelas ${ALL_STEPS.length} etapas de anatomia e pelas ${DZ.length} doenças.</strong> Feche com o teste final no fim da lista e, depois, revise os capítulos que tiveram erros.</p></div>`;
-      h += `<p>Cada doença altera o mesmo modelo no ponto onde ela acontece. Use Normal e Com a doença para comparar.</p>`;
-      DZ_CATS.forEach((c, i) => {
-        h += `<h3 class="dzcat" data-cat="${i}" tabindex="-1">${c}</h3><div class="dzlist">` + DZ.filter(d => d.cat === i).map(d => `<button class="dzi ${store.dzSeen.includes(d.id) ? 'seen' : ''}" data-id="${d.id}"><span>${esc(d.name)}</span><em>${esc(d.lv)}</em></button>`).join('') + `</div>`;
+      let h;
+      if (P) h = `<h2>Procedimentos</h2><p>Cada procedimento mostra no mesmo modelo a agulha ou o instrumento e o que entra no paciente.</p>`;
+      else {
+        const allSeen = DZ.every(d => store.dzSeen.includes(d.id)) && ALL_STEPS.every((s, i) => store.seen.includes(i));
+        h = `<h2>Doenças da coluna</h2>`;
+        if (allSeen) h += `<div class="donebox"><p><strong>Você passou pelas ${ALL_STEPS.length} etapas de anatomia e pelas ${DZ.length} doenças.</strong> Feche com o teste final no fim da lista e, depois, revise os capítulos que tiveram erros.</p></div>`;
+        h += `<p>Cada doença altera o mesmo modelo no ponto onde ela acontece. Use Normal e Com a doença para comparar.</p>`;
+      }
+      cats().forEach((c, i) => {
+        const its = L.filter(d => d.cat === i); if (!its.length) return;
+        h += `<h3 class="dzcat" data-cat="${i}" tabindex="-1">${c}</h3><div class="dzlist">` + its.map(d => `<button class="dzi ${seen.includes(d.id) ? 'seen' : ''}" data-id="${d.id}"><span>${esc(d.name)}</span><em>${esc(d.lv)}</em></button>`).join('') + `</div>`;
       });
-      h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
-      h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
+      if (!P) {
+        h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
+        h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
+      }
       scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
       scrollEl.querySelectorAll('.dzi').forEach(b => b.onclick = () => openDz(b.dataset.id, true));
-      bindQuiz('dz', 'dz');
-      setNav(`<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
-      $('#toanat').onclick = () => setMode('anat', true);
-      $('#first').onclick = () => openDz(DZ[0].id, true);
+      if (!P) bindQuiz('dz', 'dz');
+      setNav(P ? `<button class="btn" id="toanat">Voltar às doenças</button><button class="btn primary" id="first">Começar pelo primeiro</button>`
+        : `<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
+      $('#toanat').onclick = () => setMode(P ? 'dz' : 'anat', true);
+      $('#first').onclick = () => openDz(L[0].id, true);
       if (moveFocus) focusTitle();
       return;
     }
-    const d = DZ.find(x => x.id === S.dz), i = DZ.indexOf(d);
-    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>
-      <div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
-    [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]].forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
+    const d = L.find(x => x.id === S.dz), i = L.indexOf(d);
+    let h = `<button class="back" id="back">← ${P ? 'Todos os procedimentos' : 'Todas as doenças'}</button><div class="eyebrow">${cats()[d.cat]}, ${i + 1} de ${L.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>`;
+    // procedimento não tem versão "normal" para comparar: sem a alternância
+    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
+    (P ? [['Indicação', d.ind], ['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
+      : [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]]).forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
-    h += seeHtml(S.dzOn ? d.labels : neutralLabels(d));
+    h += seeHtml(P || S.dzOn ? d.labels : neutralLabels(d));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     $('#back').onclick = () => { closeDz(); focusTitle(); };
-    $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
-    $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+    if (!P) {
+      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
+      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+    }
     bindSee();
-    const lastDz = i === DZ.length - 1;
-    setNav(`<button class="btn" id="prev" ${i === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next">${lastDz ? 'Concluir e ir ao teste final' : 'Próxima'}</button>`);
-    $('#prev').onclick = () => openDz(DZ[i - 1].id);
-    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(DZ[i + 1].id); };
+    const lastDz = i === L.length - 1;
+    setNav(`<button class="btn" id="prev" ${i === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next">${lastDz ? (P ? 'Concluir' : 'Concluir e ir ao teste final') : P ? 'Próximo' : 'Próxima'}</button>`);
+    $('#prev').onclick = () => openDz(L[i - 1].id);
+    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(L[i + 1].id); };
     if (moveFocus) focusTitle();
   }
+  // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
-    const d = DZ.find(x => x.id === id); S.dz = id; S.dzOn = true;
-    if (S.mode !== 'dz') { S.mode = 'dz'; syncMode(); }
-    if (!store.dzSeen.includes(id)) { store.dzSeen.push(id); save(); }
+    const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
+    S.dz = id; S.dzOn = true;
+    if (S.mode !== m) { S.mode = m; syncMode(); }
+    if (!seen.includes(id)) { seen.push(id); save(); }
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);
     say(d.name + '.');
   }
-  function syncMode() { $('#m-anat').setAttribute('aria-pressed', S.mode === 'anat'); $('#m-dz').setAttribute('aria-pressed', S.mode === 'dz'); }
+  function syncMode() { ['anat', 'dz', 'proc'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k)); }
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
@@ -2844,6 +3044,7 @@ const DZ_QUIZ = [
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');
   $('#m-dz').onclick = () => S.mode !== 'dz' && setMode('dz');
+  $('#m-proc').onclick = () => S.mode !== 'proc' && setMode('proc');
   function progress() {
     const a = store.seen.length, d = store.dzSeen.length, tot = ALL_STEPS.length + DZ.length;
     $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
@@ -2887,7 +3088,7 @@ const DZ_QUIZ = [
   }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
-    store.seen = []; store.dzSeen = []; save();
+    store.seen = []; store.dzSeen = []; store.procSeen = []; save();
     if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
   };
   document.addEventListener('keydown', e => {

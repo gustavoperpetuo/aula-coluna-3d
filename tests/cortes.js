@@ -16,7 +16,7 @@ const fs=require('fs');
   const tool=k=>document.querySelector(`[data-tool=${k}]`).click();
   const check=(label)=>{ const t=targets(); const lost=[...new Set(t.filter(m=>!kept(m)).map(m=>m.userData.key))]; const keptK=[...new Set(t.filter(kept).map(m=>m.userData.key))]; return {label, n:t.length, lost, kept:keptK.length}; };
   const res=[];
-  for(const d of DZ){ X.openDz(d.id); await w(250);
+  for(const d of [...DZ,...PROC]){ X.openDz(d.id); await w(250);
     const base=X.S.clip; 
     // sagittal on
     if(X.S.clip!=='sag'){ tool('sag'); await w(150);} const sg=check(d.id+' sag x='+(X.S.sagX||0).toFixed(2)+(d.clip==='sag'?' [cfg]':''));

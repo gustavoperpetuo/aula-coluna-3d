@@ -13,7 +13,7 @@ const fs=require('fs');
  await p.goto('http://local.test/'); await p.waitForTimeout(2500);
  const bad=await p.evaluate(async()=>{
   const sp=__spine, out=new Set(), q=1e4;
-  for(const id of [null,...DZ.map(d=>d.id)]){
+  for(const id of [null,...DZ.map(d=>d.id),...PROC.map(d=>d.id)]){
    if(id){sp.openDz(id); await new Promise(r=>setTimeout(r,300));}
    for(const m of sp.model.meshes){
     if(m.userData.shell) continue;

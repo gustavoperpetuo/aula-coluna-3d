@@ -9,7 +9,7 @@
   /* ---------- estado e progresso (independem do 3D) ---------- */
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
-  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.quiz = store.quiz || {};
+  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
   const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
@@ -64,7 +64,12 @@
       cord: { c: '#F2E3C4', r: .55, cut: '#E6CDA0', L: 'neuro' }, cordLesion: { c: '#E04E36', r: .5, op: .82, L: 'path', noCut: 1 },
       dura: { c: '#B4ACD6', r: .4, op: .24, L: 'neuro', noCut: 1 }, root: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }, drg: { c: '#DDA61B', r: .5, cut: '#C98F12', L: 'neuro' },
       artery: { c: '#C9403F', r: .36, cut: '#8E2626', L: 'vessel' }, vein: { c: '#3F63AA', r: .36, cut: '#2B4A88', L: 'vessel' },
-      lesion: { c: '#C8361F', r: .5, L: 'path' }, tumor: { c: '#7D2236', r: .55, cut: '#6C1B2C', L: 'path' }, abscess: { c: '#E2903A', r: .4, op: .6, L: 'path', noCut: 1 }
+      lesion: { c: '#C8361F', r: .5, L: 'path' }, tumor: { c: '#7D2236', r: .55, cut: '#6C1B2C', L: 'path' }, abscess: { c: '#E2903A', r: .4, op: .6, L: 'path', noCut: 1 },
+      // procedimentos: instrumento e o que entra no paciente ficam sempre visíveis, como as lesões; m é o metalness
+      metal: { c: '#D3D8DD', r: .3, m: .25, cut: '#E4E7EA', L: 'path' }, needleTip: { c: '#E35A3E', r: .4, cut: '#E88F7B', L: 'path' },
+      contrast: { c: '#2F6FD6', r: .35, op: .5, L: 'path', noCut: 1 }, rfLesion: { c: '#F08A24', r: .5, op: .55, L: 'path', noCut: 1 },
+      cement: { c: '#D5D9D6', r: .75, cut: '#AEB4B2', L: 'path' }, cage: { c: '#5F7184', r: .45, cut: '#8496A8', L: 'path' },
+      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }
     };
     TINT = { C: '#C9D8E8', T: '#D3E2C8', L: '#EBD3A6', S: '#E6C8BE' };
     C = h => new THREE.Color(h).convertSRGBToLinear();
@@ -74,7 +79,7 @@
       const K = KIND[kind] || KIND.bone;
       let color = K.c, op = K.op ?? 1;
       if (variant[0] === 't') color = TINT[variant[1]] || K.c;
-      const m = new THREE.MeshStandardMaterial({ color: C(color), roughness: K.r ?? .6, metalness: 0, side: THREE.DoubleSide, transparent: op < 1, opacity: op, depthWrite: op >= 1 });
+      const m = new THREE.MeshStandardMaterial({ color: C(color), roughness: K.r ?? .6, metalness: K.m ?? 0, side: THREE.DoubleSide, transparent: op < 1, opacity: op, depthWrite: op >= 1 });
       let cut = K.cut || K.c, useCut = !K.noCut;
       if (variant === 'f') { m.transparent = true; m.opacity = Math.min(op, .055); m.depthWrite = false; m.side = THREE.FrontSide; useCut = false; }
       if (variant === 'g') { m.transparent = true; m.opacity = .13; m.depthWrite = false; m.side = THREE.FrontSide; useCut = false; }
@@ -125,7 +130,8 @@
      Por grupo (camada de desenho = profundidade de aninhamento + cor de corte), o stencil marca onde o plano está
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
-  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6 };
+  // cimento, cage e metal ficam por cima do osso e do disco onde estão
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6 };
   // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {
@@ -153,7 +159,7 @@
       if (selOn) variant = S.sel.has(m) ? 's' : (inFocus(u) ? 'd' : 'f');
       else if (isHot(u)) variant = 'h';
       else if (!inFocus(u)) variant = 'f';
-      else if (S.ghost && K.g) variant = 'g';
+      else if (S.ghost && (K.g || u.g)) variant = 'g';
       else if (S.tint && u.kind === 'bone' && u.region && TINT[u.region]) variant = 't' + u.region;
       m.material = getMat(u.kind, variant);
       m.renderOrder = variant === 's' ? 1 : (variant === 'f' || variant === 'g' || variant === 'd' || (K.op ?? 1) < 1) ? 2 : variant === 'n' ? (K.order || 0) : 0;
@@ -344,7 +350,7 @@
     b.addEventListener('click', () => {
       if (k === 'ghost') { S.ghost = !S.ghost; applyVisuals(); }
       if (k === 'sag') { const on = S.clip !== 'sag'; setClip(on ? 'sag' : null); if (on) { const s = sph(camera.position, controls.target); const tg = cutTargets(); let t = controls.target.clone(), d = s.r; if (tg.length) { t = new V3(); tg.forEach(m => t.add(boxOf(m).getCenter(new V3()))); t.multiplyScalar(1 / tg.length); d = Math.max(16, Math.min(s.r, 40)); } flyTo({ t: t.setX(S.sagX || 0), az: 90, el: 4, d }, 800); if ((S.sagX || 0) > 0.3) say('Corte sagital fora da linha média, passando pela lesão.'); } }
-      if (k === 'ax') { const on = !(S.clip && S.clip.startsWith('ax:')); if (on && !S.axUser && !(S.cfg && S.cfg.clip && S.cfg.clip.startsWith('ax:'))) { S.axPt = null; const f = focusLevel(); if (f) S.axLevel = f; } setClip(on ? 'ax:' + S.axLevel : null); if (on) flyTo({ t: axTarget(S.axLevel), az: 0, el: -78, d: 24 }, 900); }
+      if (k === 'ax') { const on = !(S.clip && S.clip.startsWith('ax:')); if (on && !S.axUser && !(S.cfg && S.cfg.clip && S.cfg.clip.startsWith('ax:'))) { S.axPt = null; const f = (S.cfg && S.cfg.ax) || focusLevel(); if (f) S.axLevel = f; } setClip(on ? 'ax:' + S.axLevel : null); if (on) flyTo({ t: axTarget(S.axLevel), az: 0, el: -78, d: 24 }, 900); }
       if (k === 'labels') S.labelsOn = !S.labelsOn;
       if (k === 'reset' && S.cfg) applyConfig(S.cfg, true, true);
       syncTools();
@@ -392,9 +398,10 @@
     bs.forEach(b => { b.hidden = !!list && !list.includes(b.dataset.lv); b.tabIndex = -1; });
     const firstVis = bs.find(b => !b.hidden); if (firstVis) firstVis.tabIndex = 0;
     rulerEl.classList.toggle('short', !!list);
-    rulerEl.setAttribute('aria-label', list ? 'Níveis envolvidos nesta doença' : 'Ir para um nível da coluna');
+    const P = S.mode === 'proc';
+    rulerEl.setAttribute('aria-label', list ? 'Níveis envolvidos ' + (P ? 'neste procedimento' : 'nesta doença') : 'Ir para um nível da coluna');
     const opts = RULER.filter(([n]) => !list || list.includes(n));
-    lvsel.innerHTML = `<option value="">${list ? 'Níveis desta doença…' : 'Ir para nível…'}</option>` + opts.map(([n]) => `<option value="${n}">${n === 'S' ? 'Sacro' : n === 'Co' ? 'Cóccix' : n}</option>`).join('');
+    lvsel.innerHTML = `<option value="">${list ? (P ? 'Níveis deste procedimento…' : 'Níveis desta doença…') : 'Ir para nível…'}</option>` + opts.map(([n]) => `<option value="${n}">${n === 'S' ? 'Sacro' : n === 'Co' ? 'Cóccix' : n}</option>`).join('');
   }
   function clearRuler() { rulerEl.querySelectorAll('button').forEach(b => b.classList.remove('on')); lvsel.value = ''; }
   function goLevel(n) {
@@ -527,11 +534,12 @@
     S.focusIdx = []; (cfg.focus || []).forEach(n => { const KI = model.KI; if (n === 'S') S.focusIdx.push(KI.S1, KI.S2, KI.S3, KI.S4, KI.S5); else if (n === 'Co') S.focusIdx.push(KI.Co1, KI.Co2, KI.Co3, KI.Co4); else if (n === 'Occ') S.focusIdx.push(0); else if (KI[n] !== undefined) S.focusIdx.push(KI[n]); });
     S.hot = new Set(cfg.hot || []);
     S.sel = null; S.selKey = null; infoEl.hidden = true; hintEl.hidden = false; clearRuler();
-    setRulerLevels(S.mode === 'dz' && S.dz && cfg.levels ? cfg.levels : null);
+    setRulerLevels(S.mode !== 'anat' && S.dz && cfg.levels ? cfg.levels : null);
     S.axUser = false; S.axPt = null;
     if (cfg.clip && cfg.clip.startsWith('ax:')) S.axLevel = cfg.clip.slice(3);
     // o botão já mostra o nível que o clique vai usar (o mesmo cálculo do clique), não o último usado
-    else { const f = focusLevel(); if (f) S.axLevel = f; }
+    // ax: nível do corte axial da barra quando o passo não abre cortado (sem ele, o nível com mais lesões)
+    else { const f = cfg.ax || focusLevel(); if (f) S.axLevel = f; }
     setClip(cfg.clip || null);
     setDenis(cfg.extra === 'denis');
     applyVisuals();
@@ -564,12 +572,14 @@
   setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
-    railH.textContent = S.mode === 'anat' ? 'Capítulos' : 'Grupos de doenças';
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : 'Grupos de doenças';
     if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goStep(ALL_STEPS.findIndex(s => s.ch === +b.dataset.ch), true));
     } else {
-      chapEl.innerHTML = DZ_CATS.map((c, i) => `<button data-c="${i}" aria-current="${S.dz && DZ.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>`).join('');
+      // só os grupos que têm itens (a lista de procedimentos ainda é parcial)
+      const L = items();
+      chapEl.innerHTML = cats().map((c, i) => L.some(d => d.cat === i) ? `<button data-c="${i}" aria-current="${S.dz && L.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>` : '').join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => { if (S.dz) closeDz(); const t = scrollEl.querySelector(`[data-cat="${b.dataset.c}"]`); if (t) { t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); } });
     }
     const cur = chapEl.querySelector('[aria-current="step"]');
@@ -681,53 +691,71 @@
       const x = describe(ms[0]); return [k, x.title + (x.meta ? ', ' + x.meta.split(',')[0] : '')];
     }).filter(Boolean);
   }
+  // procedimentos reaproveitam o fluxo das doenças (lista, ficha, régua, rótulos); só os campos de texto mudam
+  function items() { return S.mode === 'proc' ? PROC : DZ; }
+  function cats() { return S.mode === 'proc' ? PROC_CATS : DZ_CATS; }
   function closeDz() { S.dz = null; rebuild({}); applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(); }
   function renderDz(moveFocus) {
     renderChapters(); progress();
+    const P = S.mode === 'proc', L = items(), seen = P ? store.procSeen : store.dzSeen;
     if (!S.dz) {
-      const allSeen = DZ.every(d => store.dzSeen.includes(d.id)) && ALL_STEPS.every((s, i) => store.seen.includes(i));
-      let h = `<h2>Doenças da coluna</h2>`;
-      if (allSeen) h += `<div class="donebox"><p><strong>Você passou pelas ${ALL_STEPS.length} etapas de anatomia e pelas ${DZ.length} doenças.</strong> Feche com o teste final no fim da lista e, depois, revise os capítulos que tiveram erros.</p></div>`;
-      h += `<p>Cada doença altera o mesmo modelo no ponto onde ela acontece. Use Normal e Com a doença para comparar.</p>`;
-      DZ_CATS.forEach((c, i) => {
-        h += `<h3 class="dzcat" data-cat="${i}" tabindex="-1">${c}</h3><div class="dzlist">` + DZ.filter(d => d.cat === i).map(d => `<button class="dzi ${store.dzSeen.includes(d.id) ? 'seen' : ''}" data-id="${d.id}"><span>${esc(d.name)}</span><em>${esc(d.lv)}</em></button>`).join('') + `</div>`;
+      let h;
+      if (P) h = `<h2>Procedimentos</h2><p>Cada procedimento mostra no mesmo modelo a agulha ou o instrumento e o que entra no paciente.</p>`;
+      else {
+        const allSeen = DZ.every(d => store.dzSeen.includes(d.id)) && ALL_STEPS.every((s, i) => store.seen.includes(i));
+        h = `<h2>Doenças da coluna</h2>`;
+        if (allSeen) h += `<div class="donebox"><p><strong>Você passou pelas ${ALL_STEPS.length} etapas de anatomia e pelas ${DZ.length} doenças.</strong> Feche com o teste final no fim da lista e, depois, revise os capítulos que tiveram erros.</p></div>`;
+        h += `<p>Cada doença altera o mesmo modelo no ponto onde ela acontece. Use Normal e Com a doença para comparar.</p>`;
+      }
+      cats().forEach((c, i) => {
+        const its = L.filter(d => d.cat === i); if (!its.length) return;
+        h += `<h3 class="dzcat" data-cat="${i}" tabindex="-1">${c}</h3><div class="dzlist">` + its.map(d => `<button class="dzi ${seen.includes(d.id) ? 'seen' : ''}" data-id="${d.id}"><span>${esc(d.name)}</span><em>${esc(d.lv)}</em></button>`).join('') + `</div>`;
       });
-      h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
-      h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
+      if (!P) {
+        h += `<h3 class="dzcat">Teste final de patologia</h3>` + quizHtml(DZ_QUIZ, 'dz');
+        h += `<details class="others"><summary>Outras condições para conhecer</summary><dl>${DZ_OTHERS.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>`;
+      }
       scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
       scrollEl.querySelectorAll('.dzi').forEach(b => b.onclick = () => openDz(b.dataset.id, true));
-      bindQuiz('dz', 'dz');
-      setNav(`<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
-      $('#toanat').onclick = () => setMode('anat', true);
-      $('#first').onclick = () => openDz(DZ[0].id, true);
+      if (!P) bindQuiz('dz', 'dz');
+      setNav(P ? `<button class="btn" id="toanat">Voltar às doenças</button><button class="btn primary" id="first">Começar pelo primeiro</button>`
+        : `<button class="btn" id="toanat">Voltar à anatomia</button><button class="btn primary" id="first">Começar pela primeira</button>`);
+      $('#toanat').onclick = () => setMode(P ? 'dz' : 'anat', true);
+      $('#first').onclick = () => openDz(L[0].id, true);
       if (moveFocus) focusTitle();
       return;
     }
-    const d = DZ.find(x => x.id === S.dz), i = DZ.indexOf(d);
-    let h = `<button class="back" id="back">← Todas as doenças</button><div class="eyebrow">${DZ_CATS[d.cat]}, ${i + 1} de ${DZ.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>
-      <div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
-    [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]].forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
+    const d = L.find(x => x.id === S.dz), i = L.indexOf(d);
+    let h = `<button class="back" id="back">← ${P ? 'Todos os procedimentos' : 'Todas as doenças'}</button><div class="eyebrow">${cats()[d.cat]}, ${i + 1} de ${L.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>`;
+    // procedimento não tem versão "normal" para comparar: sem a alternância
+    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
+    (P ? [['Indicação', d.ind], ['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
+      : [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]]).forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
-    h += seeHtml(S.dzOn ? d.labels : neutralLabels(d));
+    h += seeHtml(P || S.dzOn ? d.labels : neutralLabels(d));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     $('#back').onclick = () => { closeDz(); focusTitle(); };
-    $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
-    $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+    if (!P) {
+      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
+      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+    }
     bindSee();
-    const lastDz = i === DZ.length - 1;
-    setNav(`<button class="btn" id="prev" ${i === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next">${lastDz ? 'Concluir e ir ao teste final' : 'Próxima'}</button>`);
-    $('#prev').onclick = () => openDz(DZ[i - 1].id);
-    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(DZ[i + 1].id); };
+    const lastDz = i === L.length - 1;
+    setNav(`<button class="btn" id="prev" ${i === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next">${lastDz ? (P ? 'Concluir' : 'Concluir e ir ao teste final') : P ? 'Próximo' : 'Próxima'}</button>`);
+    $('#prev').onclick = () => openDz(L[i - 1].id);
+    $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(L[i + 1].id); };
     if (moveFocus) focusTitle();
   }
+  // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
-    const d = DZ.find(x => x.id === id); S.dz = id; S.dzOn = true;
-    if (S.mode !== 'dz') { S.mode = 'dz'; syncMode(); }
-    if (!store.dzSeen.includes(id)) { store.dzSeen.push(id); save(); }
+    const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
+    S.dz = id; S.dzOn = true;
+    if (S.mode !== m) { S.mode = m; syncMode(); }
+    if (!seen.includes(id)) { seen.push(id); save(); }
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);
     say(d.name + '.');
   }
-  function syncMode() { $('#m-anat').setAttribute('aria-pressed', S.mode === 'anat'); $('#m-dz').setAttribute('aria-pressed', S.mode === 'dz'); }
+  function syncMode() { ['anat', 'dz', 'proc'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k)); }
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
@@ -735,6 +763,7 @@
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');
   $('#m-dz').onclick = () => S.mode !== 'dz' && setMode('dz');
+  $('#m-proc').onclick = () => S.mode !== 'proc' && setMode('proc');
   function progress() {
     const a = store.seen.length, d = store.dzSeen.length, tot = ALL_STEPS.length + DZ.length;
     $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
@@ -778,7 +807,7 @@
   }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
-    store.seen = []; store.dzSeen = []; save();
+    store.seen = []; store.dzSeen = []; store.procSeen = []; save();
     if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
   };
   document.addEventListener('keydown', e => {
