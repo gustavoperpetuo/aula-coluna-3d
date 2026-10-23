@@ -69,7 +69,10 @@
       metal: { c: '#D3D8DD', r: .3, m: .25, cut: '#E4E7EA', L: 'path' }, needleTip: { c: '#E35A3E', r: .4, cut: '#E88F7B', L: 'path' },
       contrast: { c: '#2F6FD6', r: .35, op: .5, L: 'path', noCut: 1 }, rfLesion: { c: '#F08A24', r: .5, op: .55, L: 'path', noCut: 1 },
       cement: { c: '#D5D9D6', r: .75, cut: '#AEB4B2', L: 'path' }, cage: { c: '#5F7184', r: .45, cut: '#8496A8', L: 'path' },
-      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }
+      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }, ganglion: { c: '#DDA61B', r: .5, cut: '#C98F12', L: 'neuro' },
+      // dentro do disco o corte cobre o que é transparente: contraste e lesão térmica intradiscais são opacos e ganham tampa própria
+      dye: { c: '#2F6FD6', r: .35, cut: '#3B7BE0', L: 'path' }, heat: { c: '#E8771E', r: .45, cut: '#F08A24', L: 'path' },
+      implant: { c: '#8C97A4', r: .3, m: .3, cut: '#A3ADB8', L: 'path' }, poly: { c: '#F4F3EE', r: .4, cut: '#FFFFFF', L: 'path' }
     };
     TINT = { C: '#C9D8E8', T: '#D3E2C8', L: '#EBD3A6', S: '#E6C8BE' };
     C = h => new THREE.Color(h).convertSRGBToLinear();
@@ -131,7 +134,7 @@
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
   // cimento, cage e metal ficam por cima do osso e do disco onde estão
-  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6 };
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6, ganglion: 6, dye: 5, heat: 5, implant: 6, poly: 6 };
   // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {

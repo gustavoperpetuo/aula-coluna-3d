@@ -126,6 +126,33 @@
   "lost": []
  },
  {
+  "l": "facetblk ax L4-L5",
+  "lost": [
+   "needle.mb4"
+  ]
+ },
+ {
+  "l": "epidural ax L4-L5",
+  "lost": [
+   "needle.caudal",
+   "contrast.caudal"
+  ]
+ },
+ {
+  "l": "siblk ax L5",
+  "lost": [
+   "needle",
+   "contrast.sij"
+  ]
+ },
+ {
+  "l": "celiac sag",
+  "lost": [
+   "needle.L",
+   "contrast.L"
+  ]
+ },
+ {
   "l": "rfface sag",
   "lost": []
  },
@@ -137,10 +164,48 @@
   ]
  },
  {
+  "l": "rfsi ax L5",
+  "lost": [
+   "rfl.S1.R",
+   "rfl.S2.R",
+   "rfl.S3.R",
+   "rfs.S1.R",
+   "rfs.S2.R",
+   "rfs.S3.R"
+  ]
+ },
+ {
+  "l": "rfdisc sag",
+  "lost": [
+   "intro.L",
+   "probe.L"
+  ]
+ },
+ {
+  "l": "endodisc sag",
+  "lost": []
+ },
+ {
+  "l": "endodisc ax L4-L5",
+  "lost": [
+   "drg.L5.L"
+  ]
+ },
+ {
+  "l": "epidurosc ax L5-S1",
+  "lost": [
+   "scope"
+  ]
+ },
+ {
   "l": "vplasty sag [cfg]",
   "lost": [
    "trocar.L"
   ]
+ },
+ {
+  "l": "biopsy sag",
+  "lost": []
  },
  {
   "l": "tlif sag",

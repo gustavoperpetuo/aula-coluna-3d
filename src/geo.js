@@ -47,6 +47,33 @@ function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0, strip = f
   return g;
 }
 
+/* loft com tampas trianguladas (earcut): anel em U ou em arco não é estrelado a partir do centro e o leque da tampa
+   se sobrepunha. uv(ri): coordenadas 2D do anel ri no plano dele. Paredes orientadas pelo ponto mais longe do centro do
+   anel do meio (ali a normal de fora aponta para longe do centro); tampas para longe do anel vizinho */
+function loftEar(rings, uv) {
+  const R = rings.length, N = rings[0].length, pos = [], idx = [];
+  rings.forEach(r => r.forEach(p => pos.push(p.x, p.y, p.z)));
+  const rm = Math.floor((R - 1) / 2), c = centroid(rings[rm]);
+  let im = 0; rings[rm].forEach((p, i) => { if (p.distanceTo(c) > rings[rm][im].distanceTo(c)) im = i; });
+  const a = rings[rm][im], b = rings[rm][(im + 1) % N], d = rings[rm + 1][im];
+  const flip = new V3().subVectors(b, a).cross(new V3().subVectors(d, a)).dot(new V3().subVectors(a, c)) < 0;
+  for (let r = 0; r < R - 1; r++) for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N, A = r * N + i, B = r * N + j, C = (r + 1) * N + i, D = (r + 1) * N + j;
+    if (!flip) idx.push(A, B, C, B, D, C); else idx.push(A, C, B, B, C, D);
+  }
+  [[0, 1], [R - 1, R - 2]].forEach(([ri, nb]) => {
+    const tri = THREE.ShapeUtils.triangulateShape(uv(ri).map(([x, y]) => new THREE.Vector2(x, y)), []), rg = rings[ri], base = ri * N;
+    const out = new V3().subVectors(centroid(rg), centroid(rings[nb])), sum = new V3();
+    tri.forEach(([p, q, s]) => sum.add(new V3().subVectors(rg[q], rg[p]).cross(new V3().subVectors(rg[s], rg[p]))));
+    const f = sum.dot(out) < 0;
+    tri.forEach(([p, q, s]) => f ? idx.push(base + p, base + s, base + q) : idx.push(base + p, base + q, base + s));
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
 /* junta malhas mantendo o índice: mesmos triângulos e normais, cerca de um terço dos vértices */
 function mergeGeoms(list) {
   const arr = list.filter(Boolean); arr.forEach(g => { if (!g.attributes.normal) g.computeVertexNormals(); });
@@ -480,7 +507,11 @@ function buildSpine(mods = {}) {
       // facetectomia ('L4-L5.L'): o processo articular inferior de cima sai inteiro, o superior de baixo fica só na base
       const cutA = (mods.facetectomy || []).includes(upAbove + '.' + side), cutB = (mods.facetectomy || []).includes(up + '.' + side);
       const sapB = v(s * (px + 0.3), py + 0.2 * h, zP - 0.1), sapT = v(s * (px + 0.4), h / 2 + dA * 0.9, zP - 0.25);
-      part(rod(sapB, cutA ? sapB.clone().lerp(sapT, 0.2) : sapT, 0.55 * fsA, { f: 0.48, side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
+      // foraminoplastia ({ 'L5.L': 0.5 }): sai a parte ventral (a que olha para o forame) e a ponta do processo articular superior;
+      // fica a fração de trás da espessura anteroposterior
+      const trim = (mods.sapTrim || {})[l.n + '.' + side], sh = v(0, 0, -0.55 * (1 - (trim || 1)));
+      part(rod(sapB.clone().add(sh), (cutA ? sapB.clone().lerp(sapT, 0.2) : trim ? sapB.clone().lerp(sapT, 0.85) : sapT).add(sh), 0.55 * fsA * (trim || 1), { f: 0.48 / (trim || 1), side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
+      if (trim) anchors.set(`fpl.${l.n}.${side}`, toW(F[l.n], ...sapB.clone().lerp(sapT, 0.55).add(v(0, 0, 0.3)).toArray()));
       part(ellip(v(s * (px + 0.55), py + 0.4 * h, zP - 0.65), 0.32, 0.35, 0.3), 'bone', `${l.n}.mam.${side}`, 'mamm');
       const iapT = v(s * (px - 0.15), -0.3 * h, zP - 0.7), iapB = v(s * (px - 0.05), -h / 2 - dB * 0.85, zP - 0.62);
       if (!cutB) part(rod(iapT, iapB, 0.5 * fsB, { f: 0.48, side: v(1, 0, -0.35) }), fsB > 1 ? 'boneHyp' : 'bone', `${l.n}.iap.${side}`, 'iap');
@@ -497,7 +528,7 @@ function buildSpine(mods = {}) {
         part(cr, 'lesion', `crack.${l.n}.${side}`, 'parsdefect');
       } else part(rod(parsA, parsB, 0.42), 'bone', `${l.n}.pars.${side}`, 'pars');
       // sem a faceta não há cápsula nem âncora de faceta desse lado
-      P.sap[side] = cutA ? null : { top: sapT }; P.iap[side] = cutB ? null : { bot: iapB };
+      P.sap[side] = cutA || trim ? null : { top: sapT }; P.iap[side] = cutB ? null : { bot: iapB };
     });
     P.lam = { y: -0.26 * h - 0.3, z: -D / 2 - l.ca - 0.35, r: 1.05 };
     // espinhoso em machadinha
@@ -508,26 +539,63 @@ function buildSpine(mods = {}) {
   }
 
   /* ---- sacro ---- */
+  const SAC = {}; // anéis e medidas do sacro para os procedimentos (ilíaco, ramos laterais, canal)
   {
     const Wt = [10.6, 10.0, 7.6, 5.6, 4.0, 2.6], T = [4.8, 4.6, 3.8, 3.0, 2.3, 1.6], za = [1.65, 1.45, 1.15, 0.95, 0.75, 0.6];
     const N = 44; const rr = [], LR = [];
     const frontZ = (j, x) => { const f = LR[j].filter(p => p[2] > 0).sort((a, b) => a[0] - b[0]); for (let i = 0; i < f.length - 1; i++) if (x >= f[i][0] && x <= f[i + 1][0]) { const t = (x - f[i][0]) / (f[i + 1][0] - f[i][0] || 1); return f[i][1] + (f[i + 1][1] - f[i][1]) * t; } return f[0][1]; };
+    // contorno externo do anel j no ângulo t (0 na frente, π atrás), no referencial SB[j]: [x, y, z, cos t]
+    const sPt = (j, t) => {
+      const bw = SD[Math.min(j, 4)][0] / 2, s = Math.sin(t), c = Math.cos(t);
+      const x = Wt[j] / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / 2.6);
+      const zc = za[j] - T[j] / 2;
+      let z = T[j] / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.3);
+      const lat = Math.max(0, (Math.abs(x) - bw) / Math.max(0.1, Wt[j] / 2 - bw));
+      if (c > 0) z *= 1 - 0.45 * lat; else z *= 1 - 0.25 * lat;
+      const y = j === 0 ? -0.8 * Math.min(1, Math.max(0, (Math.abs(x) - 2.3) / 1.2)) - 0.25 : 0;
+      return [x, y, zc + z, c];
+    };
     for (let j = 0; j < 6; j++) {
-      const bw = SD[Math.min(j, 4)][0] / 2, ring = [], loc = [];
-      for (let i = 0; i < N; i++) {
-        const t = 2 * Math.PI * i / N, s = Math.sin(t), c = Math.cos(t);
-        const x = Wt[j] / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / 2.6);
-        const zc = za[j] - T[j] / 2;
-        let z = T[j] / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.3);
-        const lat = Math.max(0, (Math.abs(x) - bw) / Math.max(0.1, Wt[j] / 2 - bw));
-        if (c > 0) z *= 1 - 0.45 * lat; else z *= 1 - 0.25 * lat;
-        let y = 0;
-        if (j === 0) y = -0.8 * Math.min(1, Math.max(0, (Math.abs(x) - 2.3) / 1.2)) - 0.25;
-        ring.push(toW(SB[j], x, y, zc + z)); loc.push([x, zc + z, c]);
-      }
+      const ring = [], loc = [];
+      for (let i = 0; i < N; i++) { const [x, y, z, c] = sPt(j, 2 * Math.PI * i / N); ring.push(toW(SB[j], x, y, z)); loc.push([x, z, c]); }
       rr.push(ring); LR.push(loc);
     }
-    add(loft(rr, true, true), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+    // entre os anéis (jf fracionário): posição e rotação interpoladas; dorso na abscissa x; canal (centro z, meia profundidade e meia largura)
+    const SBi = jf => { const a = Math.max(0, Math.min(4, Math.floor(jf))), f = jf - a; return { p: SB[a].p.clone().lerp(SB[a + 1].p, f), q: SB[a].q.clone().slerp(SB[a + 1].q, f) }; };
+    const backAt = (j, x) => sPt(j, Math.PI - Math.sign(x || 1) * Math.asin(Math.pow(Math.min(1, Math.abs(x) / (Wt[j] / 2)), 1.3)))[2];
+    const lerpJ = (jf, fn) => { const a = Math.min(4, Math.floor(jf)), f = jf - a; return fn(a) * (1 - f) + fn(a + 1) * f; };
+    const backZ = (jf, x) => lerpJ(jf, j => backAt(j, x));
+    // canal de cada anel: média das vértebras sacrais vizinhas (as mesmas medidas do canal por onde correm dura e raízes)
+    const canalJ = j => { const A = SD[Math.max(0, j - 1)], B = SD[Math.min(4, j)], m = k => (A[k] + B[k]) / 2; return [-m(1) / 2 - m(3) / 2, m(3) / 2, m(2) / 2]; };
+    const canalAt = jf => ({ zc: lerpJ(jf, j => canalJ(j)[0]), ca: lerpJ(jf, j => canalJ(j)[1]), hw: lerpJ(jf, j => canalJ(j)[2]) });
+    Object.assign(SAC, { rr, SBi, backZ, canalAt });
+    if (mods.sacralCanal) {
+      // canal sacral oco: o bloco ganha um sulco atrás (paredes e assoalho do canal) e o teto (lâminas fundidas) é peça à parte
+      // que termina no meio de S4: abaixo dela o sulco aberto é o hiato sacral
+      const K = 40, rings = [], uv = [];
+      for (let j = 0; j < 6; j++) {
+        const { zc, ca, hw } = canalAt(j), a = Math.asin(Math.pow(hw / (Wt[j] / 2), 1.3));
+        const eL = sPt(j, Math.PI - a), eR = sPt(j, Math.PI + a), y = eL[1], P = [[eL[0], y, eL[2]], [hw, y, (eL[2] + zc) / 2]];
+        for (let k = 0; k <= 8; k++) { const ph = Math.PI * k / 8; P.push([hw * Math.cos(ph), y, zc + ca * Math.sin(ph)]); }
+        P.push([-hw, y, (eR[2] + zc) / 2], [eR[0], y, eR[2]]);
+        for (let k = 1; k <= K; k++) P.push(sPt(j, Math.PI + a + k * (2 * Math.PI - 2 * a) / (K + 1)));
+        rings.push(P.map(([x, yy, z]) => toW(SB[j], x, yy, z))); uv.push(P.map(([x, , z]) => [x, z]));
+      }
+      add(loftEar(rings, ri => uv[ri]), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+      const o = 0.45, e = 0.08, roof = [], rl = [];
+      [0, 1, 2, 3, 3.5].forEach(jf => {
+        const fr = SBi(jf), { zc, ca, hw } = canalAt(jf), y = jf === 0 ? -0.25 : 0, P = [];
+        for (let k = 0; k <= 8; k++) { const ph = Math.PI * k / 8; P.push([hw * Math.cos(ph), zc - ca * Math.sin(ph)]); }
+        P.push([-hw - o, zc]);
+        for (let k = 0; k <= 6; k++) { const x = -hw - o + 2 * (hw + o) * k / 6; P.push([x, backZ(jf, x) - e]); }
+        P.push([hw + o, zc]);
+        roof.push(P.map(([x, z]) => toW(fr, x, y, z))); rl.push(P);
+      });
+      add(loftEar(roof, ri => rl[ri]), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+      const cp = (jf, dz = 0) => toW(SBi(jf), 0, 0, canalAt(jf).zc + dz);
+      for (let k = 1; k <= 5; k++) anchors.set('sacCanal.S' + k, cp(k - 0.5));
+      SAC.canalPt = cp;
+    } else add(loft(rr, true, true), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
     // corpo de S1 (platô)
     const g = new THREE.Group(); g.position.copy(SB[0].p); g.quaternion.copy(SB[0].q); root.add(g);
     const ol = bodyOutline('L', 4.9, 3.3, 40);
@@ -557,13 +625,17 @@ function buildSpine(mods = {}) {
         hole.push(ellip(c, 0.42 - 0.05 * j, 0.36 - 0.04 * j, 0.16, 14, SB[j].q));
         SF[j + '.' + side] = c;
         anchors.set(`sf.${j}.${side}`, c);
+        // forames dorsais (ramos dorsais), só quando o procedimento usa: um pouco mais mediais que os anteriores
+        if (mods.sacralLB) { const xd = s * (fx[j - 1] - 0.1), cd = toW(SB[j], xd, 0, backAt(j, xd) + 0.13); hole.push(ellip(cd, 0.36 - 0.04 * j, 0.32 - 0.03 * j, 0.16, 14, SB[j].q)); anchors.set(`sfd.${j}.${side}`, cd); }
       });
+      // a crista mediana para acima do hiato
+      if (j === 4 && mods.sacralCanal) continue;
       const crest = toW(SB[j], 0, 0.6, za[j] - T[j] + 0.05);
       add(ellip(crest, 0.32, 0.6, 0.3, 12, SB[j].q), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
     }
     add(mergeGeoms(hole), 'hole', 'sacrum', 'sforamen', { level: 'S', region: 'S' });
     VP.SF = SF;
-    anchors.set('hiatus', toW(SB[5], 0, 0.6, -0.6));
+    anchors.set('hiatus', mods.sacralCanal ? SAC.canalPt(3.7, -canalAt(3.7).ca * 0.4) : toW(SB[5], 0, 0.6, -0.6));
     anchors.set('sacrum', toW(SB[2], 0, 0, 0.2));
     // cóccix
     const CW = [2.2, 1.6, 1.2, 0.8];
@@ -614,7 +686,9 @@ function buildSpine(mods = {}) {
       // cada ângulo dá uma seção (parede de fora subindo, de dentro descendo); girar a seção fecha o anel. g: fica transparente com os ossos
       const I = R.map(r => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, 0.85)); });
       const sec = R[0].map((_, i) => R.map(r => r[i]).concat(I.map(r => r[i]).reverse()));
-      add(loft(sec.concat([sec[0]]), false, false), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true, g: 1 });
+      // 'ant' (via anterior): sem o anel da frente; sobra o arco lateral e posterior, fechado nas pontas
+      const k0 = dm.discectomy === 'ant' ? Math.round(sec.length * 0.16) : 0;
+      add(k0 ? loft(sec.slice(k0, sec.length - k0 + 1), true, true) : loft(sec.concat([sec[0]]), false, false), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true, g: 1 });
     } else add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
     // lamelas internas (aparecem no corte)
     if (!dm.discectomy) [0.8, 0.62].forEach((sc, li) => {
@@ -626,7 +700,19 @@ function buildSpine(mods = {}) {
     const qd = kf.q, th = kf.p.distanceTo(cA) * 2;
     const nucC = kf.p.clone().add(v(0, 0, -0.08 * kf.D).applyQuaternion(qd));
     const ns = dm.state === 'degen' ? 0.6 : 1;
-    if (!dm.discectomy) add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
+    if (dm.dye) {
+      // discografia: o núcleo cheio de contraste, lobulado; 'leak': o contraste sai por uma fissura radial posterior até o anel externo
+      const g = new THREE.SphereGeometry(1, 24, 16), a = g.attributes.position, ry = Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1));
+      for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), q = 1 + 0.1 * Math.sin(6 * x + 0.4) * Math.sin(5 * z + 1.1) + 0.05 * Math.sin(9 * y + 4 * x); a.setXYZ(i, x * q * 0.25 * kf.W, y * q * ry, z * q * 0.23 * kf.D); }
+      g.applyMatrix4(new THREE.Matrix4().compose(nucC, qd, v(1, 1, 1))); g.computeVertexNormals();
+      add(g, 'dye', 'nuc.' + dn, 'contrast', { level: dn, region: LV[DD.up].r });
+      if (dm.dye === 'leak') {
+        const zb = postMidZ(LV[DD.up].r, kf.D) * 0.955, L = (x, y, z) => kf.p.clone().add(v(x, y, z).applyQuaternion(qd));
+        const fis = tube([L(0, 0, -0.08 * kf.D - 0.15 * kf.D), L(0.04, 0, (-0.33 * kf.D + zb) / 2), L(0, 0, zb + 0.06)], t => 0.16 + 0.1 * t, { N: 10, flat: 0.55, upFn: () => v(0, 1, 0).applyQuaternion(qd) });
+        add(mergeGeoms([fis, ellip(L(0, 0, zb + 0.02), 0.65, 0.3, 0.11, 16, qd)]), 'dye', 'leak.' + dn, 'contrast', { level: dn, region: LV[DD.up].r });
+        anchors.set('leak.' + dn, L(0, 0, zb + 0.02));
+      }
+    } else if (!dm.discectomy) add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
@@ -894,13 +980,16 @@ function buildSpine(mods = {}) {
     anchors.set('medulla', top);
   }
   const cordSurf = (u, x, z) => { const s = spineAt(u); const [rx, rz] = cordR(u); return s.p.clone().add(v(x * rx, 0, s.zc + z * rz).applyQuaternion(s.q)); };
+  // fim do saco dural (S2): com o canal sacral oco ele afila desde L5-S1, como no adulto, e deixa espaço epidural no canal sacral
+  // (as raízes que descem por ele chegam junto, para não ficarem fora do saco)
+  const duraClose = u => 1 - sm(KI.S2 + 0.1 - (mods.sacralCanal ? 1.9 : 1.0), KI.S2 + 0.1, u) * 0.9;
   // dura
   {
     const uEnd = KI.S2 + 0.1; const rr = [];
     for (let u = 0; u <= uEnd + 1e-6; u += 0.15) {
       const s = spineAt(u); const pf = pinch(u, 'dura');
       let rx = s.cw / 2 * 0.8, rz = s.ca / 2 * 0.86;
-      const close = 1 - sm(uEnd - 1.0, uEnd, u) * 0.9;
+      const close = duraClose(u);
       rx *= close * (0.4 + 0.6 * pf); rz *= close * pf;
       const r = []; const c = s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q));
       for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; r.push(c.clone().add(v(Math.cos(t) * rx, 0, Math.sin(t) * rz).applyQuaternion(s.q))); }
@@ -963,7 +1052,7 @@ function buildSpine(mods = {}) {
         for (let u = u0 + 0.8; u < uExit - 0.7; u += 0.5) {
           const s_ = spineAt(u); const ramp = sm(uExit - 3.0, uExit - 0.7, u);
           const pf = 0.35 + 0.65 * pinch(u, 'dura');
-          const xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf;
+          const rc = mods.sacralCanal ? Math.max(0.5, duraClose(u)) : 1, xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf * rc, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf * rc;
           const xr = s_.cw / 2 * 0.78 * (0.5 + 0.5 * pf), zr = s_.ca * 0.18 * pf;
           pts.push(s_.p.clone().add(v(s * (xm + (xr - xm) * ramp), 0, s_.zc + (1 - pf) * 0.25 + zm + (zr - zm) * ramp).applyQuaternion(s_.q)));
         }
@@ -1001,9 +1090,10 @@ function buildSpine(mods = {}) {
   const aoX = { T5: 2.0, T6: 2.0, T7: 1.9, T8: 1.7, T9: 1.5, T10: 1.3, T11: 1.0, T12: 0.8, L1: 0.7, L2: 0.65, L3: 0.55, L4: 0.4 };
   const aoP = n => SPf(n, s => [aoX[n], 0, s.D / 2 + 1.25]);
   const archTop = SPf('T3', s => [-0.1, 1.2, s.D / 2 + 3.4]);
+  const AO = { r: t => 1.45 - 0.55 * Math.min(1, t * 1.1) }; // trajeto e raio da aorta (tronco celíaco)
   {
     const pts = [SPf('T6', s => [-1.3, 0, s.D / 2 + 7.2]), SPf('T4', s => [-1.1, 0.6, s.D / 2 + 6.3]), archTop, SPf('T4', s => [1.4, 0.4, s.D / 2 + 1.9]), aoP('T5'), aoP('T6'), aoP('T8'), aoP('T10'), aoP('T12'), aoP('L1'), aoP('L2'), aoP('L3'), SPf('L4', s => [0.35, -0.2, s.D / 2 + 1.25])];
-    VS('aorta', 'artery', pts, t => 1.45 - 0.55 * Math.min(1, t * 1.1), 'aorta');
+    VS('aorta', 'artery', pts, AO.r, 'aorta'); AO.pts = pts;
     anchors.set('aorta', aoP('T8')); anchors.set('aorta.L', aoP('L2')); anchors.set('aorta.arch', archTop);
     const B = pts[pts.length - 1].clone();
     anchors.set('aorta.bif', B);
@@ -1153,27 +1243,20 @@ function buildSpine(mods = {}) {
   /* ---- procedimentos: agulhas, contraste, ramo medial e radiofrequência, cimento, implantes ---- */
   // ponto: vetor, chave de âncora ('L1.ped.L') ou [quadro, x, y, z] no referencial de uma vértebra ou de um disco ('L4', 'L4-L5')
   const ptOf = a => a instanceof V3 ? a.clone() : typeof a === 'string' ? anchors.get(a).clone() : toW(F[a[0]] || discKF[a[0]], a[1], a[2], a[3]);
-  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 11: 0.15 }; // raio externo (cm) por calibre
+  // rotação do quadro de um ponto ou nome de quadro (para orientar gotas de contraste)
+  const qOf = a => { const n = Array.isArray(a) ? a[0] : a, fr = typeof n === 'string' && (F[n] || discKF[n]); return fr ? fr.q : null; };
+  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
   // agulha da pele (from) até a ponta (to), ou to + via (um ponto do trajeto) + len; ponta na cor de destaque, canhão do lado da pele
+  // r: raio próprio (cânula de endoscopia); tipR/tipL: ponta romba e curta em vez do bisel fino
   const needle = o => {
-    const to = ptOf(o.to), r = GAUGE[o.g || 22], k = o.key || 'needle';
+    const to = ptOf(o.to), r = o.r || GAUGE[o.g || 22], k = o.key || 'needle';
     const from = o.from ? ptOf(o.from) : to.clone().add(new V3().subVectors(ptOf(o.via), to).setLength(o.len || 9));
-    const d = new V3().subVectors(to, from).normalize(), neck = to.clone().addScaledVector(d, -Math.max(0.3, 3 * r));
+    const d = new V3().subVectors(to, from).normalize(), neck = to.clone().addScaledVector(d, -(o.tipL || Math.max(0.3, 3 * r)));
     const ex = { level: o.level || (Array.isArray(o.to) ? o.to[0] : typeof o.to === 'string' ? o.to.split('.')[0] : null) };
     add(mergeGeoms([rod(from, neck, r, { seg: 10 }), rod(from.clone().addScaledVector(d, -1.1), from, Math.max(0.16, 2 * r), { seg: 12 })]), 'metal', k, o.info || 'needle', ex);
-    add(rod(neck, to, r, { r2: r * 0.3, seg: 10 }), 'needleTip', k, o.info || 'needle', ex);
+    add(rod(neck, to, r, { r2: r * (o.tipR || 0.3), seg: 10 }), 'needleTip', k, o.info || 'needle', ex);
     anchors.set(k, to.clone()); anchors.set(k + '.meio', from.clone().lerp(to, 0.5)); // ponta e meio do trajeto (fora do osso, para rótulo em corte)
   };
-  (mods.needles || []).forEach(needle);
-  // contraste ('L4.L'): na ponta da agulha, ao longo da bainha da raiz e no espaço epidural anterior do mesmo lado
-  (mods.contrast || []).forEach(c => {
-    const R = ROOTS['root.' + c.root], s = c.root.endsWith('.L') ? 1 : -1, n = R.pts.length, k = c.key || 'contrast';
-    const sheath = [R.pts[n - 4], R.pts[n - 3], R.pts[n - 2], R.pts[n - 2].clone().lerp(R.pts[n - 1], 0.35)];
-    const sp = spineAt(R.uExit + 0.4), epi = sp.p.clone().add(v(s * sp.cw * 0.25, 0, sp.post - 0.12).applyQuaternion(sp.q));
-    // a bainha envolve também o gânglio (1,9 vez o raio da raiz)
-    add(mergeGeoms([ellip(ptOf(c.at), 0.22, 0.22, 0.22, 14), tube(sheath, () => R.r * 1.9 + 0.06, { N: 10 }), ellip(epi, 0.6, 1.5, 0.1, 18, sp.q)]), 'contrast', k, 'contrast', { level: c.root.split('.')[0] });
-    anchors.set(k, R.pts[n - 3].clone().lerp(R.pts[n - 2], 0.4));
-  });
   // ramo medial do ramo dorsal (L1 a L4): sai da raiz, passa sobre a borda superior do transverso de baixo, na junção com o
   // processo articular superior, e desce para a faceta abaixo. shortcut: sem L5 (cruza a asa do sacro) e sem cervical ou torácica
   const MB = {};
@@ -1190,7 +1273,231 @@ function buildSpine(mods = {}) {
       add(tube(pts, () => 0.06, { N: 8 }), 'mbranch', `mb.${n}.${side}`, 'mbranch', { level: n });
       anchors.set(`mb.${n}.${side}`, pts[5]); // no trecho que desce, longe do rótulo da lesão
       MB[n + '.' + side] = { J, d, off: v(s, 0.2, -0.5).normalize().applyQuaternion(f.q), level: n };
+      // alvo do bloqueio: ao lado do nervo, no osso da junção
+      anchors.set(`mbt.${n}.${side}`, J.clone().addScaledVector(MB[n + '.' + side].off, 0.12));
     });
+  });
+
+  /* ---- ilíacos (mods.ilium): seções horizontais, de baixo para cima. A face medial é empurrada para fora do sacro até a
+     folga da articulação sacroilíaca (0,22; 0,5 atrás, no espaço dos ligamentos interósseos) e a lateral sai dela pela
+     espessura. Controles do lado esquerdo (x > 0), da borda posterior para a anterior, espelhados no direito ---- */
+  const SIJ = {};
+  if (mods.ilium) {
+    const sg = loft(SAC.rr, true, true), spos = sg.attributes.position, sidx = sg.index, tris = [], qq = new V3();
+    for (let t = 0; t < sidx.count; t += 3) { const T = new THREE.Triangle(...[0, 1, 2].map(k => new V3().fromBufferAttribute(spos, sidx.getX(t + k)))); T.box = new THREE.Box3().setFromPoints([T.a, T.b, T.c]); T.n = T.getNormal(new V3()); tris.push(T); }
+    sg.dispose();
+    const near = p => { let bd = 1e9, best = null; for (const T of tris) { if (T.box.distanceToPoint(p) ** 2 > bd) continue; T.closestPointToPoint(p, qq); const d = qq.distanceToSquared(p); if (d < bd) { bd = d; best = { q: qq.clone(), n: T.n }; } } return best; };
+    // [y, 6 pontos (x, z) da face medial, 6 espessuras]
+    const ROWS = [
+      [-7.6, [7.2, -0.2, 7.4, 0.62, 7.6, 1.45, 7.8, 2.27, 8.0, 3.09, 8.2, 3.8], [0.4, 0.6, 0.8, 0.8, 0.6, 0.4]],
+      [-7.2, [6.7, -1.4, 7.0, -0.16, 7.4, 1.18, 7.9, 2.63, 8.4, 3.97, 8.7, 5.0], [0.8, 1.3, 1.7, 1.7, 1.4, 0.9]],
+      [-6.2, [5.9, -1.6, 6.3, -0.34, 6.9, 1.1, 7.7, 2.72, 8.5, 4.34, 9.0, 5.6], [1.0, 1.6, 2.0, 2.0, 1.6, 1.1]],
+      [-5.0, [4.6, -3.6, 4.7, -2.4, 5.2, -1.02, 6.6, 1.01, 8.4, 3.59, 9.4, 5.9], [1.1, 1.8, 1.8, 1.4, 1.0, 1.0]],
+      [-4.0, [3.4, -5.5, 3.6, -4.33, 4.0, -2.97, 6.0, 0.15, 8.4, 3.37, 9.6, 6.0], [1.4, 2.2, 2.0, 1.0, 0.8, 1.0]],
+      [-2.9, [3.4, -4.9, 4.1, -3.36, 4.4, -1.83, 6.4, 1.15, 8.8, 4.41, 10.2, 7.0], [1.7, 2.6, 2.2, 0.8, 0.6, 0.9]],
+      [-1.8, [3.7, -5.1, 4.6, -3.44, 4.9, -1.88, 6.8, 0.89, 9.2, 4.02, 10.9, 6.6], [1.8, 2.6, 2.2, 0.6, 0.5, 0.9]],
+      [-0.8, [4.0, -4.8, 4.8, -2.67, 5.2, -1.12, 7.3, 1.69, 9.7, 4.69, 11.5, 7.6], [1.8, 2.4, 2.0, 0.5, 0.45, 0.9]],
+      [0.0, [4.2, -4.6, 5.0, -3.0, 5.9, -1.0, 7.9, 1.7, 10.2, 4.8, 11.9, 7.9], [1.7, 2.0, 1.4, 0.4, 0.45, 1.0]],
+      [1.0, [4.6, -4.4, 5.6, -2.95, 6.8, -1.12, 8.7, 1.4, 10.7, 4.2, 12.0, 7.0], [1.6, 1.6, 0.8, 0.4, 0.45, 1.0]],
+      [2.6, [5.4, -3.9, 6.4, -2.7, 7.8, -1.13, 9.5, 0.9, 11.2, 3.2, 12.4, 5.6], [1.3, 1.2, 0.6, 0.45, 0.5, 0.9]],
+      [4.2, [6.6, -2.6, 7.8, -1.81, 9.2, -0.69, 10.6, 0.66, 11.8, 2.17, 12.6, 3.6], [0.9, 0.9, 0.7, 0.6, 0.7, 0.8]],
+      [5.1, [8.2, -1.2, 9.0, -0.7, 9.8, -0.07, 10.6, 0.55, 11.3, 1.18, 11.8, 1.8], [0.5, 0.6, 0.6, 0.6, 0.6, 0.5]],
+      [5.45, [9.6, -0.6, 9.9, -0.35, 10.2, -0.1, 10.5, 0.15, 10.8, 0.4, 11.0, 0.6], [0.25, 0.25, 0.25, 0.25, 0.25, 0.25]]
+    ];
+    const ys = []; ROWS.forEach((r, i) => { if (i) { const y0 = ROWS[i - 1][0], n = Math.ceil((r[0] - y0) / 0.4); for (let k = 1; k < n; k++) ys.push(y0 + (r[0] - y0) * k / n); } ys.push(r[0]); });
+    const M = 24;
+    [1, -1].forEach(s => {
+      const side = s > 0 ? 'L' : 'R';
+      // folga: 0,22 na face lateral (articulação), 0,5 atrás (ligamentos interósseos)
+      const push = p => {
+        for (let it = 0; it < 6; it++) {
+          const nr = near(p), sd = new V3().subVectors(p, nr.q).dot(nr.n), g = Math.abs(nr.n.x) > 0.6 ? 0.22 : 0.5;
+          if (sd >= g - 1e-3) break;
+          const h = v(nr.n.x, 0, nr.n.z); if (h.length() < 0.3) h.set(s, 0, 0);
+          p.addScaledVector(h.normalize(), g - sd + 0.01);
+        }
+      };
+      const smooth = a => { const c = a.map(p => p.clone()); for (let i = 1; i < a.length - 1; i++) a[i].copy(c[i - 1]).multiplyScalar(0.25).addScaledVector(c[i], 0.5).addScaledVector(c[i + 1], 0.25); };
+      // 1) face medial de cada seção
+      const secs = ys.map(y => {
+        let i = 0; while (i < ROWS.length - 2 && ROWS[i + 1][0] < y) i++;
+        const A = ROWS[i], B = ROWS[i + 1], f = Math.max(0, Math.min(1, (y - A[0]) / (B[0] - A[0])));
+        const cp = [], tau = [];
+        for (let k = 0; k < 6; k++) { cp.push(v(s * (A[1][2 * k] + (B[1][2 * k] - A[1][2 * k]) * f), y, A[1][2 * k + 1] + (B[1][2 * k + 1] - A[1][2 * k + 1]) * f)); tau.push(A[2][k] + (B[2][k] - A[2][k]) * f); }
+        // na altura da articulação (S1 a S3) os controles 1 e 2 vão para dentro da face lateral do sacro (anéis 14 e 8 do lado):
+        // o empurrão os devolve à folga e a face medial do ilíaco copia a do sacro
+        const sl = i => { for (let j = 0; j < 5; j++) { const a = SAC.rr[j][i], b = SAC.rr[j + 1][i]; if ((a.y - y) * (b.y - y) <= 0 && a.y !== b.y) { const t = (y - a.y) / (b.y - a.y); return v(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t); } } return null; };
+        const wj = sm(-5.8, -4.3, y) * (1 - sm(-0.7, 0.3, y));
+        if (wj > 0) [[1, 14], [2, 8]].forEach(([k, i]) => { const p = sl(s > 0 ? i : 44 - i); if (p) cp[k].lerp(p.add(v(-s * 0.3, 0, 0)), wj); });
+        const m = new THREE.CatmullRomCurve3(cp, false, 'centripetal').getSpacedPoints(M - 1);
+        // o empurrão deixa quinas: alisa e empurra de novo
+        m.forEach(push); for (let k = 0; k < 3; k++) { smooth(m); m.forEach(push); }
+        return { y, m, tau };
+      });
+      // 2) alisa entre as seções (mesmo índice), senão o fim da articulação vira degrau
+      for (let k = 0; k < 2; k++) { for (let i2 = 0; i2 < M; i2++) smooth(secs.map(sc => sc.m[i2])); secs.forEach(sc => sc.m.forEach(push)); }
+      // 3) face lateral: sai da medial pela espessura; alisada na seção e entre seções para não dobrar
+      secs.forEach(sc => {
+        const m = sc.m, tau = sc.tau;
+        sc.lat = m.map((p, i2) => {
+          const a = m[Math.max(0, i2 - 1)], b = m[Math.min(M - 1, i2 + 1)], n = v(s * (b.z - a.z), 0, -s * (b.x - a.x)).normalize();
+          const u = i2 / (M - 1) * 5, k = Math.min(4, Math.floor(u));
+          return p.clone().addScaledVector(n, tau[k] + (tau[k + 1] - tau[k]) * (u - k));
+        });
+        smooth(sc.lat); smooth(sc.lat);
+      });
+      for (let k = 0; k < 2; k++) for (let i2 = 0; i2 < M; i2++) smooth(secs.map(sc => sc.lat[i2]));
+      const rings = secs.map(sc => sc.m.concat(sc.lat.slice().reverse()));
+      secs.forEach(sc => { sc.pairs = sc.m.map(p => { const nr = near(p); return Math.abs(nr.n.x) > 0.6 && p.distanceTo(nr.q) < 0.3 ? [p, nr.q] : null; }); });
+      add(loft(rings, true, true, 0, 0, true), 'bone', 'ilium.' + side, 'ilium', { level: null, region: 'S' });
+      const at = y => secs.reduce((a, b) => Math.abs(b.y - y) < Math.abs(a.y - y) ? b : a);
+      anchors.set('ilium.' + side, at(1.0).lat[14].clone());
+      anchors.set('psis.' + side, at(-1.8).m[0].clone().lerp(at(-1.8).lat[0], 0.5));
+      // articulação: meio da folga; .inf no terço inferior, na ponta de trás da articulação (por onde entra a agulha)
+      const mids = sec => sec.pairs.filter(Boolean).map(([p, q]) => p.clone().lerp(q, 0.5));
+      const mid = mids(at(-1.8)); anchors.set('sij.' + side, mid[Math.floor(mid.length / 2)]);
+      // a agulha entra pela linha posterior, vinda de trás, um pouco de medial e de baixo (20° e 20°): assim cabe na fenda
+      const tip = mids(at(-3.9))[0], a20 = 20 * deg;
+      anchors.set('sij.' + side + '.inf', tip);
+      anchors.set('sij.' + side + '.via', tip.clone().add(v(-s * Math.sin(a20) * Math.cos(a20), -Math.sin(a20), -Math.cos(a20) * Math.cos(a20)).multiplyScalar(9)));
+      SIJ[side] = { secs, mids };
+    });
+  }
+
+  /* ---- ramos laterais de S1 a S3 (mods.sacralLB: { side, lv, rf }): saem dos forames dorsais e correm para fora, sobre o dorso
+     do sacro, até a linha posterior da articulação sacroilíaca; rf: lesões resfriadas em fileira na borda lateral dos forames ---- */
+  const LBN = [];
+  if (mods.sacralLB) {
+    const o = mods.sacralLB, side = o.side, s = side === 'L' ? 1 : -1, xs = [1.95, 1.7, 1.4], LL = [2.0, 1.55, 1.15];
+    const dors = (jf, x, off) => toW(SAC.SBi(jf), x, 0, SAC.backZ(jf, x) - off);
+    o.lv.forEach(j => {
+      const x0 = s * xs[j - 1], key = `lb.S${j}.${side}`, br = [];
+      [[-0.14, 1], [0.3, 0.85]].forEach(([dj, fl]) => { const pts = []; for (let t = 0; t <= 1.001; t += 0.25) pts.push(dors(j + dj * t * t, x0 + s * (0.34 + LL[j - 1] * fl * t), 0.2)); br.push(tube(pts, () => 0.045, { N: 8 })); });
+      add(mergeGeoms(br), 'mbranch', key, 'latbranch', { level: 'S' + j });
+      anchors.set(key, dors(j + 0.05, x0 + s * (0.34 + LL[j - 1] * 0.5), 0.2));
+      if (o.rf) {
+        const pos = j < 3 ? [[-0.22, 0.6], [0, 0.72], [0.24, 0.6]] : [[-0.12, 0.62], [0.16, 0.62]];
+        add(mergeGeoms(pos.map(([dj, dx]) => ellip(dors(j + dj, x0 + s * dx, 0.16), 0.4, 0.4, 0.4, 14))), 'rfLesion', `rfl.S${j}.${side}`, 'rflesion', { level: 'S' + j });
+        anchors.set(`rfl.S${j}.${side}`, dors(j, x0 + s * 0.72, 0.16));
+        // todas as agulhas na mesma direção: de trás, um pouco de baixo e de fora
+        const tip = dors(j, x0 + s * 0.72, 0.02);
+        LBN.push({ to: tip, via: tip.clone().add(v(s * 1.6, -2.4, -8.6)), g: 17, key: `rfs.S${j}.${side}`, level: 'S' + j, info: 'rfneedle' });
+      }
+    });
+  }
+
+  /* ---- cadeia simpática cervical (mods.cervSymp: 'R'): sobre o longo do pescoço, à frente dos transversos, com os gânglios
+     cervical superior (C2-C3), médio (C6) e estrelado (C7-T1, à frente do colo da 1ª costela); e o tubérculo anterior de C6 ---- */
+  if (mods.cervSymp) {
+    const side = mods.cervSymp, s = side === 'L' ? 1 : -1;
+    [1, -1].forEach(sg => {
+      const P6 = VP.C6, sd = sg > 0 ? 'L' : 'R';
+      add(ellip(toW(F.C6, sg * (P6.tfx + 0.55), -0.15, P6.tfz + 0.42), 0.24, 0.28, 0.22, 14, F.C6.q), 'bone', 'C6.at.' + sd, 'chassaignac', { level: 'C6', region: 'C' });
+      anchors.set('C6.at.' + sd, toW(F.C6, sg * (P6.tfx + 0.55), -0.15, P6.tfz + 0.42));
+      anchors.set('C6.at.' + sd + '.ant', toW(F.C6, sg * (P6.tfx + 0.5), -0.12, P6.tfz + 0.7));
+    });
+    const X = n => LV[n].W / 2;
+    const scg = toW(F.C3, s * (X('C3') + 0.42), 0.45, 0.5), mcg = toW(F.C6, s * (X('C6') + 0.32), -0.1, 0.5), stg = toW(F.C7, s * 1.62, -1.05, 0.12);
+    const pts = [toW(F.C2, s * (X('C2') + 0.35), -0.3, 0.45), scg, toW(F.C4, s * (X('C4') + 0.32), 0, 0.52), toW(F.C5, s * (X('C5') + 0.32), 0, 0.52), mcg, toW(F.C7, s * (X('C7') + 0.36), 0, 0.42), stg, toW(F.T1, s * 1.5, -0.3, -0.05), toW(F.T2, s * 1.5, 0.2, 0.15), toW(F.T3, s * 1.55, 0.2, 0.2)];
+    add(tube(pts, () => 0.055, { N: 8 }), 'mbranch', 'symp.' + side, 'symp', { level: null });
+    anchors.set('symp.' + side, toW(F.C4, s * (X('C4') + 0.32), 0, 0.52));
+    [['scg', scg, F.C3.q, 0.2, 0.85, 0.17], ['mcg', mcg, F.C6.q, 0.15, 0.3, 0.13], ['stellate', stg, F.C7.q, 0.3, 0.72, 0.2]].forEach(([k, c, q, a, b, d]) => {
+      add(ellip(c, a, b, d, 16, q), 'ganglion', k + '.' + side, k, { level: k === 'scg' ? 'C3' : k === 'mcg' ? 'C6' : 'C7' });
+      anchors.set(k + '.' + side, c);
+    });
+  }
+
+  /* ---- plexo celíaco (mods.celiac): tronco celíaco saindo da frente da aorta em T12-L1, gânglios celíacos dos dois lados
+     dele, fibras do plexo em volta e os esplâncnicos maiores descendo pelos corpos de T10 a T12 ---- */
+  let celArc = null;
+  if (mods.celiac) {
+    const u = KI['T12-L1'], sp = spineAt(u), up = v(0, 1, 0).applyQuaternion(sp.q), curve = new THREE.CatmullRomCurve3(AO.pts, false, 'centripetal');
+    let tb = 0.5, hb = 1e9; for (let t = 0.5; t <= 1; t += 0.001) { const h = Math.abs(new V3().subVectors(curve.getPointAt(t), sp.p).dot(up)); if (h < hb) { hb = h; tb = t; } }
+    const c0 = curve.getPointAt(tb), r0 = AO.r(tb), L = (x, y, z) => c0.clone().add(v(x, y, z).applyQuaternion(sp.q));
+    const rad = (th, rr, y = 0) => L(rr * Math.sin(th * deg), y, rr * Math.cos(th * deg)); // em volta da aorta: 0° na frente, + para a esquerda
+    const e = L(0, -0.25, r0 + 1.5);
+    add(tube([L(0, 0.05, r0 - 0.2), L(0, -0.05, r0 + 0.7), e], () => 0.28, { N: 12 }), 'artery', 'celiac', 'celiac', { level: 'T12' });
+    add(mergeGeoms([tube([e, L(-1.0, -0.3, r0 + 2.0), L(-2.4, -0.2, r0 + 2.1)], () => 0.2, { N: 10 }), tube([e, L(1.2, 0.05, r0 + 1.4), L(2.6, 0.3, r0 + 0.9)], () => 0.22, { N: 10 }), tube([e, L(0.35, 0.8, r0 + 1.8), L(0.55, 1.8, r0 + 1.7)], () => 0.13, { N: 10 })]), 'artery', 'celiac.br', 'celiac', { level: 'T12' });
+    anchors.set('celiac', L(0, -0.1, r0 + 0.9)); anchors.set('aorta.cel', rad(-35, r0, -1.0));
+    // gânglios: massas achatadas e lobuladas na frente e dos lados da aorta, à altura da origem do tronco
+    [[-62, 'R'], [60, 'L']].forEach(([th, sd]) => {
+      const g = new THREE.SphereGeometry(1, 20, 14), a = g.attributes.position;
+      for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), q = 1 + 0.12 * Math.sin(5 * x + 2 * y) * Math.sin(4 * y + 1.3) + 0.06 * Math.sin(7 * z + 3 * x); a.setXYZ(i, x * q * 0.5, y * q * 0.75, z * q * 0.26); }
+      const q = sp.q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), th * deg));
+      g.applyMatrix4(new THREE.Matrix4().compose(rad(th, r0 + 0.5, -0.3), q, v(1, 1, 1))); g.computeVertexNormals();
+      add(g, 'ganglion', 'cgg.' + sd, 'celiacGgl', { level: 'L1' });
+      anchors.set('cgg.' + sd, rad(th, r0 + 0.5, -0.3));
+    });
+    // fibras do plexo: arcos em volta da frente da aorta, acima e abaixo do tronco, ligando os gânglios
+    const arc = (y, rr) => { const p = []; for (let th = -58; th <= 56; th += 8) p.push(rad(th, rr, y)); return tube(p, () => 0.04, { N: 6 }); };
+    add(mergeGeoms([arc(0.45, r0 + 0.32), arc(-0.6, r0 + 0.3), arc(-1.0, r0 + 0.42)]), 'mbranch', 'cplexus', 'celiacPlexus', { level: 'L1' });
+    anchors.set('cplexus', rad(-25, r0 + 0.32, -0.6));
+    // esplâncnicos maiores: à frente das artérias segmentares, nos corpos de T10 a T12, até o topo de cada gânglio
+    [[-62, -1], [60, 1]].forEach(([th, s]) => {
+      const P = ['T10', 'T11', 'T12'].map(n => SPf(n, q => [s * (q.W / 2 * 0.95 + 0.2), 0, q.D / 2 * 0.62 + 0.3]));
+      P.push(rad(th, r0 + 0.55, 0.45));
+      add(tube(P, () => 0.05, { N: 6 }), 'mbranch', 'splanch.' + (s > 0 ? 'L' : 'R'), 'splanch', { level: null });
+    });
+    anchors.set('splanch.L', SPf('T11', q => [q.W / 2 * 0.95 + 0.2, 0, q.D / 2 * 0.62 + 0.3]));
+    // pontos para as agulhas e o contraste: ao lado da aorta, logo à frente dos gânglios
+    anchors.set('celiac.tip.L', rad(88, r0 + 0.32, -0.7)); anchors.set('celiac.tip.R', rad(-85, r0 + 0.3, -0.7));
+    anchors.set('celiac.via.L', L(7.5, -1.6, -6)); anchors.set('celiac.via.R', L(-7.5, -1.6, -4));
+    const cr = []; for (let th = -100; th <= 100; th += 12.5) cr.push(rad(th, r0 + 0.42, -0.35));
+    celArc = cr;
+  }
+
+  // instrumento flexível ou curvo (epiduroscópio, sonda de RF resfriada): tubo pelo trajeto, último trecho na cor da ponta e cateter opcional saindo dela
+  const scope = o => {
+    const pts = o.path.map(ptOf), r = o.r || 0.12, k = o.key || 'scope', ex = { level: o.level || null }, n = pts.length;
+    const end = pts[n - 1], d = new V3().subVectors(end, pts[n - 2]).normalize(), neck = end.clone().addScaledVector(d, -Math.max(0.25, 3 * r));
+    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), 'metal', k, o.info || 'scope', ex);
+    add(rod(neck, end, r, { r2: r * 0.8, seg: 12 }), 'needleTip', k, o.info || 'scope', ex);
+    anchors.set(k, end.clone()); anchors.set(k + '.meio', pts[Math.floor(n / 2)].clone());
+    if (o.cath) { const ce = end.clone().addScaledVector(d, o.cath); add(rod(end.clone().addScaledVector(d, -0.05), ce, 0.035, { seg: 8 }), 'needleTip', k + '.cath', 'catheter', ex); anchors.set(k + '.cath', ce); }
+  };
+  (mods.scopes || []).forEach(scope);
+  (mods.needles || []).forEach(needle);
+  LBN.forEach(needle);
+  // contraste: 'root' ('L4.L', na ponta, na bainha da raiz e no epidural anterior); 'at' + r (gota, raio ou [rx, ry, rz] no quadro do ponto);
+  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação)
+  (mods.contrast || []).forEach(c => {
+    const k = c.key || 'contrast';
+    if (c.root) {
+      const R = ROOTS['root.' + c.root], s = c.root.endsWith('.L') ? 1 : -1, n = R.pts.length;
+      const sheath = [R.pts[n - 4], R.pts[n - 3], R.pts[n - 2], R.pts[n - 2].clone().lerp(R.pts[n - 1], 0.35)];
+      const sp = spineAt(R.uExit + 0.4), epi = sp.p.clone().add(v(s * sp.cw * 0.25, 0, sp.post - 0.12).applyQuaternion(sp.q));
+      // a bainha envolve também o gânglio (1,9 vez o raio da raiz)
+      add(mergeGeoms([ellip(ptOf(c.at), 0.22, 0.22, 0.22, 14), tube(sheath, () => R.r * 1.9 + 0.06, { N: 10 }), ellip(epi, 0.6, 1.5, 0.1, 18, sp.q)]), 'contrast', k, 'contrast', { level: c.root.split('.')[0] });
+      anchors.set(k, R.pts[n - 3].clone().lerp(R.pts[n - 2], 0.4));
+      return;
+    }
+    let g, at;
+    if (c.path) {
+      const pts = c.path === 'celiac' ? celArc : c.path.map(ptOf);
+      g = tube(pts, typeof c.r === 'function' ? c.r : () => c.r || 0.2, { N: 12, flat: c.flat, up: c.up && v(...c.up) });
+      at = pts[Math.floor((pts.length - 1) / 2)].clone();
+    } else if (c.epi) {
+      const u0 = KI[c.epi[0]], u1 = KI[c.epi[1]], th = c.th || 0.07, P = [];
+      for (let u = u0; u <= u1 + 1e-6; u += 0.25) { const s = spineAt(u); P.push(s.p.clone().add(v(c.x || 0, 0, s.zc - s.ca * 0.43 - th + 0.06).applyQuaternion(s.q))); }
+      g = tube(P, t => (c.w || 0.55) * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, 0.08 + t * 0.92))), { N: 12, flat: th / (c.w || 0.55), upFn: t => v(1, 0, 0).applyQuaternion(spineAt(u0 + (u1 - u0) * t).q) });
+      at = P[Math.floor(P.length / 2)].clone();
+    } else if (c.sij) {
+      // folha fina no meio da folga, nas seções entre y0 e y1, reamostrada em 7 pontos por seção
+      const J = SIJ[c.sij], rings = [];
+      J.secs.filter(sec => sec.y >= c.y[0] && sec.y <= c.y[1]).forEach(sec => {
+        const pr = sec.pairs.filter(Boolean); if (pr.length < 2) return;
+        const mid = new THREE.CatmullRomCurve3(pr.map(([p, q]) => p.clone().lerp(q, 0.5))).getSpacedPoints(6);
+        const nn = new THREE.CatmullRomCurve3(pr.map(([p, q]) => new V3().subVectors(p, q).normalize())).getSpacedPoints(6).map(x => x.normalize());
+        rings.push(mid.map((p, i) => p.clone().addScaledVector(nn[i], 0.05)).concat(mid.map((p, i) => p.clone().addScaledVector(nn[i], -0.05)).reverse()));
+      });
+      g = loft(rings, true, true, 0, 0, true);
+      at = rings[Math.floor(rings.length / 2)][3].clone().lerp(rings[Math.floor(rings.length / 2)][10], 0.5);
+    } else {
+      at = ptOf(c.at); const r = [].concat(c.r || 0.2);
+      g = ellip(at, r[0], r[1] ?? r[0], r[2] ?? r[0], 14, qOf(c.q || c.at));
+    }
+    add(g, 'contrast', k, 'contrast', { level: c.level || null });
+    anchors.set(k, at);
   });
   // radiofrequência do ramo medial ('L3.L'): agulha paralela ao nervo, com a ponta ao lado dele; lesão em volta da parte ativa
   (mods.rf || []).forEach(k => {
@@ -1199,6 +1506,48 @@ function buildSpine(mods = {}) {
     add(ellip(c, 0.24, 0.47, 0.24, 16, new THREE.Quaternion().setFromUnitVectors(v(0, 1, 0), m.d)), 'rfLesion', 'rflesion.' + k, 'rflesion', { level: m.level });
     anchors.set('rflesion.' + k, c);
   });
+  // disco por dentro: no plano do meio do disco, a partir do centro do núcleo; ângulo a de 0 na frente, + para a esquerda.
+  // Devolve as distâncias do centro do núcleo até a borda do núcleo e até a borda do disco nessa direção
+  const discRay = (dn, a) => {
+    const K = KF[KI[dn]], nz = -0.08 * K.D, d = [Math.sin(a), Math.cos(a)], rn = 1 / Math.hypot(d[0] / (0.27 * K.W), d[1] / (0.25 * K.D));
+    const ol = bodyOutline(K.reg, K.W * 0.955, K.D * 0.955, 72); let ro = 0;
+    for (let i = 0; i < ol.length; i++) {
+      const [x1, z1] = ol[i], [x2, z2] = ol[(i + 1) % ol.length], ex = x2 - x1, ez = z2 - z1, den = d[0] * ez - d[1] * ex; if (Math.abs(den) < 1e-9) continue;
+      const t = ((x1) * ez - (z1 - nz) * ex) / den, w = ((x1) * d[1] - (z1 - nz) * d[0]) / den; if (t > 0 && w >= 0 && w <= 1) ro = Math.max(ro, t);
+    }
+    return { nz, d, rn, ro, P: (r, y = 0) => toW(discKF[dn], d[0] * r, y, nz + d[1] * r) };
+  };
+  // biacuplastia ('L4-L5'): introdutores pela via posterolateral dos dois lados e sondas resfriadas curvas no anel posterior; lesão alongada entre elas
+  if (mods.discRF) {
+    const dn = mods.discRF, th = discKF[dn].th, mid = a => { const R = discRay(dn, a); return R.P((R.rn + R.ro) / 2); };
+    [1, -1].forEach(s => {
+      const sd = s > 0 ? 'L' : 'R', A = [2.05, 2.3, 2.55, 2.75, 2.92].map(a => s * a), R0 = discRay(dn, A[0]);
+      needle({ to: mid(A[0]), via: R0.P(R0.ro + 6), g: 17, key: 'intro.' + sd, level: dn, info: 'introducer' });
+      scope({ path: A.map(mid), r: 0.062, key: 'probe.' + sd, level: dn, info: 'probe' });
+    });
+    const rings = [];
+    for (let a = 2.2; a <= 2 * Math.PI - 2.2 + 1e-6; a += 0.08) {
+      const R = discRay(dn, a), c = R.P((R.rn + R.ro) / 2), rd = new V3().subVectors(R.P(R.ro), R.P(R.rn)), ax = rd.clone().normalize(), upv = v(0, 1, 0).applyQuaternion(discKF[dn].q), hr = Math.max(0.05, rd.length() * 0.42), ry = th * 0.36, ring = [];
+      for (let k = 0; k < 12; k++) { const t = 2 * Math.PI * k / 12; ring.push(c.clone().addScaledVector(ax, Math.cos(t) * hr).addScaledVector(upv, Math.sin(t) * ry)); }
+      rings.push(ring);
+    }
+    add(loft(rings, true, true), 'heat', 'heat.' + dn, 'rfdisc', { level: dn });
+    anchors.set('heat.' + dn, mid(Math.PI));
+  }
+  // nucleoplastia ({ at: 'L4-L5', side: 'R' }): cânula posterolateral até a borda do núcleo e canais de ablação em leque dentro dele
+  if (mods.nucleoplasty) {
+    const { at: dn, side } = mods.nucleoplasty, s = side === 'L' ? 1 : -1, a0 = s * 2.2, R = discRay(dn, a0), tip = R.P(R.rn * 0.97), ch = [];
+    needle({ to: tip, via: R.P(R.ro + 6), g: 17, key: 'cannula', level: dn, info: 'cannula' });
+    for (let k = 0; k < 6; k++) {
+      const a = a0 + Math.PI + (k - 2.5) * 0.24, K = KF[KI[dn]], e = v(Math.sin(a), 0, Math.cos(a));
+      // até 85% da distância da ponta à borda do núcleo nessa direção (elipse do núcleo no plano do meio)
+      const p0 = v(R.d[0] * R.rn * 0.97, 0, R.d[1] * R.rn * 0.97), rx = 0.27 * K.W, rz = 0.25 * K.D;
+      const A = (e.x / rx) ** 2 + (e.z / rz) ** 2, B = 2 * (p0.x * e.x / rx ** 2 + p0.z * e.z / rz ** 2), C = (p0.x / rx) ** 2 + (p0.z / rz) ** 2 - 1, L = (-B + Math.sqrt(B * B - 4 * A * C)) / (2 * A) * 0.85;
+      ch.push(rod(tip, toW(discKF[dn], p0.x + e.x * L, (k % 2 ? 0.06 : -0.06) * (k - 2.5) / 2.5, R.nz + p0.z + e.z * L), 0.055, { seg: 10 }));
+      if (k === 2) anchors.set('channels', toW(discKF[dn], p0.x + e.x * L * 0.6, 0, R.nz + p0.z + e.z * L * 0.6));
+    }
+    add(mergeGeoms(ch), 'heat', 'channels', 'channel', { level: dn });
+  }
   // cimento ('L1'): massa irregular na metade anterior do corpo, abaixo da placa de cima já em cunha
   if (mods.cement) {
     const n = mods.cement, f = F[n], D = f.Dw, W = LV[n].W * md('widen', n, 1), z0 = 0.08 * D;
@@ -1234,6 +1583,22 @@ function buildSpine(mods = {}) {
     add(rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
     anchors.set('rod.' + side, a.clone().lerp(b, 0.5));
   });
+  // artroplastia discal cervical ('C5-C6'): placa metálica com quilha encostada em cada placa terminal (quilha dentro do corpo)
+  // e núcleo de polietileno entre elas; cada placa no quadro da vértebra dela, assim acompanha a placa terminal
+  if (mods.adr) {
+    const [un, ln] = mods.adr.split('-'), fu = F[un], fl = F[ln], ol = bodyOutline('C', 1.2, 1.1, 32), z0 = 0.07, parts = [];
+    [[fu, -fu.h / 2 - 0.01, -1], [fl, fl.h / 2 + 0.01, 1]].forEach(([fr, y0, s]) => {
+      const M = Msh(fr), y1 = y0 + s * 0.1;
+      parts.push(loft([y0, y1].map(y => ol.map(([x, z]) => v(x, y, z + z0).applyMatrix4(M))), true, true));
+      parts.push(new THREE.BoxGeometry(0.06, 0.22, 0.7).translate(0, y0 - s * 0.11, z0 + 0.1).applyMatrix4(M));
+    });
+    add(mergeGeoms(parts), 'implant', 'adr.plate', 'adrPlate', { level: mods.adr });
+    const pu = toW(fu, 0, -fu.h / 2 - 0.11, z0), pl = toW(fl, 0, fl.h / 2 + 0.11, z0), c = pu.clone().lerp(pl, 0.5);
+    add(ellip(c.clone().add(v(0, 0, -0.04).applyQuaternion(discKF[mods.adr].q)), 0.48, pu.distanceTo(pl) / 2 + 0.03, 0.38, 24, discKF[mods.adr].q), 'poly', 'adr.core', 'adrCore', { level: mods.adr });
+    anchors.set('adr', c); anchors.set('adr.core', toW(discKF[mods.adr], 0, 0, z0 + 0.3));
+    anchors.set('adr.plate', toW(fu, 0, -fu.h / 2 - 0.05, z0 + 0.45)); anchors.set('adr.keel', toW(fu, 0, -fu.h / 2 + 0.15, z0 + 0.2));
+    anchors.set('adr.ann', toW(discKF[mods.adr], 0, 0, -0.42 * KF[KI[mods.adr]].D)); // anel posterior que fica
+  }
 
   // âncora de centros e metadados
   anchors.set('center', SP(KI.T10, 0, 0, 0));

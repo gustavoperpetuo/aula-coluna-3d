@@ -1,17 +1,17 @@
 # Graph Report - aula-coluna-3d  (2026-10-23)
 
 ## Corpus Check
-- 21 files · ~51,991 words
+- 21 files · ~60,656 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 175 nodes · 316 edges · 13 communities (9 shown, 4 thin omitted)
+- 176 nodes · 319 edges · 13 communities (9 shown, 4 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `48a1231a`
+- Built from commit: `8c9edbb9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -31,7 +31,7 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `renderDz()` - 18 edges
-2. `buildSpine()` - 17 edges
+2. `buildSpine()` - 18 edges
 3. `applyConfig()` - 15 edges
 4. `renderStep()` - 12 edges
 5. `focusKey()` - 11 edges
@@ -42,11 +42,11 @@
 10. `rebuild()` - 8 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Como o código funciona` --references--> `placeNav()`  [INFERRED]
+  README.md → src/app.js
 - `Como o código funciona` --references--> `invalidate()`  [INFERRED]
   README.md → src/app.js
 - `Como o código funciona` --references--> `applyVisuals()`  [INFERRED]
-  README.md → src/app.js
-- `Como o código funciona` --references--> `placeNav()`  [INFERRED]
   README.md → src/app.js
 - `Como o código funciona` --references--> `mergeGeoms()`  [INFERRED]
   README.md → src/geo.js
@@ -59,8 +59,8 @@
 ## Communities (13 total, 4 thin omitted)
 
 ### Community 0 - "geo.js"
-Cohesion: 0.21
-Nodes (20): BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic(), centroid() (+12 more)
+Cohesion: 0.20
+Nodes (22): Como o código funciona, BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic() (+14 more)
 
 ### Community 1 - "app.js"
 Cohesion: 0.15
@@ -75,8 +75,8 @@ Cohesion: 0.09
 Nodes (18): json(), onRequestPost(), dependencies, @anthropic-ai/sdk, description, devDependencies, playwright, three (+10 more)
 
 ### Community 5 - "Aula 3D da coluna vertebral"
-Cohesion: 0.20
-Nodes (9): Aula 3D da coluna vertebral, Como o código funciona, Estrutura, Pendências, Publicação, Regras de conteúdo, Tira-dúvidas (teste), Uso (+1 more)
+Cohesion: 0.25
+Nodes (7): Aula 3D da coluna vertebral, Estrutura, Pendências, Publicação, Regras de conteúdo, Tira-dúvidas (teste), Uso
 
 ### Community 6 - "Retrospectiva: aula 3D da coluna (12/10/2026)"
 Cohesion: 0.22
@@ -84,7 +84,7 @@ Nodes (8): Ações, Começar, Continuar, Parar, Pendências da última rodada, R
 
 ### Community 7 - "app.js"
 Cohesion: 0.12
-Nodes (29): applyConfig(), bindQuiz(), cats(), chapterDone(), closeDz(), cutTargets(), edgeFade(), focusLevel() (+21 more)
+Nodes (30): applyConfig(), bindQuiz(), cats(), chapterDone(), closeDz(), cutTargets(), edgeFade(), focusLevel() (+22 more)
 
 ### Community 8 - "content.js"
 Cohesion: 0.22
@@ -102,17 +102,17 @@ Nodes (4): DZ, DZ_CATS, DZ_OTHERS, DZ_QUIZ
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Como o código funciona` connect `Aula 3D da coluna vertebral` to `geo.js`, `app.js`, `app.js`?**
-  _High betweenness centrality (0.144) - this node is a cross-community bridge._
+- **Why does `Como o código funciona` connect `geo.js` to `app.js`, `Aula 3D da coluna vertebral`, `app.js`?**
+  _High betweenness centrality (0.147) - this node is a cross-community bridge._
 - **What connects `three` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `app.js` be split into smaller, more focused modules?**
   _Cohesion score 0.14666666666666667 - nodes in this community are weakly interconnected._
-- **Why does `buildSpine()` connect `geo.js` to `Aula 3D da coluna vertebral`?**
-  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **Why does `applyVisuals()` connect `app.js` to `geo.js`, `app.js`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Should `playwright` be split into smaller, more focused modules?**
   _Cohesion score 0.1067193675889328 - nodes in this community are weakly interconnected._
-- **Why does `applyVisuals()` connect `app.js` to `Aula 3D da coluna vertebral`, `app.js`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.09486166007905138 - nodes in this community are weakly interconnected._
+- **Should `app.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.11875843454790823 - nodes in this community are weakly interconnected._

@@ -369,6 +369,33 @@ function loft(rings, capS = true, capE = true, insetS = 0, insetE = 0, strip = f
   return g;
 }
 
+/* loft com tampas trianguladas (earcut): anel em U ou em arco não é estrelado a partir do centro e o leque da tampa
+   se sobrepunha. uv(ri): coordenadas 2D do anel ri no plano dele. Paredes orientadas pelo ponto mais longe do centro do
+   anel do meio (ali a normal de fora aponta para longe do centro); tampas para longe do anel vizinho */
+function loftEar(rings, uv) {
+  const R = rings.length, N = rings[0].length, pos = [], idx = [];
+  rings.forEach(r => r.forEach(p => pos.push(p.x, p.y, p.z)));
+  const rm = Math.floor((R - 1) / 2), c = centroid(rings[rm]);
+  let im = 0; rings[rm].forEach((p, i) => { if (p.distanceTo(c) > rings[rm][im].distanceTo(c)) im = i; });
+  const a = rings[rm][im], b = rings[rm][(im + 1) % N], d = rings[rm + 1][im];
+  const flip = new V3().subVectors(b, a).cross(new V3().subVectors(d, a)).dot(new V3().subVectors(a, c)) < 0;
+  for (let r = 0; r < R - 1; r++) for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N, A = r * N + i, B = r * N + j, C = (r + 1) * N + i, D = (r + 1) * N + j;
+    if (!flip) idx.push(A, B, C, B, D, C); else idx.push(A, C, B, B, C, D);
+  }
+  [[0, 1], [R - 1, R - 2]].forEach(([ri, nb]) => {
+    const tri = THREE.ShapeUtils.triangulateShape(uv(ri).map(([x, y]) => new THREE.Vector2(x, y)), []), rg = rings[ri], base = ri * N;
+    const out = new V3().subVectors(centroid(rg), centroid(rings[nb])), sum = new V3();
+    tri.forEach(([p, q, s]) => sum.add(new V3().subVectors(rg[q], rg[p]).cross(new V3().subVectors(rg[s], rg[p]))));
+    const f = sum.dot(out) < 0;
+    tri.forEach(([p, q, s]) => f ? idx.push(base + p, base + s, base + q) : idx.push(base + p, base + q, base + s));
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
 /* junta malhas mantendo o índice: mesmos triângulos e normais, cerca de um terço dos vértices */
 function mergeGeoms(list) {
   const arr = list.filter(Boolean); arr.forEach(g => { if (!g.attributes.normal) g.computeVertexNormals(); });
@@ -802,7 +829,11 @@ function buildSpine(mods = {}) {
       // facetectomia ('L4-L5.L'): o processo articular inferior de cima sai inteiro, o superior de baixo fica só na base
       const cutA = (mods.facetectomy || []).includes(upAbove + '.' + side), cutB = (mods.facetectomy || []).includes(up + '.' + side);
       const sapB = v(s * (px + 0.3), py + 0.2 * h, zP - 0.1), sapT = v(s * (px + 0.4), h / 2 + dA * 0.9, zP - 0.25);
-      part(rod(sapB, cutA ? sapB.clone().lerp(sapT, 0.2) : sapT, 0.55 * fsA, { f: 0.48, side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
+      // foraminoplastia ({ 'L5.L': 0.5 }): sai a parte ventral (a que olha para o forame) e a ponta do processo articular superior;
+      // fica a fração de trás da espessura anteroposterior
+      const trim = (mods.sapTrim || {})[l.n + '.' + side], sh = v(0, 0, -0.55 * (1 - (trim || 1)));
+      part(rod(sapB.clone().add(sh), (cutA ? sapB.clone().lerp(sapT, 0.2) : trim ? sapB.clone().lerp(sapT, 0.85) : sapT).add(sh), 0.55 * fsA * (trim || 1), { f: 0.48 / (trim || 1), side: v(1, 0, 0.35) }), fsA > 1 ? 'boneHyp' : 'bone', `${l.n}.sap.${side}`, 'sap');
+      if (trim) anchors.set(`fpl.${l.n}.${side}`, toW(F[l.n], ...sapB.clone().lerp(sapT, 0.55).add(v(0, 0, 0.3)).toArray()));
       part(ellip(v(s * (px + 0.55), py + 0.4 * h, zP - 0.65), 0.32, 0.35, 0.3), 'bone', `${l.n}.mam.${side}`, 'mamm');
       const iapT = v(s * (px - 0.15), -0.3 * h, zP - 0.7), iapB = v(s * (px - 0.05), -h / 2 - dB * 0.85, zP - 0.62);
       if (!cutB) part(rod(iapT, iapB, 0.5 * fsB, { f: 0.48, side: v(1, 0, -0.35) }), fsB > 1 ? 'boneHyp' : 'bone', `${l.n}.iap.${side}`, 'iap');
@@ -819,7 +850,7 @@ function buildSpine(mods = {}) {
         part(cr, 'lesion', `crack.${l.n}.${side}`, 'parsdefect');
       } else part(rod(parsA, parsB, 0.42), 'bone', `${l.n}.pars.${side}`, 'pars');
       // sem a faceta não há cápsula nem âncora de faceta desse lado
-      P.sap[side] = cutA ? null : { top: sapT }; P.iap[side] = cutB ? null : { bot: iapB };
+      P.sap[side] = cutA || trim ? null : { top: sapT }; P.iap[side] = cutB ? null : { bot: iapB };
     });
     P.lam = { y: -0.26 * h - 0.3, z: -D / 2 - l.ca - 0.35, r: 1.05 };
     // espinhoso em machadinha
@@ -830,26 +861,63 @@ function buildSpine(mods = {}) {
   }
 
   /* ---- sacro ---- */
+  const SAC = {}; // anéis e medidas do sacro para os procedimentos (ilíaco, ramos laterais, canal)
   {
     const Wt = [10.6, 10.0, 7.6, 5.6, 4.0, 2.6], T = [4.8, 4.6, 3.8, 3.0, 2.3, 1.6], za = [1.65, 1.45, 1.15, 0.95, 0.75, 0.6];
     const N = 44; const rr = [], LR = [];
     const frontZ = (j, x) => { const f = LR[j].filter(p => p[2] > 0).sort((a, b) => a[0] - b[0]); for (let i = 0; i < f.length - 1; i++) if (x >= f[i][0] && x <= f[i + 1][0]) { const t = (x - f[i][0]) / (f[i + 1][0] - f[i][0] || 1); return f[i][1] + (f[i + 1][1] - f[i][1]) * t; } return f[0][1]; };
+    // contorno externo do anel j no ângulo t (0 na frente, π atrás), no referencial SB[j]: [x, y, z, cos t]
+    const sPt = (j, t) => {
+      const bw = SD[Math.min(j, 4)][0] / 2, s = Math.sin(t), c = Math.cos(t);
+      const x = Wt[j] / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / 2.6);
+      const zc = za[j] - T[j] / 2;
+      let z = T[j] / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.3);
+      const lat = Math.max(0, (Math.abs(x) - bw) / Math.max(0.1, Wt[j] / 2 - bw));
+      if (c > 0) z *= 1 - 0.45 * lat; else z *= 1 - 0.25 * lat;
+      const y = j === 0 ? -0.8 * Math.min(1, Math.max(0, (Math.abs(x) - 2.3) / 1.2)) - 0.25 : 0;
+      return [x, y, zc + z, c];
+    };
     for (let j = 0; j < 6; j++) {
-      const bw = SD[Math.min(j, 4)][0] / 2, ring = [], loc = [];
-      for (let i = 0; i < N; i++) {
-        const t = 2 * Math.PI * i / N, s = Math.sin(t), c = Math.cos(t);
-        const x = Wt[j] / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / 2.6);
-        const zc = za[j] - T[j] / 2;
-        let z = T[j] / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.3);
-        const lat = Math.max(0, (Math.abs(x) - bw) / Math.max(0.1, Wt[j] / 2 - bw));
-        if (c > 0) z *= 1 - 0.45 * lat; else z *= 1 - 0.25 * lat;
-        let y = 0;
-        if (j === 0) y = -0.8 * Math.min(1, Math.max(0, (Math.abs(x) - 2.3) / 1.2)) - 0.25;
-        ring.push(toW(SB[j], x, y, zc + z)); loc.push([x, zc + z, c]);
-      }
+      const ring = [], loc = [];
+      for (let i = 0; i < N; i++) { const [x, y, z, c] = sPt(j, 2 * Math.PI * i / N); ring.push(toW(SB[j], x, y, z)); loc.push([x, z, c]); }
       rr.push(ring); LR.push(loc);
     }
-    add(loft(rr, true, true), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+    // entre os anéis (jf fracionário): posição e rotação interpoladas; dorso na abscissa x; canal (centro z, meia profundidade e meia largura)
+    const SBi = jf => { const a = Math.max(0, Math.min(4, Math.floor(jf))), f = jf - a; return { p: SB[a].p.clone().lerp(SB[a + 1].p, f), q: SB[a].q.clone().slerp(SB[a + 1].q, f) }; };
+    const backAt = (j, x) => sPt(j, Math.PI - Math.sign(x || 1) * Math.asin(Math.pow(Math.min(1, Math.abs(x) / (Wt[j] / 2)), 1.3)))[2];
+    const lerpJ = (jf, fn) => { const a = Math.min(4, Math.floor(jf)), f = jf - a; return fn(a) * (1 - f) + fn(a + 1) * f; };
+    const backZ = (jf, x) => lerpJ(jf, j => backAt(j, x));
+    // canal de cada anel: média das vértebras sacrais vizinhas (as mesmas medidas do canal por onde correm dura e raízes)
+    const canalJ = j => { const A = SD[Math.max(0, j - 1)], B = SD[Math.min(4, j)], m = k => (A[k] + B[k]) / 2; return [-m(1) / 2 - m(3) / 2, m(3) / 2, m(2) / 2]; };
+    const canalAt = jf => ({ zc: lerpJ(jf, j => canalJ(j)[0]), ca: lerpJ(jf, j => canalJ(j)[1]), hw: lerpJ(jf, j => canalJ(j)[2]) });
+    Object.assign(SAC, { rr, SBi, backZ, canalAt });
+    if (mods.sacralCanal) {
+      // canal sacral oco: o bloco ganha um sulco atrás (paredes e assoalho do canal) e o teto (lâminas fundidas) é peça à parte
+      // que termina no meio de S4: abaixo dela o sulco aberto é o hiato sacral
+      const K = 40, rings = [], uv = [];
+      for (let j = 0; j < 6; j++) {
+        const { zc, ca, hw } = canalAt(j), a = Math.asin(Math.pow(hw / (Wt[j] / 2), 1.3));
+        const eL = sPt(j, Math.PI - a), eR = sPt(j, Math.PI + a), y = eL[1], P = [[eL[0], y, eL[2]], [hw, y, (eL[2] + zc) / 2]];
+        for (let k = 0; k <= 8; k++) { const ph = Math.PI * k / 8; P.push([hw * Math.cos(ph), y, zc + ca * Math.sin(ph)]); }
+        P.push([-hw, y, (eR[2] + zc) / 2], [eR[0], y, eR[2]]);
+        for (let k = 1; k <= K; k++) P.push(sPt(j, Math.PI + a + k * (2 * Math.PI - 2 * a) / (K + 1)));
+        rings.push(P.map(([x, yy, z]) => toW(SB[j], x, yy, z))); uv.push(P.map(([x, , z]) => [x, z]));
+      }
+      add(loftEar(rings, ri => uv[ri]), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+      const o = 0.45, e = 0.08, roof = [], rl = [];
+      [0, 1, 2, 3, 3.5].forEach(jf => {
+        const fr = SBi(jf), { zc, ca, hw } = canalAt(jf), y = jf === 0 ? -0.25 : 0, P = [];
+        for (let k = 0; k <= 8; k++) { const ph = Math.PI * k / 8; P.push([hw * Math.cos(ph), zc - ca * Math.sin(ph)]); }
+        P.push([-hw - o, zc]);
+        for (let k = 0; k <= 6; k++) { const x = -hw - o + 2 * (hw + o) * k / 6; P.push([x, backZ(jf, x) - e]); }
+        P.push([hw + o, zc]);
+        roof.push(P.map(([x, z]) => toW(fr, x, y, z))); rl.push(P);
+      });
+      add(loftEar(roof, ri => rl[ri]), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
+      const cp = (jf, dz = 0) => toW(SBi(jf), 0, 0, canalAt(jf).zc + dz);
+      for (let k = 1; k <= 5; k++) anchors.set('sacCanal.S' + k, cp(k - 0.5));
+      SAC.canalPt = cp;
+    } else add(loft(rr, true, true), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
     // corpo de S1 (platô)
     const g = new THREE.Group(); g.position.copy(SB[0].p); g.quaternion.copy(SB[0].q); root.add(g);
     const ol = bodyOutline('L', 4.9, 3.3, 40);
@@ -879,13 +947,17 @@ function buildSpine(mods = {}) {
         hole.push(ellip(c, 0.42 - 0.05 * j, 0.36 - 0.04 * j, 0.16, 14, SB[j].q));
         SF[j + '.' + side] = c;
         anchors.set(`sf.${j}.${side}`, c);
+        // forames dorsais (ramos dorsais), só quando o procedimento usa: um pouco mais mediais que os anteriores
+        if (mods.sacralLB) { const xd = s * (fx[j - 1] - 0.1), cd = toW(SB[j], xd, 0, backAt(j, xd) + 0.13); hole.push(ellip(cd, 0.36 - 0.04 * j, 0.32 - 0.03 * j, 0.16, 14, SB[j].q)); anchors.set(`sfd.${j}.${side}`, cd); }
       });
+      // a crista mediana para acima do hiato
+      if (j === 4 && mods.sacralCanal) continue;
       const crest = toW(SB[j], 0, 0.6, za[j] - T[j] + 0.05);
       add(ellip(crest, 0.32, 0.6, 0.3, 12, SB[j].q), 'bone', 'sacrum', 'sacrum', { level: 'S', region: 'S' });
     }
     add(mergeGeoms(hole), 'hole', 'sacrum', 'sforamen', { level: 'S', region: 'S' });
     VP.SF = SF;
-    anchors.set('hiatus', toW(SB[5], 0, 0.6, -0.6));
+    anchors.set('hiatus', mods.sacralCanal ? SAC.canalPt(3.7, -canalAt(3.7).ca * 0.4) : toW(SB[5], 0, 0.6, -0.6));
     anchors.set('sacrum', toW(SB[2], 0, 0, 0.2));
     // cóccix
     const CW = [2.2, 1.6, 1.2, 0.8];
@@ -936,7 +1008,9 @@ function buildSpine(mods = {}) {
       // cada ângulo dá uma seção (parede de fora subindo, de dentro descendo); girar a seção fecha o anel. g: fica transparente com os ossos
       const I = R.map(r => { const c = centroid(r); return r.map(pp => c.clone().lerp(pp, 0.85)); });
       const sec = R[0].map((_, i) => R.map(r => r[i]).concat(I.map(r => r[i]).reverse()));
-      add(loft(sec.concat([sec[0]]), false, false), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true, g: 1 });
+      // 'ant' (via anterior): sem o anel da frente; sobra o arco lateral e posterior, fechado nas pontas
+      const k0 = dm.discectomy === 'ant' ? Math.round(sec.length * 0.16) : 0;
+      add(k0 ? loft(sec.slice(k0, sec.length - k0 + 1), true, true) : loft(sec.concat([sec[0]]), false, false), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true, g: 1 });
     } else add(loft(R, true, true), kind, 'disc.' + dn, 'annulus', { level: dn, region: LV[DD.up].r, cut: true });
     // lamelas internas (aparecem no corte)
     if (!dm.discectomy) [0.8, 0.62].forEach((sc, li) => {
@@ -948,7 +1022,19 @@ function buildSpine(mods = {}) {
     const qd = kf.q, th = kf.p.distanceTo(cA) * 2;
     const nucC = kf.p.clone().add(v(0, 0, -0.08 * kf.D).applyQuaternion(qd));
     const ns = dm.state === 'degen' ? 0.6 : 1;
-    if (!dm.discectomy) add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
+    if (dm.dye) {
+      // discografia: o núcleo cheio de contraste, lobulado; 'leak': o contraste sai por uma fissura radial posterior até o anel externo
+      const g = new THREE.SphereGeometry(1, 24, 16), a = g.attributes.position, ry = Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1));
+      for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), q = 1 + 0.1 * Math.sin(6 * x + 0.4) * Math.sin(5 * z + 1.1) + 0.05 * Math.sin(9 * y + 4 * x); a.setXYZ(i, x * q * 0.25 * kf.W, y * q * ry, z * q * 0.23 * kf.D); }
+      g.applyMatrix4(new THREE.Matrix4().compose(nucC, qd, v(1, 1, 1))); g.computeVertexNormals();
+      add(g, 'dye', 'nuc.' + dn, 'contrast', { level: dn, region: LV[DD.up].r });
+      if (dm.dye === 'leak') {
+        const zb = postMidZ(LV[DD.up].r, kf.D) * 0.955, L = (x, y, z) => kf.p.clone().add(v(x, y, z).applyQuaternion(qd));
+        const fis = tube([L(0, 0, -0.08 * kf.D - 0.15 * kf.D), L(0.04, 0, (-0.33 * kf.D + zb) / 2), L(0, 0, zb + 0.06)], t => 0.16 + 0.1 * t, { N: 10, flat: 0.55, upFn: () => v(0, 1, 0).applyQuaternion(qd) });
+        add(mergeGeoms([fis, ellip(L(0, 0, zb + 0.02), 0.65, 0.3, 0.11, 16, qd)]), 'dye', 'leak.' + dn, 'contrast', { level: dn, region: LV[DD.up].r });
+        anchors.set('leak.' + dn, L(0, 0, zb + 0.02));
+      }
+    } else if (!dm.discectomy) add(ellip(nucC, 0.27 * kf.W * ns, Math.max(0.12, 0.34 * DD.th * (dm.h ?? 1)), 0.25 * kf.D * ns, 18, qd), dm.state === 'degen' ? 'nucDeg' : 'nucleus', 'nuc.' + dn, 'nucleus', { level: dn, region: LV[DD.up].r });
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
@@ -1216,13 +1302,16 @@ function buildSpine(mods = {}) {
     anchors.set('medulla', top);
   }
   const cordSurf = (u, x, z) => { const s = spineAt(u); const [rx, rz] = cordR(u); return s.p.clone().add(v(x * rx, 0, s.zc + z * rz).applyQuaternion(s.q)); };
+  // fim do saco dural (S2): com o canal sacral oco ele afila desde L5-S1, como no adulto, e deixa espaço epidural no canal sacral
+  // (as raízes que descem por ele chegam junto, para não ficarem fora do saco)
+  const duraClose = u => 1 - sm(KI.S2 + 0.1 - (mods.sacralCanal ? 1.9 : 1.0), KI.S2 + 0.1, u) * 0.9;
   // dura
   {
     const uEnd = KI.S2 + 0.1; const rr = [];
     for (let u = 0; u <= uEnd + 1e-6; u += 0.15) {
       const s = spineAt(u); const pf = pinch(u, 'dura');
       let rx = s.cw / 2 * 0.8, rz = s.ca / 2 * 0.86;
-      const close = 1 - sm(uEnd - 1.0, uEnd, u) * 0.9;
+      const close = duraClose(u);
       rx *= close * (0.4 + 0.6 * pf); rz *= close * pf;
       const r = []; const c = s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q));
       for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; r.push(c.clone().add(v(Math.cos(t) * rx, 0, Math.sin(t) * rz).applyQuaternion(s.q))); }
@@ -1285,7 +1374,7 @@ function buildSpine(mods = {}) {
         for (let u = u0 + 0.8; u < uExit - 0.7; u += 0.5) {
           const s_ = spineAt(u); const ramp = sm(uExit - 3.0, uExit - 0.7, u);
           const pf = 0.35 + 0.65 * pinch(u, 'dura');
-          const xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf;
+          const rc = mods.sacralCanal ? Math.max(0.5, duraClose(u)) : 1, xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf * rc, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf * rc;
           const xr = s_.cw / 2 * 0.78 * (0.5 + 0.5 * pf), zr = s_.ca * 0.18 * pf;
           pts.push(s_.p.clone().add(v(s * (xm + (xr - xm) * ramp), 0, s_.zc + (1 - pf) * 0.25 + zm + (zr - zm) * ramp).applyQuaternion(s_.q)));
         }
@@ -1323,9 +1412,10 @@ function buildSpine(mods = {}) {
   const aoX = { T5: 2.0, T6: 2.0, T7: 1.9, T8: 1.7, T9: 1.5, T10: 1.3, T11: 1.0, T12: 0.8, L1: 0.7, L2: 0.65, L3: 0.55, L4: 0.4 };
   const aoP = n => SPf(n, s => [aoX[n], 0, s.D / 2 + 1.25]);
   const archTop = SPf('T3', s => [-0.1, 1.2, s.D / 2 + 3.4]);
+  const AO = { r: t => 1.45 - 0.55 * Math.min(1, t * 1.1) }; // trajeto e raio da aorta (tronco celíaco)
   {
     const pts = [SPf('T6', s => [-1.3, 0, s.D / 2 + 7.2]), SPf('T4', s => [-1.1, 0.6, s.D / 2 + 6.3]), archTop, SPf('T4', s => [1.4, 0.4, s.D / 2 + 1.9]), aoP('T5'), aoP('T6'), aoP('T8'), aoP('T10'), aoP('T12'), aoP('L1'), aoP('L2'), aoP('L3'), SPf('L4', s => [0.35, -0.2, s.D / 2 + 1.25])];
-    VS('aorta', 'artery', pts, t => 1.45 - 0.55 * Math.min(1, t * 1.1), 'aorta');
+    VS('aorta', 'artery', pts, AO.r, 'aorta'); AO.pts = pts;
     anchors.set('aorta', aoP('T8')); anchors.set('aorta.L', aoP('L2')); anchors.set('aorta.arch', archTop);
     const B = pts[pts.length - 1].clone();
     anchors.set('aorta.bif', B);
@@ -1475,27 +1565,20 @@ function buildSpine(mods = {}) {
   /* ---- procedimentos: agulhas, contraste, ramo medial e radiofrequência, cimento, implantes ---- */
   // ponto: vetor, chave de âncora ('L1.ped.L') ou [quadro, x, y, z] no referencial de uma vértebra ou de um disco ('L4', 'L4-L5')
   const ptOf = a => a instanceof V3 ? a.clone() : typeof a === 'string' ? anchors.get(a).clone() : toW(F[a[0]] || discKF[a[0]], a[1], a[2], a[3]);
-  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 11: 0.15 }; // raio externo (cm) por calibre
+  // rotação do quadro de um ponto ou nome de quadro (para orientar gotas de contraste)
+  const qOf = a => { const n = Array.isArray(a) ? a[0] : a, fr = typeof n === 'string' && (F[n] || discKF[n]); return fr ? fr.q : null; };
+  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
   // agulha da pele (from) até a ponta (to), ou to + via (um ponto do trajeto) + len; ponta na cor de destaque, canhão do lado da pele
+  // r: raio próprio (cânula de endoscopia); tipR/tipL: ponta romba e curta em vez do bisel fino
   const needle = o => {
-    const to = ptOf(o.to), r = GAUGE[o.g || 22], k = o.key || 'needle';
+    const to = ptOf(o.to), r = o.r || GAUGE[o.g || 22], k = o.key || 'needle';
     const from = o.from ? ptOf(o.from) : to.clone().add(new V3().subVectors(ptOf(o.via), to).setLength(o.len || 9));
-    const d = new V3().subVectors(to, from).normalize(), neck = to.clone().addScaledVector(d, -Math.max(0.3, 3 * r));
+    const d = new V3().subVectors(to, from).normalize(), neck = to.clone().addScaledVector(d, -(o.tipL || Math.max(0.3, 3 * r)));
     const ex = { level: o.level || (Array.isArray(o.to) ? o.to[0] : typeof o.to === 'string' ? o.to.split('.')[0] : null) };
     add(mergeGeoms([rod(from, neck, r, { seg: 10 }), rod(from.clone().addScaledVector(d, -1.1), from, Math.max(0.16, 2 * r), { seg: 12 })]), 'metal', k, o.info || 'needle', ex);
-    add(rod(neck, to, r, { r2: r * 0.3, seg: 10 }), 'needleTip', k, o.info || 'needle', ex);
+    add(rod(neck, to, r, { r2: r * (o.tipR || 0.3), seg: 10 }), 'needleTip', k, o.info || 'needle', ex);
     anchors.set(k, to.clone()); anchors.set(k + '.meio', from.clone().lerp(to, 0.5)); // ponta e meio do trajeto (fora do osso, para rótulo em corte)
   };
-  (mods.needles || []).forEach(needle);
-  // contraste ('L4.L'): na ponta da agulha, ao longo da bainha da raiz e no espaço epidural anterior do mesmo lado
-  (mods.contrast || []).forEach(c => {
-    const R = ROOTS['root.' + c.root], s = c.root.endsWith('.L') ? 1 : -1, n = R.pts.length, k = c.key || 'contrast';
-    const sheath = [R.pts[n - 4], R.pts[n - 3], R.pts[n - 2], R.pts[n - 2].clone().lerp(R.pts[n - 1], 0.35)];
-    const sp = spineAt(R.uExit + 0.4), epi = sp.p.clone().add(v(s * sp.cw * 0.25, 0, sp.post - 0.12).applyQuaternion(sp.q));
-    // a bainha envolve também o gânglio (1,9 vez o raio da raiz)
-    add(mergeGeoms([ellip(ptOf(c.at), 0.22, 0.22, 0.22, 14), tube(sheath, () => R.r * 1.9 + 0.06, { N: 10 }), ellip(epi, 0.6, 1.5, 0.1, 18, sp.q)]), 'contrast', k, 'contrast', { level: c.root.split('.')[0] });
-    anchors.set(k, R.pts[n - 3].clone().lerp(R.pts[n - 2], 0.4));
-  });
   // ramo medial do ramo dorsal (L1 a L4): sai da raiz, passa sobre a borda superior do transverso de baixo, na junção com o
   // processo articular superior, e desce para a faceta abaixo. shortcut: sem L5 (cruza a asa do sacro) e sem cervical ou torácica
   const MB = {};
@@ -1512,7 +1595,231 @@ function buildSpine(mods = {}) {
       add(tube(pts, () => 0.06, { N: 8 }), 'mbranch', `mb.${n}.${side}`, 'mbranch', { level: n });
       anchors.set(`mb.${n}.${side}`, pts[5]); // no trecho que desce, longe do rótulo da lesão
       MB[n + '.' + side] = { J, d, off: v(s, 0.2, -0.5).normalize().applyQuaternion(f.q), level: n };
+      // alvo do bloqueio: ao lado do nervo, no osso da junção
+      anchors.set(`mbt.${n}.${side}`, J.clone().addScaledVector(MB[n + '.' + side].off, 0.12));
     });
+  });
+
+  /* ---- ilíacos (mods.ilium): seções horizontais, de baixo para cima. A face medial é empurrada para fora do sacro até a
+     folga da articulação sacroilíaca (0,22; 0,5 atrás, no espaço dos ligamentos interósseos) e a lateral sai dela pela
+     espessura. Controles do lado esquerdo (x > 0), da borda posterior para a anterior, espelhados no direito ---- */
+  const SIJ = {};
+  if (mods.ilium) {
+    const sg = loft(SAC.rr, true, true), spos = sg.attributes.position, sidx = sg.index, tris = [], qq = new V3();
+    for (let t = 0; t < sidx.count; t += 3) { const T = new THREE.Triangle(...[0, 1, 2].map(k => new V3().fromBufferAttribute(spos, sidx.getX(t + k)))); T.box = new THREE.Box3().setFromPoints([T.a, T.b, T.c]); T.n = T.getNormal(new V3()); tris.push(T); }
+    sg.dispose();
+    const near = p => { let bd = 1e9, best = null; for (const T of tris) { if (T.box.distanceToPoint(p) ** 2 > bd) continue; T.closestPointToPoint(p, qq); const d = qq.distanceToSquared(p); if (d < bd) { bd = d; best = { q: qq.clone(), n: T.n }; } } return best; };
+    // [y, 6 pontos (x, z) da face medial, 6 espessuras]
+    const ROWS = [
+      [-7.6, [7.2, -0.2, 7.4, 0.62, 7.6, 1.45, 7.8, 2.27, 8.0, 3.09, 8.2, 3.8], [0.4, 0.6, 0.8, 0.8, 0.6, 0.4]],
+      [-7.2, [6.7, -1.4, 7.0, -0.16, 7.4, 1.18, 7.9, 2.63, 8.4, 3.97, 8.7, 5.0], [0.8, 1.3, 1.7, 1.7, 1.4, 0.9]],
+      [-6.2, [5.9, -1.6, 6.3, -0.34, 6.9, 1.1, 7.7, 2.72, 8.5, 4.34, 9.0, 5.6], [1.0, 1.6, 2.0, 2.0, 1.6, 1.1]],
+      [-5.0, [4.6, -3.6, 4.7, -2.4, 5.2, -1.02, 6.6, 1.01, 8.4, 3.59, 9.4, 5.9], [1.1, 1.8, 1.8, 1.4, 1.0, 1.0]],
+      [-4.0, [3.4, -5.5, 3.6, -4.33, 4.0, -2.97, 6.0, 0.15, 8.4, 3.37, 9.6, 6.0], [1.4, 2.2, 2.0, 1.0, 0.8, 1.0]],
+      [-2.9, [3.4, -4.9, 4.1, -3.36, 4.4, -1.83, 6.4, 1.15, 8.8, 4.41, 10.2, 7.0], [1.7, 2.6, 2.2, 0.8, 0.6, 0.9]],
+      [-1.8, [3.7, -5.1, 4.6, -3.44, 4.9, -1.88, 6.8, 0.89, 9.2, 4.02, 10.9, 6.6], [1.8, 2.6, 2.2, 0.6, 0.5, 0.9]],
+      [-0.8, [4.0, -4.8, 4.8, -2.67, 5.2, -1.12, 7.3, 1.69, 9.7, 4.69, 11.5, 7.6], [1.8, 2.4, 2.0, 0.5, 0.45, 0.9]],
+      [0.0, [4.2, -4.6, 5.0, -3.0, 5.9, -1.0, 7.9, 1.7, 10.2, 4.8, 11.9, 7.9], [1.7, 2.0, 1.4, 0.4, 0.45, 1.0]],
+      [1.0, [4.6, -4.4, 5.6, -2.95, 6.8, -1.12, 8.7, 1.4, 10.7, 4.2, 12.0, 7.0], [1.6, 1.6, 0.8, 0.4, 0.45, 1.0]],
+      [2.6, [5.4, -3.9, 6.4, -2.7, 7.8, -1.13, 9.5, 0.9, 11.2, 3.2, 12.4, 5.6], [1.3, 1.2, 0.6, 0.45, 0.5, 0.9]],
+      [4.2, [6.6, -2.6, 7.8, -1.81, 9.2, -0.69, 10.6, 0.66, 11.8, 2.17, 12.6, 3.6], [0.9, 0.9, 0.7, 0.6, 0.7, 0.8]],
+      [5.1, [8.2, -1.2, 9.0, -0.7, 9.8, -0.07, 10.6, 0.55, 11.3, 1.18, 11.8, 1.8], [0.5, 0.6, 0.6, 0.6, 0.6, 0.5]],
+      [5.45, [9.6, -0.6, 9.9, -0.35, 10.2, -0.1, 10.5, 0.15, 10.8, 0.4, 11.0, 0.6], [0.25, 0.25, 0.25, 0.25, 0.25, 0.25]]
+    ];
+    const ys = []; ROWS.forEach((r, i) => { if (i) { const y0 = ROWS[i - 1][0], n = Math.ceil((r[0] - y0) / 0.4); for (let k = 1; k < n; k++) ys.push(y0 + (r[0] - y0) * k / n); } ys.push(r[0]); });
+    const M = 24;
+    [1, -1].forEach(s => {
+      const side = s > 0 ? 'L' : 'R';
+      // folga: 0,22 na face lateral (articulação), 0,5 atrás (ligamentos interósseos)
+      const push = p => {
+        for (let it = 0; it < 6; it++) {
+          const nr = near(p), sd = new V3().subVectors(p, nr.q).dot(nr.n), g = Math.abs(nr.n.x) > 0.6 ? 0.22 : 0.5;
+          if (sd >= g - 1e-3) break;
+          const h = v(nr.n.x, 0, nr.n.z); if (h.length() < 0.3) h.set(s, 0, 0);
+          p.addScaledVector(h.normalize(), g - sd + 0.01);
+        }
+      };
+      const smooth = a => { const c = a.map(p => p.clone()); for (let i = 1; i < a.length - 1; i++) a[i].copy(c[i - 1]).multiplyScalar(0.25).addScaledVector(c[i], 0.5).addScaledVector(c[i + 1], 0.25); };
+      // 1) face medial de cada seção
+      const secs = ys.map(y => {
+        let i = 0; while (i < ROWS.length - 2 && ROWS[i + 1][0] < y) i++;
+        const A = ROWS[i], B = ROWS[i + 1], f = Math.max(0, Math.min(1, (y - A[0]) / (B[0] - A[0])));
+        const cp = [], tau = [];
+        for (let k = 0; k < 6; k++) { cp.push(v(s * (A[1][2 * k] + (B[1][2 * k] - A[1][2 * k]) * f), y, A[1][2 * k + 1] + (B[1][2 * k + 1] - A[1][2 * k + 1]) * f)); tau.push(A[2][k] + (B[2][k] - A[2][k]) * f); }
+        // na altura da articulação (S1 a S3) os controles 1 e 2 vão para dentro da face lateral do sacro (anéis 14 e 8 do lado):
+        // o empurrão os devolve à folga e a face medial do ilíaco copia a do sacro
+        const sl = i => { for (let j = 0; j < 5; j++) { const a = SAC.rr[j][i], b = SAC.rr[j + 1][i]; if ((a.y - y) * (b.y - y) <= 0 && a.y !== b.y) { const t = (y - a.y) / (b.y - a.y); return v(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t); } } return null; };
+        const wj = sm(-5.8, -4.3, y) * (1 - sm(-0.7, 0.3, y));
+        if (wj > 0) [[1, 14], [2, 8]].forEach(([k, i]) => { const p = sl(s > 0 ? i : 44 - i); if (p) cp[k].lerp(p.add(v(-s * 0.3, 0, 0)), wj); });
+        const m = new THREE.CatmullRomCurve3(cp, false, 'centripetal').getSpacedPoints(M - 1);
+        // o empurrão deixa quinas: alisa e empurra de novo
+        m.forEach(push); for (let k = 0; k < 3; k++) { smooth(m); m.forEach(push); }
+        return { y, m, tau };
+      });
+      // 2) alisa entre as seções (mesmo índice), senão o fim da articulação vira degrau
+      for (let k = 0; k < 2; k++) { for (let i2 = 0; i2 < M; i2++) smooth(secs.map(sc => sc.m[i2])); secs.forEach(sc => sc.m.forEach(push)); }
+      // 3) face lateral: sai da medial pela espessura; alisada na seção e entre seções para não dobrar
+      secs.forEach(sc => {
+        const m = sc.m, tau = sc.tau;
+        sc.lat = m.map((p, i2) => {
+          const a = m[Math.max(0, i2 - 1)], b = m[Math.min(M - 1, i2 + 1)], n = v(s * (b.z - a.z), 0, -s * (b.x - a.x)).normalize();
+          const u = i2 / (M - 1) * 5, k = Math.min(4, Math.floor(u));
+          return p.clone().addScaledVector(n, tau[k] + (tau[k + 1] - tau[k]) * (u - k));
+        });
+        smooth(sc.lat); smooth(sc.lat);
+      });
+      for (let k = 0; k < 2; k++) for (let i2 = 0; i2 < M; i2++) smooth(secs.map(sc => sc.lat[i2]));
+      const rings = secs.map(sc => sc.m.concat(sc.lat.slice().reverse()));
+      secs.forEach(sc => { sc.pairs = sc.m.map(p => { const nr = near(p); return Math.abs(nr.n.x) > 0.6 && p.distanceTo(nr.q) < 0.3 ? [p, nr.q] : null; }); });
+      add(loft(rings, true, true, 0, 0, true), 'bone', 'ilium.' + side, 'ilium', { level: null, region: 'S' });
+      const at = y => secs.reduce((a, b) => Math.abs(b.y - y) < Math.abs(a.y - y) ? b : a);
+      anchors.set('ilium.' + side, at(1.0).lat[14].clone());
+      anchors.set('psis.' + side, at(-1.8).m[0].clone().lerp(at(-1.8).lat[0], 0.5));
+      // articulação: meio da folga; .inf no terço inferior, na ponta de trás da articulação (por onde entra a agulha)
+      const mids = sec => sec.pairs.filter(Boolean).map(([p, q]) => p.clone().lerp(q, 0.5));
+      const mid = mids(at(-1.8)); anchors.set('sij.' + side, mid[Math.floor(mid.length / 2)]);
+      // a agulha entra pela linha posterior, vinda de trás, um pouco de medial e de baixo (20° e 20°): assim cabe na fenda
+      const tip = mids(at(-3.9))[0], a20 = 20 * deg;
+      anchors.set('sij.' + side + '.inf', tip);
+      anchors.set('sij.' + side + '.via', tip.clone().add(v(-s * Math.sin(a20) * Math.cos(a20), -Math.sin(a20), -Math.cos(a20) * Math.cos(a20)).multiplyScalar(9)));
+      SIJ[side] = { secs, mids };
+    });
+  }
+
+  /* ---- ramos laterais de S1 a S3 (mods.sacralLB: { side, lv, rf }): saem dos forames dorsais e correm para fora, sobre o dorso
+     do sacro, até a linha posterior da articulação sacroilíaca; rf: lesões resfriadas em fileira na borda lateral dos forames ---- */
+  const LBN = [];
+  if (mods.sacralLB) {
+    const o = mods.sacralLB, side = o.side, s = side === 'L' ? 1 : -1, xs = [1.95, 1.7, 1.4], LL = [2.0, 1.55, 1.15];
+    const dors = (jf, x, off) => toW(SAC.SBi(jf), x, 0, SAC.backZ(jf, x) - off);
+    o.lv.forEach(j => {
+      const x0 = s * xs[j - 1], key = `lb.S${j}.${side}`, br = [];
+      [[-0.14, 1], [0.3, 0.85]].forEach(([dj, fl]) => { const pts = []; for (let t = 0; t <= 1.001; t += 0.25) pts.push(dors(j + dj * t * t, x0 + s * (0.34 + LL[j - 1] * fl * t), 0.2)); br.push(tube(pts, () => 0.045, { N: 8 })); });
+      add(mergeGeoms(br), 'mbranch', key, 'latbranch', { level: 'S' + j });
+      anchors.set(key, dors(j + 0.05, x0 + s * (0.34 + LL[j - 1] * 0.5), 0.2));
+      if (o.rf) {
+        const pos = j < 3 ? [[-0.22, 0.6], [0, 0.72], [0.24, 0.6]] : [[-0.12, 0.62], [0.16, 0.62]];
+        add(mergeGeoms(pos.map(([dj, dx]) => ellip(dors(j + dj, x0 + s * dx, 0.16), 0.4, 0.4, 0.4, 14))), 'rfLesion', `rfl.S${j}.${side}`, 'rflesion', { level: 'S' + j });
+        anchors.set(`rfl.S${j}.${side}`, dors(j, x0 + s * 0.72, 0.16));
+        // todas as agulhas na mesma direção: de trás, um pouco de baixo e de fora
+        const tip = dors(j, x0 + s * 0.72, 0.02);
+        LBN.push({ to: tip, via: tip.clone().add(v(s * 1.6, -2.4, -8.6)), g: 17, key: `rfs.S${j}.${side}`, level: 'S' + j, info: 'rfneedle' });
+      }
+    });
+  }
+
+  /* ---- cadeia simpática cervical (mods.cervSymp: 'R'): sobre o longo do pescoço, à frente dos transversos, com os gânglios
+     cervical superior (C2-C3), médio (C6) e estrelado (C7-T1, à frente do colo da 1ª costela); e o tubérculo anterior de C6 ---- */
+  if (mods.cervSymp) {
+    const side = mods.cervSymp, s = side === 'L' ? 1 : -1;
+    [1, -1].forEach(sg => {
+      const P6 = VP.C6, sd = sg > 0 ? 'L' : 'R';
+      add(ellip(toW(F.C6, sg * (P6.tfx + 0.55), -0.15, P6.tfz + 0.42), 0.24, 0.28, 0.22, 14, F.C6.q), 'bone', 'C6.at.' + sd, 'chassaignac', { level: 'C6', region: 'C' });
+      anchors.set('C6.at.' + sd, toW(F.C6, sg * (P6.tfx + 0.55), -0.15, P6.tfz + 0.42));
+      anchors.set('C6.at.' + sd + '.ant', toW(F.C6, sg * (P6.tfx + 0.5), -0.12, P6.tfz + 0.7));
+    });
+    const X = n => LV[n].W / 2;
+    const scg = toW(F.C3, s * (X('C3') + 0.42), 0.45, 0.5), mcg = toW(F.C6, s * (X('C6') + 0.32), -0.1, 0.5), stg = toW(F.C7, s * 1.62, -1.05, 0.12);
+    const pts = [toW(F.C2, s * (X('C2') + 0.35), -0.3, 0.45), scg, toW(F.C4, s * (X('C4') + 0.32), 0, 0.52), toW(F.C5, s * (X('C5') + 0.32), 0, 0.52), mcg, toW(F.C7, s * (X('C7') + 0.36), 0, 0.42), stg, toW(F.T1, s * 1.5, -0.3, -0.05), toW(F.T2, s * 1.5, 0.2, 0.15), toW(F.T3, s * 1.55, 0.2, 0.2)];
+    add(tube(pts, () => 0.055, { N: 8 }), 'mbranch', 'symp.' + side, 'symp', { level: null });
+    anchors.set('symp.' + side, toW(F.C4, s * (X('C4') + 0.32), 0, 0.52));
+    [['scg', scg, F.C3.q, 0.2, 0.85, 0.17], ['mcg', mcg, F.C6.q, 0.15, 0.3, 0.13], ['stellate', stg, F.C7.q, 0.3, 0.72, 0.2]].forEach(([k, c, q, a, b, d]) => {
+      add(ellip(c, a, b, d, 16, q), 'ganglion', k + '.' + side, k, { level: k === 'scg' ? 'C3' : k === 'mcg' ? 'C6' : 'C7' });
+      anchors.set(k + '.' + side, c);
+    });
+  }
+
+  /* ---- plexo celíaco (mods.celiac): tronco celíaco saindo da frente da aorta em T12-L1, gânglios celíacos dos dois lados
+     dele, fibras do plexo em volta e os esplâncnicos maiores descendo pelos corpos de T10 a T12 ---- */
+  let celArc = null;
+  if (mods.celiac) {
+    const u = KI['T12-L1'], sp = spineAt(u), up = v(0, 1, 0).applyQuaternion(sp.q), curve = new THREE.CatmullRomCurve3(AO.pts, false, 'centripetal');
+    let tb = 0.5, hb = 1e9; for (let t = 0.5; t <= 1; t += 0.001) { const h = Math.abs(new V3().subVectors(curve.getPointAt(t), sp.p).dot(up)); if (h < hb) { hb = h; tb = t; } }
+    const c0 = curve.getPointAt(tb), r0 = AO.r(tb), L = (x, y, z) => c0.clone().add(v(x, y, z).applyQuaternion(sp.q));
+    const rad = (th, rr, y = 0) => L(rr * Math.sin(th * deg), y, rr * Math.cos(th * deg)); // em volta da aorta: 0° na frente, + para a esquerda
+    const e = L(0, -0.25, r0 + 1.5);
+    add(tube([L(0, 0.05, r0 - 0.2), L(0, -0.05, r0 + 0.7), e], () => 0.28, { N: 12 }), 'artery', 'celiac', 'celiac', { level: 'T12' });
+    add(mergeGeoms([tube([e, L(-1.0, -0.3, r0 + 2.0), L(-2.4, -0.2, r0 + 2.1)], () => 0.2, { N: 10 }), tube([e, L(1.2, 0.05, r0 + 1.4), L(2.6, 0.3, r0 + 0.9)], () => 0.22, { N: 10 }), tube([e, L(0.35, 0.8, r0 + 1.8), L(0.55, 1.8, r0 + 1.7)], () => 0.13, { N: 10 })]), 'artery', 'celiac.br', 'celiac', { level: 'T12' });
+    anchors.set('celiac', L(0, -0.1, r0 + 0.9)); anchors.set('aorta.cel', rad(-35, r0, -1.0));
+    // gânglios: massas achatadas e lobuladas na frente e dos lados da aorta, à altura da origem do tronco
+    [[-62, 'R'], [60, 'L']].forEach(([th, sd]) => {
+      const g = new THREE.SphereGeometry(1, 20, 14), a = g.attributes.position;
+      for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), q = 1 + 0.12 * Math.sin(5 * x + 2 * y) * Math.sin(4 * y + 1.3) + 0.06 * Math.sin(7 * z + 3 * x); a.setXYZ(i, x * q * 0.5, y * q * 0.75, z * q * 0.26); }
+      const q = sp.q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), th * deg));
+      g.applyMatrix4(new THREE.Matrix4().compose(rad(th, r0 + 0.5, -0.3), q, v(1, 1, 1))); g.computeVertexNormals();
+      add(g, 'ganglion', 'cgg.' + sd, 'celiacGgl', { level: 'L1' });
+      anchors.set('cgg.' + sd, rad(th, r0 + 0.5, -0.3));
+    });
+    // fibras do plexo: arcos em volta da frente da aorta, acima e abaixo do tronco, ligando os gânglios
+    const arc = (y, rr) => { const p = []; for (let th = -58; th <= 56; th += 8) p.push(rad(th, rr, y)); return tube(p, () => 0.04, { N: 6 }); };
+    add(mergeGeoms([arc(0.45, r0 + 0.32), arc(-0.6, r0 + 0.3), arc(-1.0, r0 + 0.42)]), 'mbranch', 'cplexus', 'celiacPlexus', { level: 'L1' });
+    anchors.set('cplexus', rad(-25, r0 + 0.32, -0.6));
+    // esplâncnicos maiores: à frente das artérias segmentares, nos corpos de T10 a T12, até o topo de cada gânglio
+    [[-62, -1], [60, 1]].forEach(([th, s]) => {
+      const P = ['T10', 'T11', 'T12'].map(n => SPf(n, q => [s * (q.W / 2 * 0.95 + 0.2), 0, q.D / 2 * 0.62 + 0.3]));
+      P.push(rad(th, r0 + 0.55, 0.45));
+      add(tube(P, () => 0.05, { N: 6 }), 'mbranch', 'splanch.' + (s > 0 ? 'L' : 'R'), 'splanch', { level: null });
+    });
+    anchors.set('splanch.L', SPf('T11', q => [q.W / 2 * 0.95 + 0.2, 0, q.D / 2 * 0.62 + 0.3]));
+    // pontos para as agulhas e o contraste: ao lado da aorta, logo à frente dos gânglios
+    anchors.set('celiac.tip.L', rad(88, r0 + 0.32, -0.7)); anchors.set('celiac.tip.R', rad(-85, r0 + 0.3, -0.7));
+    anchors.set('celiac.via.L', L(7.5, -1.6, -6)); anchors.set('celiac.via.R', L(-7.5, -1.6, -4));
+    const cr = []; for (let th = -100; th <= 100; th += 12.5) cr.push(rad(th, r0 + 0.42, -0.35));
+    celArc = cr;
+  }
+
+  // instrumento flexível ou curvo (epiduroscópio, sonda de RF resfriada): tubo pelo trajeto, último trecho na cor da ponta e cateter opcional saindo dela
+  const scope = o => {
+    const pts = o.path.map(ptOf), r = o.r || 0.12, k = o.key || 'scope', ex = { level: o.level || null }, n = pts.length;
+    const end = pts[n - 1], d = new V3().subVectors(end, pts[n - 2]).normalize(), neck = end.clone().addScaledVector(d, -Math.max(0.25, 3 * r));
+    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), 'metal', k, o.info || 'scope', ex);
+    add(rod(neck, end, r, { r2: r * 0.8, seg: 12 }), 'needleTip', k, o.info || 'scope', ex);
+    anchors.set(k, end.clone()); anchors.set(k + '.meio', pts[Math.floor(n / 2)].clone());
+    if (o.cath) { const ce = end.clone().addScaledVector(d, o.cath); add(rod(end.clone().addScaledVector(d, -0.05), ce, 0.035, { seg: 8 }), 'needleTip', k + '.cath', 'catheter', ex); anchors.set(k + '.cath', ce); }
+  };
+  (mods.scopes || []).forEach(scope);
+  (mods.needles || []).forEach(needle);
+  LBN.forEach(needle);
+  // contraste: 'root' ('L4.L', na ponta, na bainha da raiz e no epidural anterior); 'at' + r (gota, raio ou [rx, ry, rz] no quadro do ponto);
+  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação)
+  (mods.contrast || []).forEach(c => {
+    const k = c.key || 'contrast';
+    if (c.root) {
+      const R = ROOTS['root.' + c.root], s = c.root.endsWith('.L') ? 1 : -1, n = R.pts.length;
+      const sheath = [R.pts[n - 4], R.pts[n - 3], R.pts[n - 2], R.pts[n - 2].clone().lerp(R.pts[n - 1], 0.35)];
+      const sp = spineAt(R.uExit + 0.4), epi = sp.p.clone().add(v(s * sp.cw * 0.25, 0, sp.post - 0.12).applyQuaternion(sp.q));
+      // a bainha envolve também o gânglio (1,9 vez o raio da raiz)
+      add(mergeGeoms([ellip(ptOf(c.at), 0.22, 0.22, 0.22, 14), tube(sheath, () => R.r * 1.9 + 0.06, { N: 10 }), ellip(epi, 0.6, 1.5, 0.1, 18, sp.q)]), 'contrast', k, 'contrast', { level: c.root.split('.')[0] });
+      anchors.set(k, R.pts[n - 3].clone().lerp(R.pts[n - 2], 0.4));
+      return;
+    }
+    let g, at;
+    if (c.path) {
+      const pts = c.path === 'celiac' ? celArc : c.path.map(ptOf);
+      g = tube(pts, typeof c.r === 'function' ? c.r : () => c.r || 0.2, { N: 12, flat: c.flat, up: c.up && v(...c.up) });
+      at = pts[Math.floor((pts.length - 1) / 2)].clone();
+    } else if (c.epi) {
+      const u0 = KI[c.epi[0]], u1 = KI[c.epi[1]], th = c.th || 0.07, P = [];
+      for (let u = u0; u <= u1 + 1e-6; u += 0.25) { const s = spineAt(u); P.push(s.p.clone().add(v(c.x || 0, 0, s.zc - s.ca * 0.43 - th + 0.06).applyQuaternion(s.q))); }
+      g = tube(P, t => (c.w || 0.55) * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, 0.08 + t * 0.92))), { N: 12, flat: th / (c.w || 0.55), upFn: t => v(1, 0, 0).applyQuaternion(spineAt(u0 + (u1 - u0) * t).q) });
+      at = P[Math.floor(P.length / 2)].clone();
+    } else if (c.sij) {
+      // folha fina no meio da folga, nas seções entre y0 e y1, reamostrada em 7 pontos por seção
+      const J = SIJ[c.sij], rings = [];
+      J.secs.filter(sec => sec.y >= c.y[0] && sec.y <= c.y[1]).forEach(sec => {
+        const pr = sec.pairs.filter(Boolean); if (pr.length < 2) return;
+        const mid = new THREE.CatmullRomCurve3(pr.map(([p, q]) => p.clone().lerp(q, 0.5))).getSpacedPoints(6);
+        const nn = new THREE.CatmullRomCurve3(pr.map(([p, q]) => new V3().subVectors(p, q).normalize())).getSpacedPoints(6).map(x => x.normalize());
+        rings.push(mid.map((p, i) => p.clone().addScaledVector(nn[i], 0.05)).concat(mid.map((p, i) => p.clone().addScaledVector(nn[i], -0.05)).reverse()));
+      });
+      g = loft(rings, true, true, 0, 0, true);
+      at = rings[Math.floor(rings.length / 2)][3].clone().lerp(rings[Math.floor(rings.length / 2)][10], 0.5);
+    } else {
+      at = ptOf(c.at); const r = [].concat(c.r || 0.2);
+      g = ellip(at, r[0], r[1] ?? r[0], r[2] ?? r[0], 14, qOf(c.q || c.at));
+    }
+    add(g, 'contrast', k, 'contrast', { level: c.level || null });
+    anchors.set(k, at);
   });
   // radiofrequência do ramo medial ('L3.L'): agulha paralela ao nervo, com a ponta ao lado dele; lesão em volta da parte ativa
   (mods.rf || []).forEach(k => {
@@ -1521,6 +1828,48 @@ function buildSpine(mods = {}) {
     add(ellip(c, 0.24, 0.47, 0.24, 16, new THREE.Quaternion().setFromUnitVectors(v(0, 1, 0), m.d)), 'rfLesion', 'rflesion.' + k, 'rflesion', { level: m.level });
     anchors.set('rflesion.' + k, c);
   });
+  // disco por dentro: no plano do meio do disco, a partir do centro do núcleo; ângulo a de 0 na frente, + para a esquerda.
+  // Devolve as distâncias do centro do núcleo até a borda do núcleo e até a borda do disco nessa direção
+  const discRay = (dn, a) => {
+    const K = KF[KI[dn]], nz = -0.08 * K.D, d = [Math.sin(a), Math.cos(a)], rn = 1 / Math.hypot(d[0] / (0.27 * K.W), d[1] / (0.25 * K.D));
+    const ol = bodyOutline(K.reg, K.W * 0.955, K.D * 0.955, 72); let ro = 0;
+    for (let i = 0; i < ol.length; i++) {
+      const [x1, z1] = ol[i], [x2, z2] = ol[(i + 1) % ol.length], ex = x2 - x1, ez = z2 - z1, den = d[0] * ez - d[1] * ex; if (Math.abs(den) < 1e-9) continue;
+      const t = ((x1) * ez - (z1 - nz) * ex) / den, w = ((x1) * d[1] - (z1 - nz) * d[0]) / den; if (t > 0 && w >= 0 && w <= 1) ro = Math.max(ro, t);
+    }
+    return { nz, d, rn, ro, P: (r, y = 0) => toW(discKF[dn], d[0] * r, y, nz + d[1] * r) };
+  };
+  // biacuplastia ('L4-L5'): introdutores pela via posterolateral dos dois lados e sondas resfriadas curvas no anel posterior; lesão alongada entre elas
+  if (mods.discRF) {
+    const dn = mods.discRF, th = discKF[dn].th, mid = a => { const R = discRay(dn, a); return R.P((R.rn + R.ro) / 2); };
+    [1, -1].forEach(s => {
+      const sd = s > 0 ? 'L' : 'R', A = [2.05, 2.3, 2.55, 2.75, 2.92].map(a => s * a), R0 = discRay(dn, A[0]);
+      needle({ to: mid(A[0]), via: R0.P(R0.ro + 6), g: 17, key: 'intro.' + sd, level: dn, info: 'introducer' });
+      scope({ path: A.map(mid), r: 0.062, key: 'probe.' + sd, level: dn, info: 'probe' });
+    });
+    const rings = [];
+    for (let a = 2.2; a <= 2 * Math.PI - 2.2 + 1e-6; a += 0.08) {
+      const R = discRay(dn, a), c = R.P((R.rn + R.ro) / 2), rd = new V3().subVectors(R.P(R.ro), R.P(R.rn)), ax = rd.clone().normalize(), upv = v(0, 1, 0).applyQuaternion(discKF[dn].q), hr = Math.max(0.05, rd.length() * 0.42), ry = th * 0.36, ring = [];
+      for (let k = 0; k < 12; k++) { const t = 2 * Math.PI * k / 12; ring.push(c.clone().addScaledVector(ax, Math.cos(t) * hr).addScaledVector(upv, Math.sin(t) * ry)); }
+      rings.push(ring);
+    }
+    add(loft(rings, true, true), 'heat', 'heat.' + dn, 'rfdisc', { level: dn });
+    anchors.set('heat.' + dn, mid(Math.PI));
+  }
+  // nucleoplastia ({ at: 'L4-L5', side: 'R' }): cânula posterolateral até a borda do núcleo e canais de ablação em leque dentro dele
+  if (mods.nucleoplasty) {
+    const { at: dn, side } = mods.nucleoplasty, s = side === 'L' ? 1 : -1, a0 = s * 2.2, R = discRay(dn, a0), tip = R.P(R.rn * 0.97), ch = [];
+    needle({ to: tip, via: R.P(R.ro + 6), g: 17, key: 'cannula', level: dn, info: 'cannula' });
+    for (let k = 0; k < 6; k++) {
+      const a = a0 + Math.PI + (k - 2.5) * 0.24, K = KF[KI[dn]], e = v(Math.sin(a), 0, Math.cos(a));
+      // até 85% da distância da ponta à borda do núcleo nessa direção (elipse do núcleo no plano do meio)
+      const p0 = v(R.d[0] * R.rn * 0.97, 0, R.d[1] * R.rn * 0.97), rx = 0.27 * K.W, rz = 0.25 * K.D;
+      const A = (e.x / rx) ** 2 + (e.z / rz) ** 2, B = 2 * (p0.x * e.x / rx ** 2 + p0.z * e.z / rz ** 2), C = (p0.x / rx) ** 2 + (p0.z / rz) ** 2 - 1, L = (-B + Math.sqrt(B * B - 4 * A * C)) / (2 * A) * 0.85;
+      ch.push(rod(tip, toW(discKF[dn], p0.x + e.x * L, (k % 2 ? 0.06 : -0.06) * (k - 2.5) / 2.5, R.nz + p0.z + e.z * L), 0.055, { seg: 10 }));
+      if (k === 2) anchors.set('channels', toW(discKF[dn], p0.x + e.x * L * 0.6, 0, R.nz + p0.z + e.z * L * 0.6));
+    }
+    add(mergeGeoms(ch), 'heat', 'channels', 'channel', { level: dn });
+  }
   // cimento ('L1'): massa irregular na metade anterior do corpo, abaixo da placa de cima já em cunha
   if (mods.cement) {
     const n = mods.cement, f = F[n], D = f.Dw, W = LV[n].W * md('widen', n, 1), z0 = 0.08 * D;
@@ -1556,6 +1905,22 @@ function buildSpine(mods = {}) {
     add(rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
     anchors.set('rod.' + side, a.clone().lerp(b, 0.5));
   });
+  // artroplastia discal cervical ('C5-C6'): placa metálica com quilha encostada em cada placa terminal (quilha dentro do corpo)
+  // e núcleo de polietileno entre elas; cada placa no quadro da vértebra dela, assim acompanha a placa terminal
+  if (mods.adr) {
+    const [un, ln] = mods.adr.split('-'), fu = F[un], fl = F[ln], ol = bodyOutline('C', 1.2, 1.1, 32), z0 = 0.07, parts = [];
+    [[fu, -fu.h / 2 - 0.01, -1], [fl, fl.h / 2 + 0.01, 1]].forEach(([fr, y0, s]) => {
+      const M = Msh(fr), y1 = y0 + s * 0.1;
+      parts.push(loft([y0, y1].map(y => ol.map(([x, z]) => v(x, y, z + z0).applyMatrix4(M))), true, true));
+      parts.push(new THREE.BoxGeometry(0.06, 0.22, 0.7).translate(0, y0 - s * 0.11, z0 + 0.1).applyMatrix4(M));
+    });
+    add(mergeGeoms(parts), 'implant', 'adr.plate', 'adrPlate', { level: mods.adr });
+    const pu = toW(fu, 0, -fu.h / 2 - 0.11, z0), pl = toW(fl, 0, fl.h / 2 + 0.11, z0), c = pu.clone().lerp(pl, 0.5);
+    add(ellip(c.clone().add(v(0, 0, -0.04).applyQuaternion(discKF[mods.adr].q)), 0.48, pu.distanceTo(pl) / 2 + 0.03, 0.38, 24, discKF[mods.adr].q), 'poly', 'adr.core', 'adrCore', { level: mods.adr });
+    anchors.set('adr', c); anchors.set('adr.core', toW(discKF[mods.adr], 0, 0, z0 + 0.3));
+    anchors.set('adr.plate', toW(fu, 0, -fu.h / 2 - 0.05, z0 + 0.45)); anchors.set('adr.keel', toW(fu, 0, -fu.h / 2 + 0.15, z0 + 0.2));
+    anchors.set('adr.ann', toW(discKF[mods.adr], 0, 0, -0.42 * KF[KI[mods.adr]].D)); // anel posterior que fica
+  }
 
   // âncora de centros e metadados
   anchors.set('center', SP(KI.T10, 0, 0, 0));
@@ -2226,6 +2591,75 @@ const PROC = [
     pro: 'Aspiração negativa não protege, porque deixa passar mais da metade das injeções intravasculares (Furman, Spine 2000). O contraste em tempo real ou DSA vem antes do corticoide; Se ele some em segundos ou desenha um vaso fino que sobe em direção à linha média, a agulha é reposicionada.'
   },
   {
+    id: 'facetblk', levels: ['L3', 'L4', 'L5'], cat: 0, name: 'Bloqueio facetário e do ramo medial', lv: 'Faceta L4-L5 direita, ramos mediais de L3 e L4',
+    mods: { mbranch: ['L3', 'L4'], needles: [{ to: ['L5', -2.1, 1.1, -3.32], via: ['L5', -3.57, -1.98, -11.65], key: 'needle.facet', level: 'L4-L5' }, { to: 'mbt.L3.R', via: ['L4', -5, -2, -9], key: 'needle.mb3', level: 'L3' }, { to: 'mbt.L4.R', via: ['L5', -5, -2, -9], key: 'needle.mb4', level: 'L4' }],
+      contrast: [{ at: 'cap.L4-L5.R', r: [0.45, 0.62, 0.45], q: 'L4', key: 'contrast.facet', level: 'L4-L5' }, { at: 'mbt.L3.R', r: 0.17, key: 'contrast.mb3', level: 'L3' }, { at: 'mbt.L4.R', r: 0.17, key: 'contrast.mb4', level: 'L4' }] },
+    cam: { t: 'cap.L4-L5.R', az: -150, el: 15, d: 22 }, show: 'bone neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['needle.facet', 'Ponta na faceta L4-L5'], ['contrast.facet', 'Contraste dentro da cápsula'], ['mb.L3.R', 'Ramo medial de L3'], ['mb.L4.R', 'Ramo medial de L4'], ['contrast.mb4', 'Gota na junção do transverso'], ['L5.tp.R', 'Transverso de L5']],
+    ind: 'Dor lombar axial crônica com suspeita de origem facetária, sem radiculopatia, quando se cogita a radiofrequência do ramo medial. O bloqueio é sobretudo diagnóstico e prognóstico, porque exame e imagem não apontam a faceta dolorosa, e a diretriz multissociedade considera positivo um alívio de pelo menos 50% após um único bloqueio do ramo medial (Cohen, Reg Anesth Pain Med 2020).',
+    alvo: 'No bloqueio intra-articular, a cavidade sinovial da faceta L4-L5 direita, cuja cápsula comporta de 1 a 2 mL (Cohen, Reg Anesth Pain Med 2020). No bloqueio do ramo medial, os dois nervos que inervam essa faceta, os ramos mediais de L3 e de L4 direitos, onde cruzam a junção do processo articular superior com a base do transverso de L4 e de L5. O bloqueio do ramo medial testa o mesmo nervo que a radiofrequência vai lesar e prevê melhor o resultado dela que a injeção intra-articular (Cohen, Reg Anesth Pain Med 2020).',
+    tec: 'Decúbito ventral e radioscopia. Para a articulação, oblíqua ipsilateral até abrir a fenda articular e agulha fina no recesso inferior da cápsula; Para o ramo medial, agulha em visão de túnel até a goteira entre o articular superior e o transverso, na posição baixa sobre o transverso, onde o contraste banhou o nervo em todas as injeções e quase não escapou para o espaço epidural ou o forame (Dreyfuss, Spine 1997). Sedação não entra de rotina, porque aumenta o falso-positivo (Cohen, Reg Anesth Pain Med 2020).',
+    inj: 'Anestésico local em volume mínimo, sem corticoide quando o objetivo é diagnóstico: até 0,5 mL por ramo medial e menos de 1,5 mL dentro da articulação, para não romper a cápsula nem espalhar para estruturas vizinhas (Cohen, Reg Anesth Pain Med 2020). No bloqueio comparativo usa-se lidocaína num dia e bupivacaína em outro, e a duração do alívio deve acompanhar a do anestésico.',
+    risco: 'Complicações graves são raras, e o mais comum é dor local transitória. O risco principal é o erro diagnóstico: com bloqueio único sem controle, a taxa de falso-positivo foi de 38% e o valor preditivo positivo de só 31% (Schwarzer, Pain 1994), e volume grande e sedação aumentam o falso-positivo (Cohen, Reg Anesth Pain Med 2020).',
+    evid: 'Como tratamento, a metilprednisolona intra-articular não superou o soro: 42% contra 33% relataram melhora acentuada em 1 mês, e só 22% contra 10% mantiveram a melhora até 6 meses, sem significância (Carette, NEJM 1991). Como teste, dos 176 pacientes 47% aliviaram com lidocaína, mas só 15% confirmaram com bupivacaína (Schwarzer, Pain 1994). A diretriz aceita um único bloqueio do ramo medial antes da radiofrequência; Bloqueios duplos elevam a taxa de sucesso da lesão, mas deixam de fora mais pacientes que responderiam a ela (Cohen, Reg Anesth Pain Med 2020).',
+    pro: 'A injeção intra-articular com corticoide fica para dor facetária de perfil inflamatório ou quando a denervação é pouco indicada, e nesses casos também serve de bloqueio prognóstico (Cohen, Reg Anesth Pain Med 2020). O contraste vem antes do anestésico, porque 8% das injeções no ramo medial foram intravenosas e dariam falso-negativo (Dreyfuss, Spine 1997).'
+  },
+  {
+    id: 'epidural', levels: ['L3', 'L4', 'L5', 'S'], cat: 0, name: 'Bloqueio epidural interlaminar e caudal', lv: 'L4-L5 interlaminar e hiato sacral',
+    mods: { sacralCanal: true, needles: [{ to: ['L4-L5', 0, -0.4, -3.36], via: ['L4-L5', 0, -2.73, -12.05], g: 18, key: 'tuohy', info: 'tuohy', level: 'L4-L5' }, { to: ['S3', 0, 0, -1.45], via: ['S3', 0, -8.88, 0.24], key: 'needle.caudal', level: 'S3' }],
+      contrast: [{ epi: ['L3-L4', 'L5-S1'], x: -0.45, w: 0.3, th: 0.06, key: 'contrast.epi', level: 'L4-L5' }, { path: ['needle.caudal', 'sacCanal.S2', 'sacCanal.S1'], r: 0.3, key: 'contrast.caudal', level: 'S' }] },
+    cam: { t: 'sacCanal.S1', az: 90, el: 4, d: 34 }, show: 'bone disc lig neuro', clip: 'sag', ghost: true, focus: ['L2', 'L3', 'L4', 'L5', 'S', 'Co'], hot: [],
+    labels: [['tuohy', 'Ponta no epidural posterior'], ['flav.L4-L5.R', 'Ligamento amarelo'], ['contrast.epi', 'Contraste no epidural posterior'], ['needle.caudal', 'Agulha no canal sacral'], ['hiatus', 'Hiato sacral'], ['contrast.caudal', 'Contraste subindo pelo canal'], ['dura', 'Saco dural']],
+    ind: 'Dor radicular lombar por hérnia de disco ou estenose do canal que não cedeu com tratamento conservador, sobretudo quando a doença é central, bilateral ou de vários níveis. A via caudal serve quando o acesso interlaminar é difícil, como após laminectomia, e leva o fármaco aos níveis mais baixos, L5-S1 e raízes sacrais.',
+    alvo: 'O espaço epidural posterior, entre o ligamento amarelo e a dura-máter. Na via interlaminar L4-L5 a agulha cruza pele, ligamentos supraespinhoso e interespinhoso e ligamento amarelo; Na via caudal entra pelo hiato sacral, fechado pelo ligamento sacrococcígeo, entre os cornos sacrais. O injetado tende a ficar atrás do saco dural e chega menos à interface disco-raiz, que fica na frente.',
+    tec: 'Decúbito ventral, radioscopia e agulha de Tuohy, de ponta romba e curva, avançada na linha média ou paramediana até o ligamento amarelo. O espaço epidural é achado pela perda de resistência, quando a seringa com soro ou ar deixa de resistir ao passar o ligamento, e o contraste confirma a posição em AP e perfil. Na via caudal às cegas, a agulha ficou no lugar certo na primeira tentativa em 74,1% dos casos, o que justifica a radioscopia (Stitz, Spine 1999).',
+    inj: 'Corticoide com anestésico local ou soro, em volume maior que na transforaminal, porque o fármaco precisa se espalhar até a raiz; No ensaio de Carette foram 80 mg de metilprednisolona em 8 mL (Carette, NEJM 1997). Na caudal o volume é ainda maior, para o injetado subir do sacro até L5-S1.',
+    risco: 'A punção acidental da dura com agulha epidural ocorreu em 1,5% das peridurais obstétricas, e 52,1% delas evoluíram com cefaleia pós-punção, que piora em pé e melhora deitado (Choi, Can J Anaesth 2003). O hematoma epidural é raro, mas pode comprimir a cauda equina e exige atenção a anticoagulantes e antiagregantes; Também há infecção, injeção intravascular e, na caudal, injeção subcutânea ou intraóssea.',
+    evid: 'Na ciática por hérnia, o corticoide epidural melhorou a dor na perna em 6 semanas, mas não a função, e não reduziu a cirurgia em 12 meses (25,8% contra 24,8%) (Carette, NEJM 1997). No WEST, o benefício apareceu só em 3 semanas, com melhora de 75% no Oswestry em 12,5% contra 3,7%, e sumiu de 6 a 52 semanas (Arden, Rheumatology 2005). Na estenose, corticoide com lidocaína não superou lidocaína isolada em 6 semanas, nem na via interlaminar nem na transforaminal (Friedly, NEJM 2014).',
+    pro: 'Em hérnia L5-S1 com dor radicular, a via transforaminal deu alívio completo em 24 semanas a 9 de 30 pacientes, contra 3 de 30 na interlaminar e 1 de 30 na caudal, atribuído à chegada do corticoide ao espaço epidural anterior (Ackerman, Anesth Analg 2007). A perda de resistência com líquido reduziu a punção dural só em estudos não randomizados (Heesen, Minerva Anestesiol 2013).'
+  },
+  {
+    id: 'siblk', levels: ['L5', 'S'], cat: 0, name: 'Bloqueio sacroilíaco', lv: 'Articulação sacroilíaca direita',
+    mods: { ilium: true, needles: [{ to: 'sij.R.inf', via: 'sij.R.via', key: 'needle', level: 'S' }], contrast: [{ sij: 'R', y: [-4.4, -2.4], key: 'contrast.sij', level: 'S' }] },
+    cam: { t: 'sij.R.inf', az: -150, el: 25, d: 28 }, show: 'bone', ghost: true, focus: ['L4', 'L5', 'S', 'Co'], hot: [],
+    labels: [['sij.R', 'Articulação sacroilíaca'], ['needle', 'Ponta no terço inferior'], ['contrast.sij', 'Contraste dentro da articulação'], ['ilium.R', 'Ilíaco direito'], ['psis.R', 'Espinha ilíaca posterossuperior']],
+    ind: 'Dor lombar baixa ou glútea abaixo de L5, às vezes irradiada para a virilha ou a coxa, com suspeita de origem sacroilíaca, e sacroileíte inflamatória que não cedeu ao tratamento clínico. Numa série com bloqueio, a articulação respondeu por 30% das dores lombares crônicas abaixo de L5-S1, e a dor na virilha foi o único padrão ligado à resposta (Schwarzer, Spine 1995); Entre os casos suspeitos pela clínica, a prevalência estimada é de 20% a 30% (Kennedy, Pain Med 2015).',
+    alvo: 'A articulação sacroilíaca é sinovial na sua parte anterior e inferior, e a parte posterior e superior é ligamentar. O alvo é o terço inferior da linha articular posterior, a porta de entrada mais acessível da cavidade sinovial.',
+    tec: 'Decúbito ventral e radioscopia, com o arco girado em oblíqua e inclinado em sentido caudal até separar as linhas anterior e posterior da articulação, e agulha fina no polo inferior. O contraste deve desenhar a fenda articular antes do anestésico. Às cegas, só 22% das injeções ficaram dentro da articulação, e 24% espalharam para o espaço epidural (Rosenberg, Clin J Pain 2000).',
+    inj: 'No bloqueio diagnóstico, anestésico local em pequeno volume, para não vazar para as raízes sacrais ou o espaço epidural e gerar falso-positivo; Volumes baixos aumentam a especificidade do bloqueio sacroilíaco (Cohen, Reg Anesth Pain Med 2020). No bloqueio terapêutico, soma-se corticoide ao anestésico.',
+    risco: 'Complicações graves são raras. O vazamento para fora da cápsula pode anestesiar raízes sacrais e explica a fraqueza ocasional na perna após a injeção (Rosenberg, Clin J Pain 2000); Há ainda reação vasovagal, injeção intravascular e infecção, como em qualquer punção articular.',
+    evid: 'Nenhum teste isolado do exame prevê a resposta ao bloqueio, mas três ou mais de seis testes provocativos positivos tiveram sensibilidade de 94% e especificidade de 78% (Laslett, Man Ther 2005). A revisão sistemática achou evidência de qualidade moderada para o efeito terapêutico da injeção guiada (Kennedy, Pain Med 2015), e num ensaio duplo-cego em sacroileíte de espondiloartrite 5 de 6 articulações com corticoide tiveram mais de 70% de alívio em 1 mês, contra 0 de 7 com placebo (Maugars, Br J Rheumatol 1996).',
+    pro: 'Quando nenhum dos seis testes provocativos reproduz a dor habitual, a sacroilíaca é praticamente afastada como fonte (Laslett, Man Ther 2005). O diagnóstico exige alívio alto em bloqueios comparativos com anestésicos de duração diferente (Kennedy, Pain Med 2015); Se o bloqueio é positivo e o alívio do corticoide é curto, a radiofrequência dos ramos laterais é o passo seguinte.'
+  },
+  {
+    id: 'stellate', levels: ['C5', 'C6', 'C7', 'T1'], cat: 0, name: 'Bloqueio do gânglio estrelado', lv: 'C6-C7 direito',
+    mods: { cervSymp: 'R', needles: [{ to: 'C6.at.R.ant', via: ['C6', -1.5, 0.6, 7], key: 'needle', level: 'C6' }],
+      contrast: [{ at: 'C6.at.R.ant', r: 0.24, key: 'contrast.tip', level: 'C6' }, { path: [['C6', -1.45, 0.5, 0.45], ['C6', -1.6, -0.1, 0.38], ['C7', -1.5, 0, 0.32], ['C7', -1.6, -1.05, 0.14], ['T1', -1.45, -0.3, 0.0]], r: 0.3, flat: 0.5, key: 'contrast.lc', level: 'C7' }] },
+    cam: { t: 'C6.at.R', az: -62, el: 12, d: 15 }, show: 'bone neuro vessel rib', hide: ['cca.L', 'sca.L', 'va.L', 'bct', 'aorta', 'basilar', 'eia', 'iia', 'cia', 'ivc', 'azygos', 'hemiaz', 'plex', 'bvv', 'seg.', 'asa', 'psa', 'adamk'], focus: ['C4', 'C5', 'C6', 'C7', 'T1', 'T2'], hot: [],
+    labels: [['stellate.R', 'Gânglio estrelado'], ['C6.at.R', 'Tubérculo de Chassaignac (C6)'], ['needle', 'Ponta no tubérculo de C6'], ['contrast.lc', 'Contraste no longo do pescoço'], ['va.V1.R', 'Artéria vertebral'], ['symp.R', 'Cadeia simpática cervical']],
+    ind: 'Dor mantida pelo simpático no membro superior, como a síndrome de dor regional complexa, e dor isquêmica por doença vascular, como o fenômeno de Raynaud, o vasoespasmo e a embolia arterial do braço. Também se usa em hiperidrose, herpes-zóster agudo da face e do braço, arritmia ventricular refratária e, mais recentemente, no transtorno de estresse pós-traumático.',
+    alvo: 'O gânglio estrelado, fusão do gânglio cervical inferior com o primeiro torácico, fica à frente do colo da primeira costela e do transverso de C7, junto à cúpula pleural e à artéria vertebral. Por isso a agulha costuma parar no tubérculo anterior de C6 (tubérculo de Chassaignac), mais seguro e palpável, e o injetado desce pela fáscia pré-vertebral até C7 e T1; A via em C7 fica mais perto do gânglio, mas também da artéria vertebral, que passa à frente do transverso de C7, e da pleura.',
+    tec: 'Decúbito dorsal com o pescoço em leve extensão. Na radioscopia a agulha toca a junção do corpo com o transverso de C6 ou C7 e o contraste deve correr na fáscia pré-vertebral; No ultrassom veem-se carótida, tireoide, esôfago, artéria vertebral e o músculo longo do pescoço, e a ponta fica sobre esse músculo e abaixo da fáscia pré-vertebral, o que permite volume menor (Narouze, Curr Pain Headache Rep 2014). Na técnica às cegas, 3 de 12 pacientes tiveram hematoma, contra nenhum com ultrassom (Kapral, Reg Anesth 1995).',
+    inj: 'Anestésico local em volume pequeno: no estudo pioneiro com ultrassom bastaram 5 mL de bupivacaína a 0,25%, contra 8 mL na técnica às cegas (Kapral, Reg Anesth 1995). A síndrome de Horner do mesmo lado, com ptose, miose e vermelhidão da conjuntiva, é o sinal de sucesso do bloqueio simpático da cabeça, e o aquecimento da mão confirma o alcance no braço.',
+    risco: 'Num inquérito com cerca de 45.000 bloqueios, as complicações graves foram 1,7 por 1.000, a maioria convulsões por injeção intra-arterial, além de 6 raquianestesias altas e 9 pneumotórax (Wulf, Anaesthesist 1992). Uma dose mínima injetada na artéria vertebral chega direto ao cérebro e causa convulsão em segundos; O bloqueio do nervo laríngeo recorrente provoca rouquidão e sensação de bolo na garganta, e por isso não se bloqueiam os dois lados no mesmo dia.',
+    evid: 'Na síndrome de dor regional complexa, a revisão Cochrane de 12 ensaios pequenos, com 461 pacientes, não mostrou benefício do bloqueio simpático com anestésico local sobre placebo, com evidência de qualidade baixa a muito baixa (O\'Connell, Cochrane 2016). No estresse pós-traumático, dois bloqueios à direita reduziram a escala CAPS-5 em 12,6 pontos, contra 6,1 com simulação, em 8 semanas, num ensaio com 113 militares (Rae Olmsted, JAMA Psychiatry 2020).',
+    pro: 'Aspiração negativa e dose-teste não garantem que a injeção não seja intra-arterial, e por isso acesso venoso, anticonvulsivante e material de reanimação ficam à mão (Wulf, Anaesthesist 1992). O ultrassom mostra a artéria vertebral e a tireoidiana inferior antes da punção, o que a radioscopia, que só vê osso, não faz (Narouze, Curr Pain Headache Rep 2014).'
+  },
+  {
+    id: 'celiac', levels: ['T11', 'T12', 'L1', 'L2'], cat: 0, name: 'Bloqueio do plexo celíaco', lv: 'T12-L1, bilateral',
+    mods: { celiac: true, needles: [{ to: 'celiac.tip.L', via: 'celiac.via.L', len: 12, key: 'needle.L', level: 'L1' }, { to: 'celiac.tip.R', via: 'celiac.via.R', len: 12, key: 'needle.R', level: 'L1' }],
+      contrast: [{ path: 'celiac', r: 0.32, key: 'contrast.celiac', level: 'L1' }, { at: 'celiac.tip.L', r: 0.3, key: 'contrast.L', level: 'L1' }, { at: 'celiac.tip.R', r: 0.3, key: 'contrast.R', level: 'L1' }] },
+    cam: { t: 'celiac', az: 0, el: -72, d: 24 }, show: 'bone neuro vessel rib', clip: 'ax:L1', hide: ['plex', 'bvv', 'asa', 'psa'], focus: ['T11', 'T12', 'L1', 'L2'], hot: [],
+    labels: [['celiac', 'Tronco celíaco'], ['cgg.L', 'Gânglio celíaco'], ['needle.L', 'Ponta anterolateral à aorta'], ['contrast.celiac', 'Contraste em volta do plexo'], ['aorta.cel', 'Aorta'], ['splanch.L', 'Nervo esplâncnico maior']],
+    ind: 'Dor visceral do abdome superior por câncer de pâncreas e de outros órgãos do andar superior, como estômago, vias biliares e fígado, mal controlada por opioides ou com efeitos adversos que limitam a dose. O bloqueio com anestésico serve de teste e a neurólise com álcool é o tratamento; Na pancreatite crônica o resultado é pior e menos duradouro.',
+    alvo: 'O plexo celíaco, rede de gânglios à frente da aorta, ao redor da origem do tronco celíaco, na altura de T12-L1, que recebe pelos nervos esplâncnicos as fibras de dor do pâncreas, estômago, fígado, vias biliares e intestino até o cólon transverso. Na via retrocrural a agulha para atrás dos pilares do diafragma, sobre os nervos esplâncnicos; Na transcrural e na transaórtica o injetado fica à frente da aorta, sobre o próprio plexo.',
+    tec: 'Na via posterior, decúbito ventral, radioscopia ou TC e duas agulhas, uma de cada lado, que entram abaixo da 12ª costela e avançam rente ao corpo de L1 até a frente da coluna. Na via transaórtica a agulha esquerda atravessa a aorta de propósito, guiada por aspiração e contraste, e na ecoendoscopia a agulha sai da parede do estômago e injeta junto à origem do tronco celíaco. O contraste deve ficar à frente da aorta ou do corpo vertebral, sem desenho vascular nem recuo para o psoas.',
+    inj: 'Teste com anestésico local e neurólise com álcool de 50% a 100%, em geral de 15 a 50 mL pela via posterior bilateral, a técnica mais usada na meta-análise (Eisenberg, Anesth Analg 1995). O álcool puro arde muito ao ser injetado, por isso vem precedido de anestésico local; O fenol é a alternativa menos dolorosa.',
+    risco: 'Os efeitos adversos comuns são transitórios: dor local em 96%, diarreia em 44% e hipotensão em 38%, por vasodilatação esplâncnica e predomínio parassimpático, com complicações em 2% (Eisenberg, Anesth Analg 1995). A paraplegia, por lesão ou espasmo das artérias segmentares que nutrem a medula, ocorreu em 4 de 2.730 neurólises na Inglaterra e no País de Gales, 1 caso grave por 683 bloqueios (Davies, J R Soc Med 1993).',
+    evid: 'Num ensaio duplo-cego com 100 pacientes com câncer de pâncreas irressecável, a neurólise aliviou mais a dor que a analgesia sistêmica com injeção simulada, com dor moderada a intensa nas 6 primeiras semanas em 14% contra 40%, sem diferença em qualidade de vida, consumo de opioide ou sobrevida (Wong, JAMA 2004). A revisão Cochrane mostrou ganho pequeno, 0,42 ponto na dor em 4 semanas, com menos opioide (Arcidiacono, Cochrane 2011), e a neurólise por ecoendoscopia aliviou 80% dos pacientes com câncer de pâncreas e 59% dos com pancreatite crônica (Puli, Dig Dis Sci 2009).',
+    pro: 'O ganho está mais na redução do opioide e dos seus efeitos adversos que numa grande queda da dor (Arcidiacono, Cochrane 2011). Hidratação venosa antes da neurólise e repouso deitado nas horas seguintes previnem a hipotensão ortostática, e a diarreia costuma ceder em poucos dias.'
+  },
+  {
     id: 'rfface', levels: ['L3', 'L4', 'L5'], cat: 1, name: 'Radiofrequência do ramo medial', lv: 'Faceta L4-L5 esquerda',
     mods: { mbranch: ['L3', 'L4'], rf: ['L3.L', 'L4.L'] },
     cam: { t: 'L4.tp.L', az: 145, el: 18, d: 24 }, show: 'bone neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
@@ -2237,6 +2671,85 @@ const PROC = [
     risco: 'Complicações graves são raras; O mais comum é dor ou disestesia transitória no local e dormência na pele inervada pelo ramo lesado. Na cervical, 5 de 12 tratados tiveram dormência na área dos nervos lesados, nenhum incomodado por ela (Lord, NEJM 1996). Há ainda risco de queimadura pela placa de dispersão e de lesão da raiz se a ponta estiver ventral demais, e a denervação do multífido é esperada (Dreyfuss, Spine 2000).',
     evid: 'Com seleção por bloqueios controlados, 60% tiveram pelo menos 90% de alívio em 12 meses (Dreyfuss, Spine 2000), e 53% a 58% ficaram sem dor por pelo menos 6 meses, com alívio de cerca de 15 meses após a primeira neurotomia (MacVicar, Pain Med 2013). O MINT, com 251 pacientes no braço facetário, não mostrou diferença clinicamente importante sobre exercício isolado (menos 0,18 ponto na escala de 0 a 10 em 3 meses), num desenho aberto e com seleção por um único bloqueio (Juch, JAMA 2017), e foi criticado por usar agulha perpendicular ao nervo (Cohen, Reg Anesth Pain Med 2020). Na cervical, o ensaio contra simulação mostrou mediana de 263 dias até a dor voltar a 50%, contra 8 dias (Lord, NEJM 1996).',
     pro: 'Em L5-S1 o alvo de L5 não é um ramo medial e sim o ramo dorsal na goteira entre a asa do sacro e o articular superior de S1, e a crista ilíaca limita a angulação. Agulha paralela e lesão grande valem mais que a estimulação sensitiva antes de lesar (Dreyfuss, Spine 2000).'
+  },
+  {
+    id: 'rfsi', levels: ['L5', 'S'], cat: 1, name: 'Radiofrequência sacroilíaca', lv: 'Ramos laterais S1 a S3 direitos',
+    mods: { ilium: true, sacralLB: { side: 'R', lv: [1, 2, 3], rf: true } },
+    cam: { t: 'lb.S2.R', az: -175, el: 25, d: 22 }, show: 'bone neuro', focus: ['L4', 'L5', 'S', 'Co'], hot: [],
+    labels: [['sfd.1.R', 'Forame sacral dorsal S1'], ['lb.S1.R', 'Ramos laterais de S1'], ['rfl.S2.R', 'Lesões em fileira'], ['rfs.S2.R', 'Agulha de RF'], ['sij.R', 'Articulação sacroilíaca']],
+    ind: 'Dor sacroilíaca crônica confirmada por bloqueio, com alívio que não se sustenta após injeção intra-articular, sobretudo quando a dor vem do complexo ligamentar posterior. A seleção usa bloqueio intra-articular ou dos ramos laterais, e no ensaio de Patel exigiu dois bloqueios dos ramos laterais positivos (Patel, Pain Med 2012).',
+    alvo: 'A face posterior da articulação é inervada pelos ramos laterais dos ramos dorsais de S1 a S3, que saem dos forames sacrais posteriores e correm em leque pela face dorsal do sacro, e pelo ramo dorsal de L5, que corre na asa do sacro; Alguns protocolos incluem também o ramo dorsal de L4 (Cohen, Anesthesiology 2008). A parte anterior da articulação, inervada pela frente, não é alcançada, o que limita o teto da técnica.',
+    tec: 'Decúbito ventral e radioscopia, com lesões em volta da borda lateral dos forames sacrais posteriores de S1 a S3, onde os ramos laterais variam de número e posição entre pessoas e entre os lados, além da lesão do ramo dorsal de L5 na goteira da asa do sacro. A RF resfriada circula água na ponta do eletrodo, que impede a carbonização junto à ponta e deixa a lesão crescer mais, cobrindo a variação dos ramos com menos agulhas; Alternativas são lesões convencionais em série ou em faixa contínua.',
+    inj: 'Anestésico local no trajeto e em cada ponto antes da lesão térmica, que na RF resfriada mantém a ponta mais fria e forma uma lesão maior no tecido em volta. A estimulação motora antes de lesar confirma que a ponta está longe das raízes sacrais.',
+    risco: 'As complicações são em geral leves: dor e disestesia transitórias no local, dormência na pele da nádega inervada pelos nervos clúnios médios e, raramente, lesão de raiz sacral se a ponta entrar no forame. Há ainda risco de queimadura pela placa de dispersão e de infecção.',
+    evid: 'Contra placebo, a RF resfriada de L4, L5 e S1 a S3 deu pelo menos 50% de alívio com melhora funcional a 79%, 64% e 57% dos tratados em 1, 3 e 6 meses, contra 14% em 1 mês e nenhum em 3 meses com placebo, mas só 14% mantinham o alívio em 1 ano (Cohen, Anesthesiology 2008). No ensaio de Patel, com 51 pacientes, 47% dos tratados e 12% dos simulados tiveram sucesso em 3 meses (Patel, Pain Med 2012). No braço sacroilíaco do MINT, com 228 pacientes, a RF somada a exercício reduziu a dor só 0,71 ponto a mais que exercício isolado em 3 meses, abaixo dos 2 pontos definidos como clinicamente importantes (Juch, JAMA 2017).',
+    pro: 'Os ensaios positivos foram controlados por placebo e usaram RF resfriada; O MINT, negativo, foi aberto e comparou a RF com exercício isolado (Juch, JAMA 2017). Pela variação anatômica dos ramos laterais, a lesão precisa cobrir toda a borda lateral de cada forame, de S1 a S3.'
+  },
+  {
+    id: 'rfdisc', levels: ['L4', 'L5'], cat: 1, name: 'Radiofrequência discal (biacuplastia)', lv: 'L4-L5',
+    mods: { discRF: 'L4-L5' },
+    cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 15 }, show: 'bone disc neuro', clip: 'ax:L4-L5', focus: ['L4', 'L5'], hot: [],
+    labels: [['heat.L4-L5', 'Lesão no anel posterior'], ['probe.L', 'Sonda resfriada esquerda'], ['probe.R', 'Sonda resfriada direita'], ['nuc.L4-L5', 'Núcleo'], ['cauda', 'Saco dural']],
+    ind: 'Dor lombar axial crônica de origem discal, sem radiculopatia compressiva, com mais de 6 meses e sem resposta ao tratamento conservador, em disco degenerado que ainda conserva altura e tem discografia provocativa positiva com disco de controle negativo. No ensaio contra simulação, a altura do disco precisava ser de pelo menos 50% da do disco de controle, e hérnia, estenose, listese e cirurgia lombar prévia eram critérios de exclusão (Kapural, Pain Med 2013).',
+    alvo: 'O anel fibroso posterior de L4-L5, onde se concentram as fissuras radiais e as terminações nociceptivas que crescem para dentro do disco degenerado, inervadas pelo nervo sinuvertebral e por ramos do tronco simpático. A ideia é desnervar e coagular essa faixa posterior de anel sem aquecer o núcleo nem as raízes que passam logo atrás dela, no canal e no forame.',
+    tec: 'Decúbito ventral, sedação leve para que a pessoa relate sintoma na perna, e duas agulhas introdutoras por via posterolateral oblíqua, uma de cada lado, como na discografia, até o anel posterior de L4-L5. Por elas passam duas sondas de radiofrequência resfriadas por água circulante, em modo bipolar: a corrente corre de uma ponta à outra e aquece toda a faixa de anel entre elas, enquanto o resfriamento evita carbonizar o tecido junto à ponta. As pontas são conferidas em AP e perfil, simétricas no terço posterior do disco; No IDET, seu antecessor, um único cateter térmico era enrolado por dentro do anel posterior e aquecido a 90 °C (Pauza, Spine J 2004).',
+    inj: 'Não se injeta fármaco: o tratamento é a energia térmica da radiofrequência, com anestesia local no trajeto e sedação leve. Pequena quantidade de contraste pode confirmar a posição intradiscal antes de aquecer, e o cuidado com a assepsia é o de toda punção discal.',
+    risco: 'No ensaio contra simulação e no seguimento de 12 meses não houve complicação relacionada ao procedimento (Kapural, Pain Med 2015). Os riscos são os de toda punção discal, como discite, lesão térmica da raiz se a sonda sair do anel e aceleração da degeneração do disco puncionado, já demonstrada após discografia (Carragee, Spine 2009).',
+    evid: 'O IDET teve resultado misto: num ensaio contra simulação cerca de 40% tiveram mais de 50% de alívio, com número necessário para tratar de 5 para alívio de 75% (Pauza, Spine J 2004), e outro ensaio não mostrou benefício algum (Freeman, Spine 2005). Na biacuplastia, de 1.894 triados só 59 foram tratados, e o grupo ativo melhorou mais que a simulação em 6 meses (Kapural, Pain Med 2013), com queda média de 2,9 pontos na dor e ganho de 22 pontos na função física do SF-36 mantidos em 12 meses (Kapural, Pain Med 2015). Contra tratamento conservador, em ensaio aberto, a dor caiu 2,4 contra 0,56 pontos em 6 meses, com 50% contra 18% de respondedores (Desai, Spine 2016).',
+    pro: 'A seleção é muito estreita, com discografia positiva e controle negativo, disco com altura e ausência de hérnia, estenose ou listese, e uma revisão questiona se esses resultados valem para a população geral com dor discal (Lu, Spine 2014). As duas sondas simétricas no anel posterior são o ponto técnico decisivo, porque a lesão bipolar cobre a faixa entre elas e não a que fica de fora.'
+  },
+  {
+    id: 'discog', levels: ['L3', 'L4', 'L5'], cat: 2, name: 'Discografia provocativa', lv: 'L4-L5, controle em L3-L4',
+    mods: { disc: { 'L4-L5': { dye: 'leak' }, 'L3-L4': { dye: 'in' } }, needles: [{ to: 'nuc.L4-L5', via: ['L4-L5', -7.37, 0, -5.43], key: 'needle.L4', level: 'L4-L5' }, { to: 'nuc.L3-L4', via: ['L3-L4', -7.37, 0, -5.42], key: 'needle.L3', level: 'L3-L4' }] },
+    cam: { t: 'nuc.L4-L5', az: 90, el: 4, d: 22 }, show: 'bone disc neuro', clip: 'sag', focus: ['L2', 'L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['leak.L4-L5', 'Contraste pela fissura posterior'], ['nuc.L4-L5', 'L4-L5: contraste no núcleo'], ['nuc.L3-L4', 'L3-L4: contraste contido'], ['needle.L4.meio', 'Agulha posterolateral'], ['root.L4.R', 'Raiz L4']],
+    ind: 'Dor lombar axial crônica em que a RM mostra um ou mais discos degenerados e se cogita um tratamento dirigido ao disco, como artrodese, prótese ou procedimento intradiscal, sendo preciso saber qual disco, se algum, reproduz a dor. Não é exame de rotina: é um teste provocativo e subjetivo, reservado para quando o resultado muda a conduta.',
+    alvo: 'O núcleo pulposo de L4-L5, o disco suspeito, e o de L3-L4 como nível de controle, um disco de aspecto normal ou menos degenerado na RM. O teste compara as respostas: o suspeito deve reproduzir a dor habitual e o controle não deve doer, porque sem controle negativo não há como separar o disco doloroso de quem sente dor em qualquer injeção.',
+    tec: 'Decúbito ventral, sedação mínima para que a pessoa relate a dor, e agulha por via oblíqua extrapedicular até o centro do disco, em geral pela técnica de duas agulhas (uma guia e outra fina por dentro dela) para reduzir contaminação, entrando pelo lado oposto ao da dor predominante. O contraste é injetado devagar com manômetro, registrando a pressão de abertura, a pressão em que a dor aparece, sua intensidade e se ela é concordante, isto é, igual à dor habitual em local e caráter, de preferência com avaliação cega quanto ao disco testado. Dor concordante a baixa pressão, até cerca de 15 psi acima da pressão de abertura, tem menos falso-positivo (Wolfer, Pain Physician 2008), e a TC logo depois mostra as fissuras do anel.',
+    inj: 'Contraste iodado não iônico em pequeno volume, com manômetro em linha. Muitos serviços usam antibiótico profilático, intravenoso ou misturado ao contraste, mas a revisão sistemática não encontrou evidência suficiente de que ele previna discite (Willems, J Spinal Disord Tech 2004).',
+    risco: 'Sem antibiótico profilático, discite ocorreu em 0,25% dos pacientes e em 0,094% dos discos puncionados (Willems, J Spinal Disord Tech 2004). Em voluntários sem doença lombar importante, os discos injetados tiveram, 10 anos depois, mais progressão da degeneração (35% contra 14%) e mais hérnias novas (55 contra 22), sobretudo do lado da punção, que os mesmos níveis em controles pareados (Carragee, Spine 2009). Por isso o dano ao próprio disco testado, inclusive ao nível de controle, entra na conta do risco.',
+    evid: 'Em pessoas sem história de dor lombar, a injeção foi dolorosa em 10% dos sem dor, 40% dos com dor cervical crônica e 83% dos com transtorno de somatização (Carragee, Spine 2000), e 25% dos voluntários sem dor lombar crônica tiveram ao menos um disco positivo a baixa pressão, menos de 22 psi acima da abertura (Carragee, Spine 2006). Uma meta-análise de estudos em assintomáticos estimou falso-positivo de 9,3% por pessoa e especificidade de 0,94 com os critérios da ISIS (Wolfer, Pain Physician 2008). A controvérsia persiste porque não há padrão-ouro independente para a dor discogênica.',
+    pro: 'O exame só tem valor com nível de controle negativo, pressão medida e resposta julgada sem que a pessoa saiba qual disco está sendo injetado; Dor crônica em outro lugar, discectomia prévia e testes psicométricos alterados elevam os positivos em quem não tem dor lombar (Carragee, Spine 2006). Como a punção acelera a degeneração (Carragee, Spine 2009), o número de discos puncionados, controle incluso, deve ser o mínimo que responde à pergunta.'
+  },
+  {
+    id: 'perqdisc', levels: ['L4', 'L5'], cat: 2, name: 'Discectomia percutânea (nucleoplastia)', lv: 'L4-L5',
+    mods: { nucleoplasty: { at: 'L4-L5', side: 'R' } },
+    cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 18 }, show: 'bone disc neuro', clip: 'ax:L4-L5', focus: ['L4', 'L5'], hot: [],
+    labels: [['channels', 'Canais no núcleo'], ['cannula', 'Ponta da cânula'], ['cannula.meio', 'Cânula posterolateral'], ['nuc.L4-L5', 'Núcleo'], ['cauda', 'Saco dural']],
+    ind: 'Dor radicular por hérnia de disco contida, isto é, protrusão com anel externo íntegro, sem extrusão nem fragmento sequestrado, que não melhorou com tratamento conservador e com uma injeção epidural, como no principal ensaio (Gerszten, J Neurosurg Spine 2010). Exige disco com altura preservada e dor na perna maior que a lombar; Extrusão, sequestro, estenose e instabilidade ficam de fora, porque baixar a pressão do núcleo não puxa de volta um fragmento solto.',
+    alvo: 'O núcleo pulposo de L4-L5, no centro do disco, e não a hérnia em si. Retirar ou vaporizar uma pequena quantidade de núcleo baixa a pressão dentro do disco, e a protrusão contida, ainda presa ao anel, tende a recuar e aliviar a raiz que desce (L5).',
+    tec: 'Decúbito ventral, anestesia local e sedação leve, com cânula introdutora por via posterolateral oblíqua até o núcleo, como na discografia, conferida em AP e perfil. Na nucleoplastia por coblação (plasma), uma sonda bipolar cria canais no núcleo ao avançar e coagula ao recuar, em várias direções a partir do mesmo ponto de entrada; No dispositivo mecânico, uma ponta helicoidal que gira dentro da cânula aspira fragmentos de núcleo.',
+    inj: 'Em geral não se injeta fármaco, e o que sai é núcleo vaporizado ou aspirado em pequena quantidade. Alguns associam corticoide epidural ou na raiz no mesmo ato, o que dificulta separar o efeito de cada parte.',
+    risco: 'No principal ensaio, os eventos adversos ligados ao procedimento, como dor no local, piora transitória da dor e fraqueza, foram 7 em 5 pacientes da nucleoplastia e 14 em 7 do grupo da injeção transforaminal (Gerszten, J Neurosurg Spine 2010). Como em toda punção discal, há risco de discite, lesão da raiz pela cânula, lesão da placa terminal e aceleração da degeneração do disco (Carragee, Spine 2009).',
+    evid: 'Em 90 pacientes com hérnia contida após falha de uma injeção epidural, a nucleoplastia reduziu mais a dor na perna que até 2 injeções transforaminais, e 56% contra 28% ficaram sem outro procedimento em 2 anos (Gerszten, J Neurosurg Spine 2010). Contra fisioterapia, em 177 pacientes, a dor na perna e o ODI melhoraram mais em 12 meses (Nikoobakht, Neurol Neurochir Pol 2016). Para o dispositivo mecânico, a evidência foi classificada como limitada (Manchikanti, Pain Physician 2013).',
+    pro: 'A seleção é o procedimento: hérnia contida, disco com altura, dor de raiz e imagem que combina com o exame; Fragmento extruso ou sequestrado pede discectomia, e não descompressão do núcleo. Nenhum dos ensaios citados teve simulação nem cegamento, por isso parte do efeito pode ser história natural e placebo.'
+  },
+  {
+    id: 'endodisc', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Discectomia endoscópica transforaminal', lv: 'L4-L5 esquerdo',
+    mods: { ...DZ.find(d => d.id === 'hernia').mods, sapTrim: { 'L5.L': 0.5 }, needles: [{ to: ['L4-L5', 1.23, 0, -1.92], via: ['L4-L5', 9.65, -0.78, -4.99], len: 11, r: 0.3, tipR: 0.92, tipL: 0.5, key: 'endo', info: 'endo', level: 'L4-L5' }] },
+    cam: { t: 'hernia', az: 120, el: 20, d: 20 }, show: 'bone disc neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: ['hernia'],
+    labels: [['hernia', 'Hérnia L4-L5 (alvo)'], ['endo', 'Ponta da cânula na hérnia'], ['endo.meio', 'Cânula com endoscópio'], ['fpl.L5.L', 'Articular de L5 desgastado'], ['root.L4.L', 'Raiz L4, que sai'], ['rootIn.L5.L', 'Raiz L5 comprimida']],
+    ind: 'Ciática por hérnia de disco lombar com indicação cirúrgica, isto é, dor na perna sem melhora após pelo menos 6 semanas de tratamento conservador ou déficit que progride, aqui em L4-L5 à esquerda (Gadjradj, BMJ 2022). A via transforaminal serve bem às hérnias foraminais, extraforaminais e paramedianas; No maior ensaio, sequestro migrado além da metade do corpo vizinho foi critério de exclusão (Gadjradj, BMJ 2022).',
+    alvo: 'O fragmento herniado no canal ou no forame L4-L5, alcançado pelo triângulo de Kambin, limitado pela raiz que sai (L4) acima e lateralmente, pela borda superior do corpo de L5 embaixo e pelo processo articular superior de L5 com a raiz que desce medialmente. A raiz L4 e seu gânglio ficam na borda do triângulo, por isso a cânula passa abaixo e medial a eles.',
+    tec: 'Decúbito ventral ou lateral, anestesia local e sedação consciente, para que a pessoa avise se a raiz for tocada, e acesso posterolateral por incisão de cerca de 8 mm a 8 a 12 cm da linha média (Gadjradj, BMJ 2022). Na técnica de dentro para fora (inside-out), a cânula entra primeiro no disco e a hérnia é puxada de dentro; Na de fora para dentro (outside-in), brocas ou alargadores retiram a ponta e a face ventral do articular superior de L5 (foraminoplastia), o que alarga o forame e afasta o trajeto da raiz L4, e a cânula vai direto ao espaço epidural ventral. Sob endoscópio com irrigação contínua de soro, os fragmentos são retirados com pinças até a raiz L5 ficar livre.',
+    inj: 'Anestésico local no trajeto e junto ao forame, sem bloquear a raiz, porque a pessoa acordada é o monitor da raiz L4. Soro fisiológico corre continuamente pelo endoscópio para dar visão e lavar o campo, e uma sonda de radiofrequência bipolar faz a hemostasia e retrai o anel.',
+    risco: 'A complicação típica é a disestesia da raiz que sai, dor em queimação no território de L4 por irritação do gânglio pela cânula ou pela broca, em geral transitória; No maior ensaio, 1% teve piora transitória do déficit no grupo endoscópico, sem rotura dural, contra 3% de roturas durais na microdiscectomia (Gadjradj, BMJ 2022). A reoperação em 1 ano foi de 5,3% contra 5,6%, quase toda por hérnia recidivada, mas chegou a 11% nos casos da curva de aprendizado (Gadjradj, BMJ 2022).',
+    evid: 'No ensaio de não inferioridade com 613 pacientes, a via endoscópica transforaminal não foi pior que a microdiscectomia e teve dor na perna 7,1 pontos menor em 100 aos 12 meses, diferença que pode não ser clinicamente relevante, além de alta no mesmo dia em 94% contra 6% (Gadjradj, BMJ 2022). Em ensaio anterior com 178 pacientes, os resultados clínicos foram iguais e a recidiva foi de 6,2%, sem diferença entre as técnicas (Ruetten, Spine 2008).',
+    pro: 'A foraminoplastia do articular superior de L5 transforma o forame estreito numa porta segura, porque abre espaço abaixo da raiz L4 em vez de empurrar a cânula contra ela. A curva de aprendizado é real e a exposição à radiação é maior que na microdiscectomia (Gadjradj, BMJ 2022).'
+  },
+  {
+    id: 'epidurosc', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Epiduroscopia e neuroplastia peridural', lv: 'Hiato sacral até L5-S1',
+    mods: { sacralCanal: true, scopes: [{ path: [['S5', 0, -2.6, -2.4], 'hiatus', ['S4', 0, 0, -1.3], ['S3', 0, 0, -1.74], ['S2', -0.25, 0, -2.2], ['S1', -0.55, -0.4, -2.48], ['S1', -0.7, 0.9, -2.45], ['L5-S1', -0.75, 0, -2.88], ['L5-S1', -0.7, 0.55, -2.92]], r: 0.1, cath: 0.7, key: 'scope', info: 'scope', level: 'S' }],
+      contrast: [{ at: 'scope.cath', r: [0.28, 0.55, 0.16], q: 'L5', key: 'contrast.epi', level: 'L5-S1' }] },
+    cam: { t: 'sacCanal.S1', az: 90, el: 4, d: 32 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['L4', 'L5', 'S', 'Co'], hot: [],
+    labels: [['scope', 'Ponta do endoscópio em L5-S1'], ['scope.cath', 'Cateter na ponta'], ['contrast.epi', 'Contraste e soro'], ['scope.meio', 'Endoscópio no canal sacral'], ['hiatus', 'Hiato sacral'], ['dura', 'Saco dural']],
+    ind: 'Dor lombar e radicular crônica na síndrome pós-laminectomia, em que a fibrose epidural pode prender a raiz e impedir que o fármaco injetado chegue até ela, após falha de bloqueios epidurais comuns. A epiduroscopia permite ver as aderências diretamente, e a neuroplastia de Racz é a versão por cateter, guiada por radioscopia.',
+    alvo: 'O espaço epidural ventrolateral junto à raiz afetada, onde a cicatriz da cirurgia anterior une dura, raiz e ligamento e cria falhas de enchimento na epidurografia. O objetivo é soltar essas aderências por meios mecânicos e químicos e deixar o anestésico e o corticoide em contato com a raiz.',
+    tec: 'Decúbito ventral e acesso pelo hiato sacral com agulha; Na técnica de Racz, um cateter com mola e ponta dirigível é levado sob radioscopia até o forame da raiz afetada, com epidurografia antes e depois para mostrar a falha de enchimento e sua abertura. Na epiduroscopia passa-se um fibroscópio flexível pelo mesmo hiato, e a visão depende de distender o espaço com soro, que precisa entrar devagar e em pouco volume. O cateter pode ficar para novas doses no mesmo dia ou nos dias seguintes.',
+    inj: 'Hialuronidase para desfazer a matriz da fibrose e espalhar o injetado, anestésico local e corticoide, e por fim soro hipertônico a 10%, que reduz o edema por efeito osmótico (Heavner, Reg Anesth Pain Med 1999). O soro hipertônico só entra depois de excluída, pelo contraste e por dose-teste do anestésico, a posição subdural ou subaracnoide, onde é muito lesivo.',
+    risco: 'Injeção rápida ou em grande volume eleva a pressão epidural, que passa ao líquor e à bainha do nervo óptico: uma revisão reuniu 12 casos de perda visual com hemorragia retiniana após volumes de 20 a 120 mL, a maioria com recuperação (Gill, Pain Med 2005). Há ainda punção dural com cefaleia, injeção subdural ou subaracnoide, dor transitória, parestesias, infecção e ruptura ou retenção do cateter (Marchesini, Korean J Pain 2018).',
+    evid: 'Num ensaio com 120 pacientes com síndrome pós-laminectomia, 73% dos tratados com adesiólise, com lidocaína, soro a 10% e betametasona não particulada, tiveram alívio de pelo menos 50% e melhora funcional em 12 meses, contra 12% com injeção caudal comum (Manchikanti, Pain Physician 2009). Os próprios autores apontam a falta de grupo placebo e o cegamento talvez inadequado, e na comparação de soluções o soro hipertônico, com ou sem hialuronidase, reduziu a parcela que precisou de novos tratamentos (Heavner, Reg Anesth Pain Med 1999).',
+    pro: 'Na síndrome pós-laminectomia nem toda dor vem da fibrose, pois estenose residual, faceta e instabilidade também a causam, e a cicatriz na imagem não prova que ela dói. Volume pequeno, injeção lenta e pausas para o líquido escoar protegem da hipertensão epidural, mais ainda na epiduroscopia, que depende de soro para enxergar (Gill, Pain Med 2005).'
   },
   {
     id: 'vplasty', levels: ['T12', 'L1', 'L2'], cat: 4, name: 'Vertebroplastia e cifoplastia', lv: 'L1',
@@ -2252,6 +2765,19 @@ const PROC = [
     pro: 'A exceção contra simulação é o VAPOUR, positivo em fraturas de menos de 6 semanas com enchimento amplo do corpo (Clark, Lancet 2016). O conjunto aponta forte efeito placebo e história natural favorável, por isso a RM com STIR é o filtro mínimo, e na metástase o mesmo trocarte permite biópsia antes do cimento.'
   },
   {
+    id: 'biopsy', levels: ['L1', 'L2', 'L3'], cat: 4, name: 'Biópsia vertebral', lv: 'L2',
+    mods: { lesions: DZ.find(d => d.id === 'mets').mods.lesions.filter(l => l.v === 'L2'), needles: [{ to: ['L2', 0.75, 0.3, -0.35], via: 'L2.ped.L', g: 11, len: 8.5, key: 'trocar.L', info: 'trocar', level: 'L2' }] },
+    cam: { t: 'L2.canal', az: 0, el: -78, d: 16 }, show: 'bone disc neuro', clip: 'ax:L2', focus: ['L1', 'L2', 'L3'], hot: [],
+    labels: [['tumor.L2', 'Lesão no corpo de L2'], ['trocar.L', 'Ponta na lesão'], ['trocar.L.meio', 'Trocarte pelo pedículo'], ['L2.ped.L', 'Pedículo de L2']],
+    ind: 'Lesão vertebral de natureza incerta, como suspeita de metástase sem tumor primário conhecido, mieloma, linfoma ou tumor ósseo primário, ou espondilodiscite em que se precisa do germe para escolher o antibiótico. Aqui o alvo é o corpo de L2, e a biópsia vem antes de radioterapia ou quimioterapia, que alteram o tecido que o patologista precisa ver.',
+    alvo: 'O corpo vertebral de L2 na parte viável da lesão, a que capta contraste, e não na área necrótica ou esclerótica pura. Na espondilodiscite o melhor alvo é o disco ou a coleção paravertebral: a sensibilidade microbiológica foi de 64,8% nessas amostras contra 45,5% no osso e na placa terminal (Chang, AJR 2023).',
+    tec: 'Decúbito ventral, anestesia local até o periósteo e sedação, com trocarte por via transpedicular sob TC ou radioscopia biplanar, a mesma rota da vertebroplastia: em AP a ponta não cruza a borda medial do pedículo antes de, no perfil, passar a parede posterior do corpo. Pela cânula coaxial, uma agulha de corte ou trefina colhe vários cilindros de osso em direções diferentes sem trocar o ponto de entrada; A TC mostra melhor lesões pequenas e o canal, e a radioscopia é mais rápida e serve bem a lesões grandes do corpo lombar.',
+    inj: 'Só anestésico local no trajeto, e o que se faz é retirar tecido: parte dos fragmentos vai em formol para histologia e imuno-histoquímica, e parte em frasco estéril sem formol para cultura de bactérias, micobactérias e fungos. Na suspeita de infecção também se colhem hemoculturas, e se há fratura patológica o mesmo trocarte pode levar o cimento depois da biópsia.',
+    risco: 'Em 430 biópsias guiadas por TC houve 9 complicações, 5 paresias transitórias e 4 hematomas, nenhuma com consequência para o tratamento (Rimondi, Eur Spine J 2008). Os riscos são sangramento, maior em lesões muito vasculares como metástase renal ou de tireoide, lesão da raiz ou do saco dural se a cânula rompe a parede medial ou inferior do pedículo, e infecção.',
+    evid: 'A biópsia por TC acertou o diagnóstico na primeira tentativa em 93,3% de 430 casos, com melhor acerto em tumores malignos primários e metastáticos e mais falso-negativos em lesões inflamatórias e benignas (Rimondi, Eur Spine J 2008). Na espondilodiscite a cultura é positiva em menos casos: a sensibilidade microbiológica agrupada foi de 46,6% (Chang, AJR 2023), e outra meta-análise achou sensibilidade de 52,2% com especificidade de 99,9% (Pupaibool, Spine J 2015).',
+    pro: 'Antibiótico prévio não mudou de forma significativa a sensibilidade da cultura, 46,2% contra 44,6% (Chang, AJR 2023), por isso ele não impede a biópsia, mas uma biópsia negativa não afasta infecção (Pupaibool, Spine J 2015). Guia por TC ou por radioscopia teve sensibilidade microbiológica semelhante (Chang, AJR 2023), e o que pesa mais é a escolha do alvo.'
+  },
+  {
     id: 'tlif', levels: ['L3', 'L4', 'L5', 'S'], cat: 5, name: 'Artrodese intersomática com cage (TLIF)', lv: 'L4-L5',
     mods: { disc: { 'L4-L5': { discectomy: true } }, cage: { at: 'L4-L5', side: 'L' }, screws: ['L4.L', 'L4.R', 'L5.L', 'L5.R'], facetectomy: ['L4-L5.L'] },
     cam: { t: 'cage', az: 115, el: 22, d: 30 }, show: 'bone disc', ghost: true, ax: 'L4-L5', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
@@ -2263,6 +2789,19 @@ const PROC = [
     risco: 'Numa meta-análise de espondilolistese, as complicações somaram 8,7% no TLIF e 17,0% no PLIF (de Kunder, Spine J 2017), e o TLIF teve menos lesão de raiz e menos rotura dural (Lan, World Neurosurg 2018). Outros riscos são parafuso mal posicionado, infecção, migração do cage e pseudoartrose. A doença do segmento adjacente que exigiu nova cirurgia chegou a 16,5% em 5 anos e 36,1% em 10 anos após artrodese posterior (Ghiselli, JBJS 2004).',
     evid: 'No SLIP, em listese degenerativa grau I, somar fusão posterolateral instrumentada à laminectomia deu 5,7 pontos a mais no SF-36 físico em 2 anos, sem diferença no ODI, e menos reoperação (14% contra 34%) (Ghogawala, NEJM 2016). No estudo sueco, com 247 pacientes com estenose, pouco mais da metade com listese, a fusão não melhorou o ODI em 2 e 5 anos, alongou a internação (7,4 contra 4,1 dias) e não reduziu reoperação (22% contra 21%) (Försth, NEJM 2016). TLIF e PLIF têm taxa de fusão e satisfação semelhantes (Lan, World Neurosurg 2018); Nenhum dos dois ensaios grandes testou o cage, e sim a fusão em si.',
     pro: 'No TLIF, a facetectomia completa de um lado expõe o triângulo entre a raiz que sai, a que desce e a dura, por onde se entra no disco sem afastar o saco. Cage bem anterior e compressão das hastes sobre ele ajudam a recuperar a lordose do segmento.'
+  },
+  {
+    id: 'adr', levels: ['C4', 'C5', 'C6', 'C7'], cat: 5, name: 'Artroplastia discal cervical', lv: 'C5-C6',
+    mods: { disc: { 'C5-C6': { discectomy: 'ant' } }, adr: 'C5-C6' },
+    cam: { t: 'adr', az: 90, el: 4, d: 11 }, show: 'bone disc neuro', clip: 'sag', focus: ['C4', 'C5', 'C6', 'C7'], hot: [],
+    labels: [['adr.core', 'Núcleo de polietileno'], ['adr.plate', 'Placas metálicas'], ['adr.keel', 'Quilha no corpo de C5'], ['adr.ann', 'Anel posterior que restou'], ['cord', 'Medula']],
+    ind: 'Radiculopatia ou mielopatia cervical por hérnia de disco ou osteófito discal em 1 ou 2 níveis, aqui C5-C6, que não cedeu com tratamento conservador ou tem déficit progressivo. O segmento precisa ter movimento, sem instabilidade, sem cifose fixa e sem artrose facetária importante, e ficam de fora osteoporose grave, ossificação do ligamento longitudinal posterior e compressão que vem de trás.',
+    alvo: 'O disco C5-C6 inteiro, retirado pela frente, com descompressão da medula e das raízes C6 nos dois forames. Em vez de fundir o segmento como na artrodese (ACDF), a prótese ocupa o espaço do disco e mantém o movimento, com a hipótese de poupar os discos vizinhos da sobrecarga.',
+    tec: 'Decúbito dorsal com o pescoço em posição neutra e via anterior de Smith-Robinson: incisão transversa e plano entre a bainha carotídea, lateral, e traqueia e esôfago, mediais, até a coluna, com afastamento do longo do pescoço. Com distração do espaço, faz-se a discectomia completa, a retirada do ligamento longitudinal posterior e dos osteófitos e a foraminotomia dos dois lados; As placas terminais são preparadas sem retirar o osso cortical, e a prótese é escolhida para cobrir a maior área da placa e centrada na linha média sob radioscopia em AP e perfil.',
+    inj: 'Prótese com duas placas metálicas, de liga de cobalto-cromo ou titânio, fixadas por quilhas, dentes ou superfície porosa, e entre elas um núcleo de polietileno ou poliuretano, fixo ou móvel; Alguns modelos articulam metal com metal. Não se usa enxerto, e a fixação vem do crescimento ósseo na superfície das placas.',
+    risco: 'Os riscos da via anterior são disfagia, rouquidão por lesão do nervo laríngeo recorrente, hematoma cervical e, raramente, lesão do esôfago, da dura ou da artéria vertebral. A ossificação heterotópica em volta da prótese chegou a 70% em 10 anos, com 37% graves (graus 3 e 4), capazes de reduzir ou abolir o movimento (Sheng, Spine 2023); Afundamento, migração e desgaste do implante também ocorrem.',
+    evid: 'Na meta-análise dos ensaios randomizados multicêntricos, a reoperação no nível vizinho em 7 anos foi de 4,3% contra 10,8% em 1 nível e de 5,1% contra 10,0% em 2 níveis, e a reoperação no próprio nível também foi menor com a prótese (Badhiwala, J Spine Surg 2020). Em 10 anos do ensaio IDE da prótese Bryan, o sucesso global foi de 81,3% contra 66,3%, e a cirurgia nos níveis vizinhos foi de 9,7% contra 15,8%, diferença sem significância (Lavelle, Spine 2019).',
+    pro: 'A diferença na reoperação vizinha só aparece depois de cerca de 5 anos (Badhiwala, J Spine Surg 2020), e a ossificação heterotópica cresce com o tempo, por isso o seguimento curto engana nos dois sentidos. Na lombar, a prótese discal foi estatisticamente melhor que a artrodese em 2 anos, mas a diferença, 5,2 pontos em 100 na dor lombar, ficou abaixo do limiar de relevância clínica (Jacobs, Cochrane 2012).'
   }
 ];
 // nomes das peças novas no cartão de estrutura (clique no 3D)
@@ -2276,7 +2815,29 @@ Object.assign(INFO, {
   cement: ['Cimento ósseo', 'Polimetilmetacrilato que endurece dentro do corpo vertebral.'],
   cage: ['Cage intersomática', 'Espaçador no lugar do disco, com enxerto, para a fusão entre os corpos.'],
   screw: ['Parafuso pedicular', 'Entra pelo pedículo até o corpo vertebral.'],
-  rod: ['Haste', 'Liga os parafusos do mesmo lado e fixa o segmento.']
+  rod: ['Haste', 'Liga os parafusos do mesmo lado e fixa o segmento.'],
+  tuohy: ['Agulha de Tuohy', 'Agulha epidural de ponta curva e romba, que acha o espaço epidural pela perda de resistência.'],
+  endo: ['Cânula de trabalho com endoscópio', 'Tubo de cerca de 7 mm por onde passam a ótica, o soro e as pinças.'],
+  scope: ['Endoscópio flexível', 'Fibra ótica fina e dirigível que sobe pelo canal sacral e mostra o espaço epidural.'],
+  catheter: ['Cateter', 'Tubo fino que sai da ponta do instrumento e leva o líquido ao ponto desejado.'],
+  introducer: ['Introdutor', 'Agulha-guia por onde a sonda chega ao disco.'],
+  probe: ['Sonda de radiofrequência resfriada', 'Eletrodo flexível com água circulando por dentro, que aquece o tecido em volta sem queimar a ponta.'],
+  cannula: ['Cânula', 'Agulha-guia até a borda do núcleo, por onde entra o eletrodo.'],
+  channel: ['Canal de ablação', 'Trajeto aberto no núcleo pelo eletrodo de radiofrequência.'],
+  rfdisc: ['Lesão de radiofrequência no anel', 'Faixa aquecida entre as duas sondas, no anel posterior.'],
+  ilium: ['Ilíaco', 'Osso do quadril que se articula com o sacro pela articulação sacroilíaca.'],
+  chassaignac: ['Tubérculo de Chassaignac', 'Tubérculo anterior do transverso de C6, palpável no pescoço e referência para o bloqueio estrelado.'],
+  symp: ['Cadeia simpática', 'Cordão de nervos e gânglios simpáticos que corre na frente dos transversos.'],
+  scg: ['Gânglio cervical superior', 'Maior gânglio da cadeia simpática cervical, na altura de C2 e C3.'],
+  mcg: ['Gânglio cervical médio', 'Pequeno gânglio da cadeia simpática na altura de C6.'],
+  stellate: ['Gânglio estrelado', 'Fusão do gânglio cervical inferior com o primeiro torácico, na frente do colo da primeira costela.'],
+  celiac: ['Tronco celíaco', 'Primeiro ramo da aorta abdominal, que irriga estômago, fígado e baço.'],
+  celiacGgl: ['Gânglio celíaco', 'Gânglio do plexo celíaco, ao lado da origem do tronco celíaco.'],
+  celiacPlexus: ['Plexo celíaco', 'Rede de fibras em volta do tronco celíaco que leva a dor das vísceras do andar superior.'],
+  splanch: ['Nervo esplâncnico maior', 'Fibras que descem pelos corpos torácicos até o gânglio celíaco.'],
+  latbranch: ['Ramo lateral', 'Ramo do ramo dorsal sacral que corre para a articulação sacroilíaca.'],
+  adrPlate: ['Placa da prótese', 'Placa metálica presa à placa terminal por uma quilha.'],
+  adrCore: ['Núcleo da prótese', 'Peça de polietileno entre as placas, que deixa o segmento se mover.']
 });
 
 /* ================= Aplicação ================= */
@@ -2350,7 +2911,10 @@ Object.assign(INFO, {
       metal: { c: '#D3D8DD', r: .3, m: .25, cut: '#E4E7EA', L: 'path' }, needleTip: { c: '#E35A3E', r: .4, cut: '#E88F7B', L: 'path' },
       contrast: { c: '#2F6FD6', r: .35, op: .5, L: 'path', noCut: 1 }, rfLesion: { c: '#F08A24', r: .5, op: .55, L: 'path', noCut: 1 },
       cement: { c: '#D5D9D6', r: .75, cut: '#AEB4B2', L: 'path' }, cage: { c: '#5F7184', r: .45, cut: '#8496A8', L: 'path' },
-      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }
+      mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }, ganglion: { c: '#DDA61B', r: .5, cut: '#C98F12', L: 'neuro' },
+      // dentro do disco o corte cobre o que é transparente: contraste e lesão térmica intradiscais são opacos e ganham tampa própria
+      dye: { c: '#2F6FD6', r: .35, cut: '#3B7BE0', L: 'path' }, heat: { c: '#E8771E', r: .45, cut: '#F08A24', L: 'path' },
+      implant: { c: '#8C97A4', r: .3, m: .3, cut: '#A3ADB8', L: 'path' }, poly: { c: '#F4F3EE', r: .4, cut: '#FFFFFF', L: 'path' }
     };
     TINT = { C: '#C9D8E8', T: '#D3E2C8', L: '#EBD3A6', S: '#E6C8BE' };
     C = h => new THREE.Color(h).convertSRGBToLinear();
@@ -2412,7 +2976,7 @@ Object.assign(INFO, {
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
   // cimento, cage e metal ficam por cima do osso e do disco onde estão
-  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6 };
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6, ganglion: 6, dye: 5, heat: 5, implant: 6, poly: 6 };
   // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {
