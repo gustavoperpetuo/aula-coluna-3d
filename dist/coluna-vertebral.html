@@ -543,7 +543,10 @@ const LIG_CACHE = new Map();
 function buildSpine(mods = {}) {
   const root = new THREE.Group();
   const reg = new Map(); const anchors = new Map(); const meshes = [];
+  // remove: peças que o procedimento retira (espinhoso, ligamento amarelo, elementos posteriores), pela chave da malha
+  const RM = new Set(mods.remove || []);
   const add = (geo, kind, key, info, extra = {}) => {
+    if (RM.has(key)) return null;
     const m = new THREE.Mesh(geo, null);
     m.userData = Object.assign({ kind, key, info: info || kind, base: kind }, extra);
     if (!reg.has(key)) reg.set(key, []); reg.get(key).push(m);
@@ -662,7 +665,7 @@ function buildSpine(mods = {}) {
   for (let i = 0; i < 24; i++) {
     const l = LEVELS[i], fr = F[l.n];
     const g = new THREE.Group(); g.position.copy(fr.p); g.quaternion.copy(fr.q); root.add(g);
-    const part = (geo, kind, key, info) => { const m = add(geo, kind, key, info, { level: l.n, region: l.r }); g.add(m); return m; };
+    const part = (geo, kind, key, info) => { const m = add(geo, kind, key, info, { level: l.n, region: l.r }); if (m) g.add(m); return m; };
     const S = [1, -1]; const sd = s => s > 0 ? 'L' : 'R';
     const h = fr.h, widen = md('widen', l.n, 1), W = l.W * widen, D = fr.Dw, w = fr.w;
     const dA = fr.thAbove ?? 0.6, dB = fr.thBelow ?? 0.6;
@@ -817,7 +820,22 @@ function buildSpine(mods = {}) {
       part(rod(v(s * px, py, -D / 2 + 0.35), v(s * px, py, zP), l.pw / 2 + 0.08, { f: (l.pw / 2 + 0.08) / (l.ph / 2), side: v(1, 0, 0) }), 'bone', `${l.n}.ped.${side}`, 'pedicle');
       // lâmina alta (sobreposta como telha)
       const lamA = v(s * (px - 0.1), -0.12 * h - 0.2, zP - 0.35), lamB = v(s * 0.07, -0.26 * h - 0.3, -D / 2 - l.ca - 0.35);
-      part(rod(lamA, lamB, 1.05, { f: 0.3 }), 'bone', `${l.n}.lam.${side}`, 'lamina');
+      const lam = rod(lamA, lamB, 1.05, { f: 0.3 }), lc = (mods.lamCut || {})[l.n + '.' + side];
+      // laminectomia ou laminotomia ({ 'L4.L': { x, y0, y1 } }): fica a parte com |x| >= x e y entre y0 e y1 (quadro da vértebra);
+      // o que passa é achatado no plano do corte, a peça continua fechada. Âncora no meio da face cortada
+      if (lc) {
+        const a = lam.attributes.position, c = v(0, 0, 0); let nc = 0;
+        for (let i = 0; i < a.count; i++) {
+          const x0 = a.getX(i), y0 = a.getY(i); let x = x0, y = y0;
+          if (lc.x !== undefined && s * x < lc.x) x = s * lc.x;
+          if (lc.y0 !== undefined && y < lc.y0) y = lc.y0;
+          if (lc.y1 !== undefined && y > lc.y1) y = lc.y1;
+          if (x !== x0 || y !== y0) { a.setXY(i, x, y); c.add(v(x, y, a.getZ(i))); nc++; }
+        }
+        lam.computeVertexNormals();
+        if (nc) anchors.set(`lamcut.${l.n}.${side}`, toW(F[l.n], ...c.divideScalar(nc).toArray()));
+      }
+      part(lam, 'bone', `${l.n}.lam.${side}`, 'lamina');
       // processo transverso
       const tl = [1.8, 2.15, 2.45, 2.15, 1.75][k - 1];
       const tpA = v(s * (px + 0.05), py, zP + 0.3), tpB = v(s * (px + tl), py - 0.05, zP + 0.2 + (k === 5 ? 0.2 : 0));
@@ -1231,9 +1249,11 @@ function buildSpine(mods = {}) {
   // supraespinhoso (C7 ao sacro) e nucal
   {
     const tips = [];
-    for (let i = 6; i < 24; i++) { const n = LEVELS[i].n, P = VP[n]; tips.push(toW(F[n], 0, P.spTip.y, P.spTip.z - P.spR * 0.75)); }
+    for (let i = 6; i < 24; i++) { const n = LEVELS[i].n, P = VP[n]; tips.push(RM.has(n + '.sp') ? null : toW(F[n], 0, P.spTip.y, P.spTip.z - P.spR * 0.75)); }
     tips.push(toW(SB[1], 0, 0.3, -3.1));
-    add(tube(tips, () => 0.17, { N: 8, density: 1.6 }), mods.ossify ? 'osteo' : 'lig', 'SSL', 'SSL', { level: null, region: 'L' });
+    // espinhoso retirado: o supraespinhoso sai junto, e sobra um trecho de cada lado
+    const runs = [[]]; tips.forEach(t => t ? runs[runs.length - 1].push(t) : runs.push([]));
+    runs.filter(r => r.length > 1).forEach(r => add(tube(r, () => 0.17, { N: 8, density: 1.6 }), mods.ossify ? 'osteo' : 'lig', 'SSL', 'SSL', { level: null, region: 'L' }));
     anchors.set('SSL', toW(F.L2, 0, VP.L2.spTip.y, VP.L2.spTip.z - 0.8));
     const att = [toW(F.C1, 0, -0.05, -3.0)]; for (let i = 1; i <= 5; i++) { const n = LEVELS[i].n, P = VP[n]; att.push(toW(F[n], 0, P.spTip.y, P.spTip.z - 0.2)); }
     const c7 = tips[0], eop = anchors.get('EOP');
@@ -1306,23 +1326,60 @@ function buildSpine(mods = {}) {
   // (as raízes que descem por ele chegam junto, para não ficarem fora do saco)
   const duraClose = u => 1 - sm(KI.S2 + 0.1 - (mods.sacralCanal ? 1.9 : 1.0), KI.S2 + 0.1, u) * 0.9;
   // dura
+  // seção interna do saco dural em u: centro e meios eixos (o mesmo cálculo da dura, usado pelo injetado no líquor)
+  const duraSec = u => {
+    const s = spineAt(u), pf = pinch(u, 'dura'), close = duraClose(u);
+    return { s, c: s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q)), rx: s.cw / 2 * 0.8 * close * (0.4 + 0.6 * pf), rz: s.ca / 2 * 0.86 * close * pf };
+  };
   {
     const uEnd = KI.S2 + 0.1; const rr = [];
+    // durotomia ({ at: 'L1-L2', len, gap }): fenda posterior na linha média, mais aberta no meio, com as bordas afastadas para fora;
+    // a dura vira folha aberta (anéis sem fechar, costura atrás). gap: meia abertura em radianos no meio da fenda
+    const dt = mods.durotomy, N = dt ? 21 : 20, G = dt ? dt.gap || 0.9 : 0;
+    const op = u => dt ? Math.max(0, 1 - ((u - KI[dt.at]) / (dt.len || 1)) ** 2) : 0;
+    const ang = (k, g) => dt ? 1.5 * Math.PI + G * g + (2 * Math.PI - 2 * G * g) * k / (N - 1) : 2 * Math.PI * k / N;
     for (let u = 0; u <= uEnd + 1e-6; u += 0.15) {
-      const s = spineAt(u); const pf = pinch(u, 'dura');
-      let rx = s.cw / 2 * 0.8, rz = s.ca / 2 * 0.86;
-      const close = duraClose(u);
-      rx *= close * (0.4 + 0.6 * pf); rz *= close * pf;
-      const r = []; const c = s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q));
-      for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; r.push(c.clone().add(v(Math.cos(t) * rx, 0, Math.sin(t) * rz).applyQuaternion(s.q))); }
+      const { s, c, rx, rz } = duraSec(u), g = op(u), r = [];
+      for (let k = 0; k < N; k++) {
+        const t = ang(k, g), e = g * Math.max(Math.exp(-(((k / (N - 1)) / 0.12) ** 2)), Math.exp(-(((1 - k / (N - 1)) / 0.12) ** 2))), f = 1 + 0.55 * e;
+        r.push(c.clone().add(v(Math.cos(t) * rx * f, 0, Math.sin(t) * rz * f - 0.35 * e).applyQuaternion(s.q)));
+      }
       rr.push(r);
     }
-    const s0 = spineAt(0); const top = []; for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; top.push(SP(0, 1.5 * Math.cos(t), 0.6, -1.25 + 1.7 * Math.sin(t))); }
+    const s0 = spineAt(0); const top = []; for (let k = 0; k < N; k++) { const t = ang(k, 0); top.push(SP(0, 1.5 * Math.cos(t), 0.6, -1.25 + 1.7 * Math.sin(t))); }
     rr.unshift(top);
-    add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 }); // bainha aberta em cima, onde entra no crânio
+    if (dt) {
+      // folha: a mesma malha do loft sem ligar a última coluna à primeira (casca, como a dura normal)
+      const pos = [], idx = [];
+      rr.forEach(r => r.forEach(p => pos.push(p.x, p.y, p.z)));
+      for (let i = 0; i < rr.length - 1; i++) for (let k = 0; k < N - 1; k++) { const a = i * N + k; idx.push(a, a + 1, a + N, a + 1, a + N + 1, a + N); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      add(g, 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 });
+      const { s, c, rx, rz } = duraSec(KI[dt.at]);
+      anchors.set('durotomy', c.clone().add(v(Math.cos(1.5 * Math.PI + G) * rx * 1.5, 0, Math.sin(1.5 * Math.PI + G) * rz * 1.5 - 0.35).applyQuaternion(s.q)));
+    } else add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 }); // bainha aberta em cima, onde entra no crânio
+    // superfície posterior da dura em cada vértebra e disco lombar (rótulo do saco exposto numa janela óssea)
+    for (let u = KI.T12; u <= KI['L5-S1'] + 1e-6; u += 1) { const { s, c, rx, rz } = duraSec(u); anchors.set('dura.' + KF[u].name, c.clone().add(v(0, 0, -rz * 0.9).applyQuaternion(s.q))); [1, -1].forEach(sg => anchors.set(`dura.${KF[u].name}.${sg > 0 ? 'L' : 'R'}`, c.clone().add(v(sg * rx * 0.6, 0, -rz * 0.72).applyQuaternion(s.q)))); }
     anchors.set('dura', SP('L3', LV.L3.cw / 2 * 0.8, 0, -LV.L3.D / 2 - LV.L3.ca / 2));
     anchors.set('duraEnd', SP(uEnd - 0.4, 0, 0, spineAt(uEnd - 0.4).zc));
     anchors.set('cauda', SP('L3-L4', 0, 0, spineAt(KI['L3-L4']).zc - 0.1));
+  }
+  // massa intradural ({ at, x, y, z, r: [rx, ry, rz], dir }): x, y, z a partir do centro do saco; as raízes e o filamento
+  // que caem dentro dela (com folga) são empurrados na direção dir até a superfície
+  let idPush = p => p;
+  if (mods.intradural) {
+    const o = mods.intradural, { s, c } = duraSec(KI[o.at]), C = c.clone().add(v(o.x || 0, o.y || 0, o.z || 0).applyQuaternion(s.q)), qi = s.q.clone().invert();
+    const R = v(...o.r), Rm = R.clone().addScalar(0.18), dir = v(...(o.dir || [-1, 0, 0.6])).normalize(), Q = (d, t) => d.clone().addScaledVector(dir, t).divide(Rm).lengthSq();
+    add(ellip(C, R.x, R.y, R.z, 24, s.q), 'tumor', 'schwannoma', 'schwannoma', { level: o.at });
+    anchors.set('schwannoma', C.clone());
+    let best = 0;
+    idPush = p => {
+      const d = p.clone().sub(C).applyQuaternion(qi); if (Q(d, 0) >= 1) return p;
+      let lo = 0, hi = 4; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (Q(d, m) < 1) lo = m; else hi = m; }
+      const out = C.clone().add(d.addScaledVector(dir, hi).applyQuaternion(s.q));
+      if (hi > best) { best = hi; anchors.set('roots.pushed', out.clone()); }
+      return out;
+    };
   }
   // raízes nervosas
   const NERVES = [];
@@ -1371,7 +1428,7 @@ function buildSpine(mods = {}) {
       pts.push(cordSurf(u0, s * 0.92, 0.1));
       if (nv.reg === 'L' || nv.reg === 'S') {
         const rk = nv.rank;
-        for (let u = u0 + 0.8; u < uExit - 0.7; u += 0.5) {
+        for (let u = u0 + 0.8; u < uExit - 0.7; u += mods.intradural ? 0.25 : 0.5) {
           const s_ = spineAt(u); const ramp = sm(uExit - 3.0, uExit - 0.7, u);
           const pf = 0.35 + 0.65 * pinch(u, 'dura');
           const rc = mods.sacralCanal ? Math.max(0.5, duraClose(u)) : 1, xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf * rc, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf * rc;
@@ -1382,6 +1439,7 @@ function buildSpine(mods = {}) {
         const s_ = spineAt((u0 + uExit) / 2); pts.push(s_.p.clone().add(v(s * s_.cw / 2 * 0.74, 0, s_.zc + 0.05).applyQuaternion(s_.q)));
       }
       pts.push(fl, e1, e2);
+      if (mods.intradural) pts.forEach((p, i) => pts[i] = idPush(p));
       const r = nv.reg === 'C' ? 0.15 : nv.reg === 'T' ? 0.1 : nv.reg === 'L' ? 0.17 + 0.015 * nv.rank : n === 'S1' ? 0.2 : n === 'S2' ? 0.15 : n === 'Co1' ? 0.05 : 0.1 - 0.015 * (+n.slice(1) - 3);
       const rIn = Math.min(r, nv.reg === 'C' ? 0.08 : nv.reg === 'T' ? 0.05 : 0.065);
       let Ltot = 0, Lf = 0; for (let i = 1; i < pts.length; i++) { const dl = pts[i].distanceTo(pts[i - 1]); Ltot += dl; if (i <= pts.length - 3) Lf += dl; }
@@ -1403,7 +1461,7 @@ function buildSpine(mods = {}) {
     const pts = [SP(uConus, 0, 0, spineAt(uConus).zc)];
     for (let u = uConus + 1; u < KI.S2; u += 1.5) pts.push(SP(u, 0, 0, spineAt(u).zc - 0.15));
     pts.push(toW(SB[4], 0, 0, -0.9), toW(SB[5], 0, -0.4, -0.6), F.Co1.p.clone().add(v(0, 0, -0.5).applyQuaternion(F.Co1.q)));
-    add(tube(pts, () => 0.045, { N: 6 }), 'cord', 'filum', 'filum', { level: null });
+    add(tube(pts.map(idPush), () => 0.045, { N: 6 }), 'cord', 'filum', 'filum', { level: null });
     anchors.set('filum', SP(KI.S1, 0, 0, spineAt(KI.S1).zc - 0.15));
   }
 
@@ -1567,7 +1625,7 @@ function buildSpine(mods = {}) {
   const ptOf = a => a instanceof V3 ? a.clone() : typeof a === 'string' ? anchors.get(a).clone() : toW(F[a[0]] || discKF[a[0]], a[1], a[2], a[3]);
   // rotação do quadro de um ponto ou nome de quadro (para orientar gotas de contraste)
   const qOf = a => { const n = Array.isArray(a) ? a[0] : a, fr = typeof n === 'string' && (F[n] || discKF[n]); return fr ? fr.q : null; };
-  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
+  const GAUGE = { 25: 0.026, 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
   // agulha da pele (from) até a ponta (to), ou to + via (um ponto do trajeto) + len; ponta na cor de destaque, canhão do lado da pele
   // r: raio próprio (cânula de endoscopia); tipR/tipL: ponta romba e curta em vez do bisel fino
   const needle = o => {
@@ -1769,10 +1827,11 @@ function buildSpine(mods = {}) {
   }
 
   // instrumento flexível ou curvo (epiduroscópio, sonda de RF resfriada): tubo pelo trajeto, último trecho na cor da ponta e cateter opcional saindo dela
+  // kind: material do corpo (cateter de plástico na cor da ponta)
   const scope = o => {
     const pts = o.path.map(ptOf), r = o.r || 0.12, k = o.key || 'scope', ex = { level: o.level || null }, n = pts.length;
     const end = pts[n - 1], d = new V3().subVectors(end, pts[n - 2]).normalize(), neck = end.clone().addScaledVector(d, -Math.max(0.25, 3 * r));
-    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), 'metal', k, o.info || 'scope', ex);
+    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), o.kind || 'metal', k, o.info || 'scope', ex);
     add(rod(neck, end, r, { r2: r * 0.8, seg: 12 }), 'needleTip', k, o.info || 'scope', ex);
     anchors.set(k, end.clone()); anchors.set(k + '.meio', pts[Math.floor(n / 2)].clone());
     if (o.cath) { const ce = end.clone().addScaledVector(d, o.cath); add(rod(end.clone().addScaledVector(d, -0.05), ce, 0.035, { seg: 8 }), 'needleTip', k + '.cath', 'catheter', ex); anchors.set(k + '.cath', ce); }
@@ -1781,7 +1840,22 @@ function buildSpine(mods = {}) {
   (mods.needles || []).forEach(needle);
   LBN.forEach(needle);
   // contraste: 'root' ('L4.L', na ponta, na bainha da raiz e no epidural anterior); 'at' + r (gota, raio ou [rx, ry, rz] no quadro do ponto);
-  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação)
+  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação);
+  // 'csf' ([nível, nível]: nuvem no líquor, fina no ponto da injeção e enchendo o saco dural embaixo, onde a solução pesada se junta).
+  // Na gota: foam (n bolhas soltas dentro dela), lumpy (borda irregular); kind e info trocam o material e o cartão (gás, esclerosante, fibrose, queimado)
+  // bolinhas pseudoaleatórias (sempre as mesmas) dentro do elipsoide at, r, q
+  const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const foam = (at, r, q, n) => mergeGeoms(Array.from({ length: n }, (_, i) => {
+    const b = (r[3] || 0.07) + ((r[4] || 0.16) - (r[3] || 0.07)) * rnd(4 * i), u = rnd(4 * i + 1) * 2 - 1, ph = rnd(4 * i + 2) * 2 * Math.PI, rr = Math.cbrt(rnd(4 * i + 3));
+    const p = v(Math.sqrt(1 - u * u) * Math.cos(ph) * rr * Math.max(0.01, r[0] - b), u * rr * Math.max(0.01, r[1] - b), Math.sqrt(1 - u * u) * Math.sin(ph) * rr * Math.max(0.01, r[2] - b));
+    if (q) p.applyQuaternion(q);
+    return ellip(p.add(at), b, b, b, 10);
+  }));
+  const blob = (at, r, q, amp) => {
+    const g = new THREE.SphereGeometry(1, 28, 18), a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), k = 1 + amp * (Math.sin(5 * x + 1.3) * Math.sin(4 * y + 0.7) * Math.sin(4.5 * z + 2.1) + 0.5 * Math.sin(9 * x + 6 * z)); a.setXYZ(i, x * k * r[0], y * k * r[1], z * k * r[2]); }
+    g.applyMatrix4(new THREE.Matrix4().compose(at, q || new THREE.Quaternion(), v(1, 1, 1))); g.computeVertexNormals(); return g;
+  };
   (mods.contrast || []).forEach(c => {
     const k = c.key || 'contrast';
     if (c.root) {
@@ -1814,11 +1888,21 @@ function buildSpine(mods = {}) {
       });
       g = loft(rings, true, true, 0, 0, true);
       at = rings[Math.floor(rings.length / 2)][3].clone().lerp(rings[Math.floor(rings.length / 2)][10], 0.5);
+    } else if (c.csf) {
+      // seção do saco dural encolhida: 25% no ponto da injeção, 85% embaixo; borda ondulada de nuvem; fecha nas pontas
+      const u0 = KI[c.csf[0]], u1 = KI[c.csf[1]], rings = [];
+      for (let u = u0; u <= u1 + 1e-6; u += 0.12) {
+        const t = (u - u0) / (u1 - u0), { s, c: cc, rx, rz } = duraSec(u), f = (0.25 + 0.6 * sm(0, 0.65, t)) * Math.min(1, 0.15 + (1 - t) * 12), ring = [];
+        for (let i = 0; i < 16; i++) { const th = 2 * Math.PI * i / 16, w = f * (1 + 0.1 * Math.sin(3 * th + 7 * t) * Math.sin(11 * t + 1)); ring.push(cc.clone().add(v(Math.cos(th) * rx * w, 0, Math.sin(th) * rz * w).applyQuaternion(s.q))); }
+        rings.push(ring);
+      }
+      g = loft(rings, true, true);
+      at = duraSec(u0 + (u1 - u0) * 0.7).c;
     } else {
-      at = ptOf(c.at); const r = [].concat(c.r || 0.2);
-      g = ellip(at, r[0], r[1] ?? r[0], r[2] ?? r[0], 14, qOf(c.q || c.at));
+      at = ptOf(c.at); const r = [].concat(c.r || 0.2), rr = [r[0], r[1] ?? r[0], r[2] ?? r[0], r[3], r[4]], q = qOf(c.q || c.at);
+      g = c.foam ? foam(at, rr, q, c.foam) : c.lumpy ? blob(at, rr, q, c.lumpy) : ellip(at, rr[0], rr[1], rr[2], 14, q);
     }
-    add(g, 'contrast', k, 'contrast', { level: c.level || null });
+    add(g, c.kind || 'contrast', k, c.info || 'contrast', { level: c.level || null });
     anchors.set(k, at);
   });
   // radiofrequência do ramo medial ('L3.L'): agulha paralela ao nervo, com a ponta ao lado dele; lesão em volta da parte ativa
@@ -1870,6 +1954,29 @@ function buildSpine(mods = {}) {
     }
     add(mergeGeoms(ch), 'heat', 'channels', 'channel', { level: dn });
   }
+  // nervo basivertebral (['L4.L']): entra pelo forame basivertebral, no meio da parede posterior do corpo, e se ramifica no
+  // terminal, a 38% da profundidade a partir dela. Introdutor pelo pedículo do lado indicado até o terço posterior e cânula
+  // curva dali até o terminal, com a lesão de radiofrequência em volta
+  (mods.bvn || []).forEach(k => {
+    const [n, side] = k.split('.'), s = side === 'L' ? 1 : -1, f = F[n], l = LV[n], D = f.Dw, post = postMidZ('L', D), L = (x, y, z) => toW(f, x, y, z);
+    const T = v(0, 0, post + 0.38 * D), br = [tube([L(s * 0.55, -0.15, post - 0.5), L(s * 0.15, -0.05, post - 0.35), L(0.08, 0, post + 0.05), L(0.06, 0, post + 0.2 * D), toW(f, ...T.toArray())], () => 0.045, { N: 8 })];
+    [[0.8, 0.7, 0.3], [-0.8, 0.7, 0.3], [0.8, -0.7, 0.3], [-0.8, -0.7, 0.3], [0.15, 0.5, 0.85], [-0.15, -0.5, 0.85]].forEach(([x, y, z]) =>
+      br.push(tube([T, T.clone().add(v(x * 0.45, y * 0.35, z * 0.55)), T.clone().add(v(x, y, z))].map(p => toW(f, ...p.toArray())), () => 0.028, { N: 6 })));
+    add(mergeGeoms(br), 'mbranch', 'bvn.' + n, 'bvn', { level: n });
+    anchors.set('bvn.' + n, L(0.06, 0, post + 0.12 * D));
+    const a = (5 + 3 * +n.slice(1)) * deg, d = v(-s * Math.sin(a), 0, Math.cos(a)), c = v(s * l.px, 0.12 * f.h, (-D / 2 + 0.35 - D / 2 - l.pl) / 2), tip = c.clone().addScaledVector(d, (post + 0.3 - c.z) / d.z);
+    needle({ to: toW(f, ...tip.toArray()), via: toW(f, ...c.toArray()), g: 11, len: 8.5, key: 'intro.' + n, level: n, info: 'introducer' });
+    scope({ path: [tip, tip.clone().addScaledVector(d, 0.35), v(tip.x * 0.45, tip.y * 0.4, (tip.z + T.z) / 2 + 0.2), T].map(p => toW(f, ...p.toArray())), r: 0.06, key: 'probe.' + n, level: n, info: 'bvnProbe' });
+    add(ellip(toW(f, ...T.toArray()), 0.55, 0.42, 0.5, 16, f.q), 'rfLesion', 'bvnrf.' + n, 'rflesion', { level: n });
+    anchors.set('bvnrf.' + n, toW(f, ...T.toArray()));
+  });
+  // alteração de Modic (['L4-L5']): faixa de edema na medula óssea logo acima e logo abaixo do disco, junto às placas terminais
+  (mods.modic || []).forEach(dn => {
+    const [un, ln] = dn.split('-'); [[un, -1], [ln, 1]].forEach(([n, s]) => {
+      const f = F[n], l = LV[n]; add(ellip(toW(f, 0, s * (f.h / 2 - 0.28), 0.05), l.W * 0.4, 0.2, f.Dw * 0.38, 18, f.q), 'modic', 'modic.' + n, 'modic', { level: n });
+      anchors.set('modic.' + n, toW(f, l.W * 0.25, s * (f.h / 2 - 0.28), f.Dw * 0.2));
+    });
+  });
   // cimento ('L1'): massa irregular na metade anterior do corpo, abaixo da placa de cima já em cunha
   if (mods.cement) {
     const n = mods.cement, f = F[n], D = f.Dw, W = LV[n].W * md('widen', n, 1), z0 = 0.08 * D;
@@ -1881,7 +1988,12 @@ function buildSpine(mods = {}) {
     anchors.set('cement', toW(f, 0, yc, z0));
   }
   // cage em banana ({ at: 'L4-L5', side: 'L' }): arco na metade anterior do disco, de um lado ao outro, girado para o lado do acesso
-  if (mods.cage) {
+  // bloco ({ at, shape: 'block', grow }): enxerto estrutural no meio do espaço desbridado, entrando grow em cada corpo (placas retiradas)
+  if (mods.cage && mods.cage.shape === 'block') {
+    const kf = discKF[mods.cage.at], K = KF[KI[mods.cage.at]], ol = bodyOutline(K.reg, K.W * 0.55, K.D * 0.55, 32), h = kf.th / 2 + (mods.cage.grow || 0);
+    add(loft([[-h, 0.94], [-h + 0.1, 1], [h - 0.1, 1], [h, 0.94]].map(([y, s]) => ol.map(([x, z]) => toW(kf, x * s, y, 0.12 * K.D + z * s))), true, true), 'cage', 'cage', 'graft', { level: mods.cage.at });
+    anchors.set('cage', toW(kf, 0, 0, 0.12 * K.D + 0.25 * K.D));
+  } else if (mods.cage) {
     const kf = discKF[mods.cage.at], rot = (mods.cage.side === 'R' ? 15 : -15) * deg, pts = [];
     for (let a = -55; a <= 55; a += 11) { const t = a * deg, x = 1.5 * Math.sin(t), z = -0.55 + 1.5 * Math.cos(t); pts.push(toW(kf, x * Math.cos(rot) - z * Math.sin(rot), 0, x * Math.sin(rot) + z * Math.cos(rot))); }
     const up = v(0, 1, 0).applyQuaternion(kf.q);
@@ -1902,7 +2014,9 @@ function buildSpine(mods = {}) {
     if (hs.length < 2) return;
     hs.sort((a, b) => a[0] - b[0]);
     const a = hs[0][1], b = hs[hs.length - 1][1], u = new V3().subVectors(b, a).normalize();
-    add(rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
+    // mais de dois parafusos: haste moldada passando por todas as cabeças (lordose); com dois, reta
+    const P = hs.map(h => h[1]), ua = new V3().subVectors(P[0], P[1]).normalize(), ub = new V3().subVectors(P[P.length - 1], P[P.length - 2]).normalize();
+    add(hs.length > 2 ? tube([P[0].clone().addScaledVector(ua, 0.5), ...P, P[P.length - 1].clone().addScaledVector(ub, 0.5)], () => 0.28, { N: 14 }) : rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
     anchors.set('rod.' + side, a.clone().lerp(b, 0.5));
   });
   // artroplastia discal cervical ('C5-C6'): placa metálica com quilha encostada em cada placa terminal (quilha dentro do corpo)
@@ -2660,6 +2774,34 @@ const PROC = [
     pro: 'O ganho está mais na redução do opioide e dos seus efeitos adversos que numa grande queda da dor (Arcidiacono, Cochrane 2011). Hidratação venosa antes da neurólise e repouso deitado nas horas seguintes previnem a hipotensão ortostática, e a diarreia costuma ceder em poucos dias.'
   },
   {
+    id: 'intrathecal', levels: ['L2', 'L3', 'L4', 'L5', 'S'], cat: 0, name: 'Bloqueio subaracnoide (intratecal) e neurolítico', lv: 'L3-L4, linha média',
+    mods: { sacralCanal: true, needles: [{ to: ['L3-L4', 0, -0.25, -2.85], via: ['L3-L4', 0, -2.6, -11.2], g: 25, tipR: 0.12, tipL: 0.22, key: 'spinal', info: 'spinal', level: 'L3-L4' }],
+      contrast: [{ csf: ['L3-L4', 'S2'], key: 'csf', info: 'csfdrug', level: 'L4' }] },
+    cam: { t: 'L4', az: 90, el: 4, d: 36 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['L2', 'L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['spinal', 'Ponta no espaço subaracnoide'], ['spinal.meio', 'Agulha espinhal 25G'], ['csf', 'Solução descendo no líquor'], ['flav.L3-L4.R', 'Ligamento amarelo'], ['rootIn.L5.R', 'Raízes da cauda equina'], ['duraEnd', 'Raízes sacrais (bloqueio em sela)']],
+    ind: 'A raquianestesia diagnóstica, com anestésico local em doses crescentes ou comparada a placebo, ajuda a separar dor somática, visceral, simpática e central quando a origem é incerta, e a raquianestesia terapêutica em dose única cobre procedimentos e crises de dor aguda. O opioide intratecal, em injeção única de teste ou por bomba implantada, trata a dor oncológica refratária ou com efeitos adversos que limitam a dose sistêmica; A neurólise intratecal fica para dor oncológica localizada em poucos dermátomos e expectativa de vida curta, como a dor perineal do câncer pélvico avançado, tratada pelo bloqueio em sela das raízes sacrais.',
+    alvo: 'O espaço subaracnoide lombar, abaixo do fim da medula, onde o líquor banha as raízes da cauda equina. O opioide age nos receptores do corno dorsal da medula com dose muito menor que a sistêmica, e o neurolítico age nas raízes posteriores, sensitivas, escolhidas: a posição do corpo leva a solução até elas e a afasta das raízes motoras anteriores e das que controlam a bexiga e o esfíncter anal.',
+    tec: 'Agulha espinhal de ponta de lápis, que afasta as fibras da dura em vez de cortá-las, em L3-L4, com o retorno de líquor confirmando a posição. No bloqueio em sela com fenol hiperbárico, mais denso que o líquor, a pessoa fica sentada e inclinada para trás para que a solução desça às raízes sacrais posteriores; Com álcool hipobárico, menos denso, o lado doloroso fica para cima e o decúbito ventral inclinado faz a solução subir às raízes posteriores. Para a bomba, um cateter intratecal é tunelizado até um reservatório no subcutâneo do abdome, depois de um teste com injeção única ou infusão temporária.',
+    inj: 'Na raquianestesia, anestésico local em dose única; Na via intratecal crônica, a morfina é o opioide mais usado, às vezes somada a anestésico local, clonidina ou ziconotida. Na neurólise, pequenos volumes de fenol em glicerina ou de álcool absoluto, injetados devagar e em frações, com a pessoa mantida na posição até o agente se fixar nas raízes.',
+    risco: 'A cefaleia pós-punção caiu de 11,0% com agulha cortante para 4,2% com agulha atraumática numa meta-análise de 110 ensaios (Nath, Lancet 2018), e só nas agulhas cortantes o calibre mais fino reduziu a taxa, em cerca de 1,36% por gauge, sem efeito do calibre nas de ponta de lápis (Zorrilla-Vaca, J Anesth 2016). Na neurólise, o risco que define a indicação é a perda de controle da bexiga e do esfíncter anal e a fraqueza nas pernas, por difusão do agente para raízes sacrais anteriores ou lombares; Por isso o bloqueio em sela é mais aceito em quem já tem estoma ou derivação urinária. Bomba e cateter acrescentam infecção, falha do sistema e efeitos do opioide, como sedação e depressão respiratória.',
+    evid: 'Num ensaio com 202 pacientes com dor oncológica refratária, a bomba intratecal somada ao tratamento clínico teve sucesso em 84,5% contra 70,8% com tratamento clínico isolado, reduziu a toxicidade dos fármacos em 50% contra 17% e deixou mais pessoas vivas em 6 meses, 53,9% contra 37,2%, diferença sem significância estatística (Smith, J Clin Oncol 2002). Para a neurólise intratecal não há ensaios controlados, e a literatura é feita de séries de casos e opinião de especialistas (Candido, Best Pract Res Clin Anaesthesiol 2003); Em 4 pacientes com derivação urinária prévia, o bloqueio em sela com fenol permitiu reduzir o opioide sistêmico em mais de 60% (Slatkin, Am J Hosp Palliat Care 2003).',
+    pro: 'Na neurólise a posição é o procedimento: o fenol desce e o álcool sobe no líquor, e a pessoa é posicionada para que só as raízes posteriores escolhidas fiquem no caminho da solução. A agulha de ponta de lápis vale também para a raquianestesia diagnóstica e para o teste da bomba, porque reduz a cefaleia sem piorar o sucesso na primeira tentativa (Nath, Lancet 2018).'
+  },
+  {
+    id: 'epicath', levels: ['L1', 'L2', 'L3'], cat: 0, name: 'Cateter peridural para infusão contínua', lv: 'L2-L3 paramediano direito',
+    mods: { needles: [{ to: ['L2-L3', -0.03, -0.75, -3.36], via: ['L2-L3', -1.6, -4.2, -10.5], g: 18, key: 'tuohy', info: 'tuohy', level: 'L2-L3' }],
+      scopes: [{ path: [['L2-L3', -0.03, -0.75, -3.36], ['L2-L3', -0.25, -0.2, -3.16], ['L2-L3', -0.4, 0.6, -3.1], ['L2', -0.4, -0.6, -3.04], ['L2', -0.4, 0.4, -3.02], ['L1-L2', -0.4, 0, -3.02], ['L1', -0.4, -0.6, -2.95]], r: 0.045, kind: 'needleTip', key: 'cath', info: 'catheter', level: 'L2' }] },
+    cam: { t: 'dura.L2', az: 70, el: 8, d: 20 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['L1', 'L2', 'L3'], hot: [],
+    labels: [['tuohy', 'Ponta da Tuohy no epidural posterior'], ['cath', 'Ponta do cateter, 4 a 5 cm acima'], ['cath.meio', 'Cateter subindo atrás da dura'], ['flav.L2-L3.R', 'Ligamento amarelo'], ['dura.L2', 'Saco dural']],
+    ind: 'Analgesia pós-operatória de cirurgias abdominais, torácicas e de membros inferiores, dor oncológica do tronco ou da pelve mal controlada por via sistêmica e, em casos selecionados, síndrome de dor regional complexa do membro inferior, em que a infusão permite reabilitar com menos dor. O cateter transforma o bloqueio de dose única numa analgesia de dias ou semanas, ajustável ao longo do tempo.',
+    alvo: 'O espaço epidural posterior em L2-L3, entre o ligamento amarelo e a dura, de onde o cateter sobe alguns centímetros e banha as raízes de vários segmentos acima e abaixo da ponta. O anestésico age nas raízes que atravessam o espaço epidural e o opioide atravessa a dura até o corno dorsal da medula, por isso a ponta do cateter fica perto dos dermátomos da dor.',
+    tec: 'Decúbito lateral ou sentado, agulha de Tuohy na linha média ou paramediana até a perda de resistência ao passar o ligamento amarelo, e cateter passado pela agulha com a ponta curva voltada para cima. Num ensaio em parturientes, o cateter multiorifício introduzido 5 cm no espaço epidural deu a melhor analgesia, e com 7 cm houve mais complicações na inserção (Beilin, Anesth Analg 1995); Com mais de 2 cm no espaço, 23% dos cateteres precisaram ser manipulados, e os de 8 cm entraram mais em veia (D\'Angelo, Anesthesiology 1996). Aspiração, dose-teste e fixação firme na pele vêm antes da infusão, e para uso de semanas o cateter pode ser tunelizado.',
+    inj: 'Anestésico local em baixa concentração, em infusão contínua ou controlada pela pessoa, com ou sem opioide. Adjuvantes, sobretudo opioide e epinefrina, aumentam a taxa de sucesso, e a analgesia controlada pela pessoa com infusão de fundo parece o melhor esquema no pós-operatório (Hermanides, Br J Anaesth 2012); Com infusão contínua, a dose total pesa mais na qualidade do bloqueio que o volume ou a concentração isolados (Hermanides, Br J Anaesth 2012).',
+    risco: 'A falha da analgesia é mais comum do que se pensa e vem de posição errada da ponta, migração secundária do cateter depois de bem colocado e dose insuficiente (Hermanides, Br J Anaesth 2012). O hematoma espinhal ocorreu em 1 a cada 200.000 peridurais obstétricas, contra 1 a cada 3.600 mulheres submetidas a artroplastia de joelho (Moen, Anesthesiology 2004), e o cuidado com anticoagulantes vale tanto para a punção quanto para a retirada do cateter; A punção dural acidental ocorreu em 1,5% das peridurais obstétricas (Choi, Can J Anaesth 2003), e infecção e abscesso epidural crescem com o tempo de permanência do cateter.',
+    evid: 'Numa meta-análise de 100 ensaios, a analgesia peridural foi melhor que o opioide parenteral em todos os dias de pós-operatório, com dor média de 19,4 contra 29,4 mm numa escala de 100 mm (Block, JAMA 2003). Na síndrome de dor regional complexa, a clonidina peridural em bolo aliviou a dor contra placebo num ensaio com 26 pacientes, e 19 seguiram em infusão aberta por uma média de 43 dias, com sedação e hipotensão limitando o bolo (Rauck, Anesthesiology 1993). Na dor oncológica, a evidência vem sobretudo de séries de casos, e a infusão peridural costuma servir de ponte ou de teste antes da via intratecal.',
+    pro: 'Num censo britânico de 707.455 bloqueios neuraxiais, a lesão permanente ficou entre 2,0 e 4,2 por 100.000, e dois terços das lesões de início incapacitantes regrediram por completo (Cook, Br J Anaesth 2009). Cateter que dá bloqueio de um lado só costuma estar fundo demais e melhora ao ser recuado aos poucos, manobra que salvou a analgesia em 91% dos bloqueios unilaterais (D\'Angelo, Anesthesiology 1996).'
+  },
+  {
     id: 'rfface', levels: ['L3', 'L4', 'L5'], cat: 1, name: 'Radiofrequência do ramo medial', lv: 'Faceta L4-L5 esquerda',
     mods: { mbranch: ['L3', 'L4'], rf: ['L3.L', 'L4.L'] },
     cam: { t: 'L4.tp.L', az: 145, el: 18, d: 24 }, show: 'bone neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
@@ -2686,17 +2828,17 @@ const PROC = [
     pro: 'Os ensaios positivos foram controlados por placebo e usaram RF resfriada; O MINT, negativo, foi aberto e comparou a RF com exercício isolado (Juch, JAMA 2017). Pela variação anatômica dos ramos laterais, a lesão precisa cobrir toda a borda lateral de cada forame, de S1 a S3.'
   },
   {
-    id: 'rfdisc', levels: ['L4', 'L5'], cat: 1, name: 'Radiofrequência discal (biacuplastia)', lv: 'L4-L5',
+    id: 'rfdisc', levels: ['L4', 'L5'], cat: 2, name: 'Biacuplastia', lv: 'L4-L5',
     mods: { discRF: 'L4-L5' },
     cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 15 }, show: 'bone disc neuro', clip: 'ax:L4-L5', focus: ['L4', 'L5'], hot: [],
     labels: [['heat.L4-L5', 'Lesão no anel posterior'], ['probe.L', 'Sonda resfriada esquerda'], ['probe.R', 'Sonda resfriada direita'], ['nuc.L4-L5', 'Núcleo'], ['cauda', 'Saco dural']],
     ind: 'Dor lombar axial crônica de origem discal, sem radiculopatia compressiva, com mais de 6 meses e sem resposta ao tratamento conservador, em disco degenerado que ainda conserva altura e tem discografia provocativa positiva com disco de controle negativo. No ensaio contra simulação, a altura do disco precisava ser de pelo menos 50% da do disco de controle, e hérnia, estenose, listese e cirurgia lombar prévia eram critérios de exclusão (Kapural, Pain Med 2013).',
     alvo: 'O anel fibroso posterior de L4-L5, onde se concentram as fissuras radiais e as terminações nociceptivas que crescem para dentro do disco degenerado, inervadas pelo nervo sinuvertebral e por ramos do tronco simpático. A ideia é desnervar e coagular essa faixa posterior de anel sem aquecer o núcleo nem as raízes que passam logo atrás dela, no canal e no forame.',
-    tec: 'Decúbito ventral, sedação leve para que a pessoa relate sintoma na perna, e duas agulhas introdutoras por via posterolateral oblíqua, uma de cada lado, como na discografia, até o anel posterior de L4-L5. Por elas passam duas sondas de radiofrequência resfriadas por água circulante, em modo bipolar: a corrente corre de uma ponta à outra e aquece toda a faixa de anel entre elas, enquanto o resfriamento evita carbonizar o tecido junto à ponta. As pontas são conferidas em AP e perfil, simétricas no terço posterior do disco; No IDET, seu antecessor, um único cateter térmico era enrolado por dentro do anel posterior e aquecido a 90 °C (Pauza, Spine J 2004).',
+    tec: 'Decúbito ventral, sedação leve para que a pessoa relate sintoma na perna, e duas agulhas introdutoras por via posterolateral oblíqua, uma de cada lado, como na discografia, até o anel posterior de L4-L5. Na biacuplastia convencional passam por elas duas sondas de radiofrequência resfriadas por água circulante, em modo bipolar: a corrente corre de uma ponta à outra e aquece a faixa de anel entre elas, enquanto o resfriamento evita carbonizar o tecido junto à ponta; No IDET, seu antecessor, um único cateter térmico era enrolado por dentro do anel posterior e aquecido a 90 °C (Pauza, Spine J 2004). A variante chamada expansível não tem descrição técnica nem ensaio localizados em literatura indexada, e os resultados abaixo valem só para a técnica convencional.',
     inj: 'Não se injeta fármaco: o tratamento é a energia térmica da radiofrequência, com anestesia local no trajeto e sedação leve. Pequena quantidade de contraste pode confirmar a posição intradiscal antes de aquecer, e o cuidado com a assepsia é o de toda punção discal.',
     risco: 'No ensaio contra simulação e no seguimento de 12 meses não houve complicação relacionada ao procedimento (Kapural, Pain Med 2015). Os riscos são os de toda punção discal, como discite, lesão térmica da raiz se a sonda sair do anel e aceleração da degeneração do disco puncionado, já demonstrada após discografia (Carragee, Spine 2009).',
     evid: 'O IDET teve resultado misto: num ensaio contra simulação cerca de 40% tiveram mais de 50% de alívio, com número necessário para tratar de 5 para alívio de 75% (Pauza, Spine J 2004), e outro ensaio não mostrou benefício algum (Freeman, Spine 2005). Na biacuplastia, de 1.894 triados só 59 foram tratados, e o grupo ativo melhorou mais que a simulação em 6 meses (Kapural, Pain Med 2013), com queda média de 2,9 pontos na dor e ganho de 22 pontos na função física do SF-36 mantidos em 12 meses (Kapural, Pain Med 2015). Contra tratamento conservador, em ensaio aberto, a dor caiu 2,4 contra 0,56 pontos em 6 meses, com 50% contra 18% de respondedores (Desai, Spine 2016).',
-    pro: 'A seleção é muito estreita, com discografia positiva e controle negativo, disco com altura e ausência de hérnia, estenose ou listese, e uma revisão questiona se esses resultados valem para a população geral com dor discal (Lu, Spine 2014). As duas sondas simétricas no anel posterior são o ponto técnico decisivo, porque a lesão bipolar cobre a faixa entre elas e não a que fica de fora.'
+    pro: 'A seleção é muito estreita, com discografia positiva e controle negativo, disco com altura e ausência de hérnia, estenose ou listese, e uma revisão questiona se esses resultados valem para a população geral com dor discal (Lu, Spine 2014). As duas sondas simétricas no terço posterior do disco, conferidas em AP e perfil, são o ponto técnico decisivo, porque a lesão bipolar cobre a faixa entre elas e não a que fica de fora.'
   },
   {
     id: 'discog', levels: ['L3', 'L4', 'L5'], cat: 2, name: 'Discografia provocativa', lv: 'L4-L5, controle em L3-L4',
@@ -2725,6 +2867,35 @@ const PROC = [
     pro: 'A seleção é o procedimento: hérnia contida, disco com altura, dor de raiz e imagem que combina com o exame; Fragmento extruso ou sequestrado pede discectomia, e não descompressão do núcleo. Nenhum dos ensaios citados teve simulação nem cegamento, por isso parte do efeito pode ser história natural e placebo.'
   },
   {
+    id: 'pldd', levels: ['L4', 'L5'], cat: 2, name: 'Descompressão discal a laser (PLDD)', lv: 'L4-L5 esquerdo',
+    mods: { needles: [{ to: ['L4-L5', 0.67, 0, -0.74], via: ['L4-L5', 7.37, 0, -5.43], g: 18, key: 'needle', level: 'L4-L5' }],
+      scopes: [{ path: [['L4-L5', 0.67, 0, -0.74], ['L4-L5', 0.16, 0, -0.38]], r: 0.03, key: 'fiber', info: 'fiber', level: 'L4-L5' }],
+      contrast: [{ at: ['L4-L5', 0.02, 0, -0.29], r: [0.45, 0.24, 0.38], q: 'L4-L5', lumpy: 0.08, kind: 'burn', info: 'vapor', key: 'vapor', level: 'L4-L5' }] },
+    cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 15 }, show: 'bone disc neuro', clip: 'ax:L4-L5', focus: ['L4', 'L5'], hot: [],
+    labels: [['vapor', 'Zona de vaporização'], ['fiber', 'Ponta da fibra de laser'], ['needle.meio', 'Agulha posterolateral'], ['nuc.L4-L5', 'Núcleo'], ['cauda', 'Saco dural']],
+    ind: 'Ciática por hérnia de disco contida, com anel externo íntegro e sem fragmento sequestrado, que não melhorou com tratamento conservador e já tem indicação cirúrgica; No principal ensaio, a hérnia precisava ocupar menos de um terço do canal vertebral (Brouwer, Spine J 2015). Extrusão, sequestro, estenose, instabilidade e disco muito baixo ficam de fora, porque reduzir a pressão do núcleo não puxa de volta um fragmento solto.',
+    alvo: 'O núcleo pulposo de L4-L5, no centro do disco, e não a hérnia em si. A vaporização de um pequeno volume de núcleo derruba a pressão dentro do disco, e a protrusão ainda presa ao anel tende a se afastar da raiz (Choy, J Clin Laser Med Surg 1998).',
+    tec: 'Decúbito ventral ou lateral, anestesia local e agulha fina por via posterolateral oblíqua até o centro do núcleo sob radioscopia ou TC, como na discografia, com uma fibra óptica passada por dentro da agulha até pouco além da ponta. O laser é disparado em pulsos com pausas para o calor se dissipar e o vapor sair pela agulha; No primeiro caso, em L4-L5 com laser Nd:YAG, estavam previstos 1.000 J, mas o procedimento parou em 600 J porque a dor tinha sumido (Choy, Photomed Laser Surg 2009).',
+    inj: 'Não se injeta fármaco: o tratamento é a energia do laser, que aquece e vaporiza a água do núcleo e coagula o tecido em volta. Em discos de cadáver, 1.000 J de laser Nd:YAG derrubaram a pressão intradiscal, o que não aconteceu com a mesma agulha sem disparar o laser, prova de que o efeito não vinha só do furo no anel (Choy, J Clin Laser Med Surg 1995).',
+    risco: 'A complicação principal é a discite, com taxa de 0,3% a 1,0% nas séries reunidas pelo criador da técnica (Choy, Photomed Laser Surg 2009). O calor pode lesar a placa terminal ou a raiz se a ponta não estiver no centro do núcleo, e há ainda os riscos de toda punção discal, como lesão da raiz pela agulha e aceleração da degeneração do disco (Carragee, Spine 2009).',
+    evid: 'No ensaio de não inferioridade com 115 candidatos à cirurgia, a estratégia de laser seguido de cirurgia se necessário não foi pior que a microdiscectomia na incapacidade em 8 e 52 semanas, mas a recuperação foi mais lenta e 38% contra 16% foram reoperados (Brouwer, Spine J 2015). Em 2 anos o resultado clínico seguiu equivalente, com reoperação em 52% contra 21%, e a cirurgia foi evitada em 48% dos que receberam o laser (Brouwer, Interv Neuroradiol 2017).',
+    pro: 'O laser troca a cirurgia imediata por uma chance de quase metade de nunca operar, ao custo de recuperação mais lenta e de uma segunda intervenção frequente (Brouwer, Interv Neuroradiol 2017). Como a seleção é a hérnia contida e pequena, uma RM recente com fragmento extruso ou migrado afasta a indicação.'
+  },
+  {
+    id: 'ozone', levels: ['L4', 'L5'], cat: 2, name: 'Ozônio intradiscal', lv: 'L4-L5 esquerdo, raiz L4',
+    mods: { needles: [{ to: 'nuc.L4-L5', via: ['L4-L5', 7.37, 0, -5.43], key: 'needle.disc', level: 'L4-L5' }, { to: ['L4', 2.5, -0.6, -1.6], via: ['L4', 3.05, -0.5, -2.43], key: 'needle.pf', level: 'L4' }],
+      contrast: [{ at: 'nuc.L4-L5', r: [1.15, 0.36, 0.75, 0.05, 0.13], q: 'L4-L5', foam: 50, kind: 'gas', info: 'ozone', key: 'ozone.disc', level: 'L4-L5' }, { at: ['L4', 2.7, -0.85, -1.3], r: [0.42, 0.42, 0.42, 0.05, 0.12], q: 'L4', foam: 18, kind: 'gas', info: 'ozone', key: 'ozone.pf', level: 'L4' }] },
+    cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 17 }, show: 'bone disc neuro', clip: 'ax:L4-L5', focus: ['L4', 'L5'], hot: [],
+    labels: [['ozone.disc', 'Gás espalhado pelo núcleo'], ['ozone.pf', 'Gás junto à raiz L4'], ['needle.disc.meio', 'Agulha no núcleo'], ['needle.pf.meio', 'Agulha periforaminal'], ['root.L4.L', 'Raiz L4']],
+    ind: 'Dor radicular lombar por hérnia de disco, sobretudo contida e não calcificada, sem déficit motor progressivo, que não melhorou com tratamento conservador. Numa grande série, as falhas se concentraram em hérnia calcificada, estenose do canal, recidiva com fibrose epidural e hérnia pequena descendente no recesso lateral (Muto, J Neuroradiol 2004).',
+    alvo: 'O núcleo pulposo de L4-L5, onde o ozônio age sobre a matriz do disco, e o forame L4-L5, ao redor da raiz comprimida, onde a injeção periforaminal leva ozônio, corticoide e anestésico à interface entre hérnia e raiz. Em estudos de mecanismo, o ozônio fragmentou os proteoglicanos do núcleo e desidratou o disco, e num modelo matemático uma redução de 6% no volume baixou a pressão intradiscal em 9,84% (Murphy, J Vasc Interv Radiol 2016).',
+    tec: 'Decúbito ventral, agulha fina por via posterolateral oblíqua até o centro do disco sob radioscopia ou TC, como na discografia, e depois recuo da agulha até o forame para a injeção periforaminal. Num protocolo publicado, foram 8 mL de mistura de oxigênio e ozônio a 28 µg/mL dentro do disco e mais 4 mL no forame ao retirar a agulha, junto com dexametasona 4 mg e bupivacaína (Bisshopp, J Clin Med 2025); A TC logo depois mostra a distribuição do gás no disco e no espaço epidural (Muto, J Neuroradiol 2004).',
+    inj: 'Mistura de oxigênio e ozônio em concentração baixa, produzida na hora por gerador médico e injetada logo, porque o ozônio é instável e se decompõe em oxigênio. No forame, a mistura costuma vir com corticoide e anestésico local, combinação que deu mais sucesso que corticoide e anestésico sem ozônio num ensaio cego (Gallucci, Radiology 2007).',
+    risco: 'Complicações graves são raras: a meta-análise de quase 8.000 pacientes estimou 0,064% (Steppan, J Vasc Interv Radiol 2010). Há relatos de embolia gasosa paradoxal por forame oval patente durante a injeção intradiscal, com infarto medular e do miocárdio (He, Front Neurol 2019) ou múltiplos infartos cerebrais (Khosravi, BMJ Neurol Open 2024), e de septicemia fatal após o tratamento (Gazzeri, Spine 2007); Discite e lesão da raiz são os riscos de toda punção discal.',
+    evid: 'Na meta-análise de 12 estudos com quase 8.000 pacientes, a dor caiu em média 3,9 pontos e o ODI 25,7 pontos, com melhora na escala de MacNab em 79,7%, com critérios de inclusão amplos e primeiro autor ligado a uma empresa do ramo (Steppan, J Vasc Interv Radiol 2010). No ensaio cego com 159 pacientes, o sucesso em 6 meses foi de 74% com ozônio, corticoide e anestésico contra 47% sem ozônio (Gallucci, Radiology 2007); Num estudo prospectivo não randomizado, 47% dos tratados primeiro com ozônio precisaram de cirurgia em 2 anos, com dor e incapacidade semelhantes às de quem foi operado de início (Bisshopp, J Clin Med 2025).',
+    pro: 'O gás que entra numa veia é a origem provável das embolias relatadas, por isso a injeção é lenta, sob imagem e com a ponta conferida antes de injetar, e o forame oval patente aparece nos casos de embolia paradoxal (Khosravi, BMJ Neurol Open 2024). O ensaio mais citado compara ozônio somado a corticoide com corticoide isolado, e não com simulação, por isso o efeito próprio do ozônio ainda é menos certo que os números das séries sugerem (Gallucci, Radiology 2007).'
+  },
+  {
     id: 'endodisc', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Discectomia endoscópica transforaminal', lv: 'L4-L5 esquerdo',
     mods: { ...DZ.find(d => d.id === 'hernia').mods, sapTrim: { 'L5.L': 0.5 }, needles: [{ to: ['L4-L5', 1.23, 0, -1.92], via: ['L4-L5', 9.65, -0.78, -4.99], len: 11, r: 0.3, tipR: 0.92, tipL: 0.5, key: 'endo', info: 'endo', level: 'L4-L5' }] },
     cam: { t: 'hernia', az: 120, el: 20, d: 20 }, show: 'bone disc neuro', focus: ['L3', 'L4', 'L5', 'S'], hot: ['hernia'],
@@ -2738,18 +2909,48 @@ const PROC = [
     pro: 'A foraminoplastia do articular superior de L5 transforma o forame estreito numa porta segura, porque abre espaço abaixo da raiz L4 em vez de empurrar a cânula contra ela. A curva de aprendizado é real e a exposição à radiação é maior que na microdiscectomia (Gadjradj, BMJ 2022).'
   },
   {
-    id: 'epidurosc', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Epiduroscopia e neuroplastia peridural', lv: 'Hiato sacral até L5-S1',
+    id: 'epidurosc', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Epiduroscopia', lv: 'Hiato sacral até L5-S1',
     mods: { sacralCanal: true, scopes: [{ path: [['S5', 0, -2.6, -2.4], 'hiatus', ['S4', 0, 0, -1.3], ['S3', 0, 0, -1.74], ['S2', -0.25, 0, -2.2], ['S1', -0.55, -0.4, -2.48], ['S1', -0.7, 0.9, -2.45], ['L5-S1', -0.75, 0, -2.88], ['L5-S1', -0.7, 0.55, -2.92]], r: 0.1, cath: 0.7, key: 'scope', info: 'scope', level: 'S' }],
       contrast: [{ at: 'scope.cath', r: [0.28, 0.55, 0.16], q: 'L5', key: 'contrast.epi', level: 'L5-S1' }] },
     cam: { t: 'sacCanal.S1', az: 90, el: 4, d: 32 }, show: 'bone disc lig neuro', clip: 'sag', focus: ['L4', 'L5', 'S', 'Co'], hot: [],
     labels: [['scope', 'Ponta do endoscópio em L5-S1'], ['scope.cath', 'Cateter na ponta'], ['contrast.epi', 'Contraste e soro'], ['scope.meio', 'Endoscópio no canal sacral'], ['hiatus', 'Hiato sacral'], ['dura', 'Saco dural']],
-    ind: 'Dor lombar e radicular crônica na síndrome pós-laminectomia, em que a fibrose epidural pode prender a raiz e impedir que o fármaco injetado chegue até ela, após falha de bloqueios epidurais comuns. A epiduroscopia permite ver as aderências diretamente, e a neuroplastia de Racz é a versão por cateter, guiada por radioscopia.',
-    alvo: 'O espaço epidural ventrolateral junto à raiz afetada, onde a cicatriz da cirurgia anterior une dura, raiz e ligamento e cria falhas de enchimento na epidurografia. O objetivo é soltar essas aderências por meios mecânicos e químicos e deixar o anestésico e o corticoide em contato com a raiz.',
-    tec: 'Decúbito ventral e acesso pelo hiato sacral com agulha; Na técnica de Racz, um cateter com mola e ponta dirigível é levado sob radioscopia até o forame da raiz afetada, com epidurografia antes e depois para mostrar a falha de enchimento e sua abertura. Na epiduroscopia passa-se um fibroscópio flexível pelo mesmo hiato, e a visão depende de distender o espaço com soro, que precisa entrar devagar e em pouco volume. O cateter pode ficar para novas doses no mesmo dia ou nos dias seguintes.',
-    inj: 'Hialuronidase para desfazer a matriz da fibrose e espalhar o injetado, anestésico local e corticoide, e por fim soro hipertônico a 10%, que reduz o edema por efeito osmótico (Heavner, Reg Anesth Pain Med 1999). O soro hipertônico só entra depois de excluída, pelo contraste e por dose-teste do anestésico, a posição subdural ou subaracnoide, onde é muito lesivo.',
-    risco: 'Injeção rápida ou em grande volume eleva a pressão epidural, que passa ao líquor e à bainha do nervo óptico: uma revisão reuniu 12 casos de perda visual com hemorragia retiniana após volumes de 20 a 120 mL, a maioria com recuperação (Gill, Pain Med 2005). Há ainda punção dural com cefaleia, injeção subdural ou subaracnoide, dor transitória, parestesias, infecção e ruptura ou retenção do cateter (Marchesini, Korean J Pain 2018).',
-    evid: 'Num ensaio com 120 pacientes com síndrome pós-laminectomia, 73% dos tratados com adesiólise, com lidocaína, soro a 10% e betametasona não particulada, tiveram alívio de pelo menos 50% e melhora funcional em 12 meses, contra 12% com injeção caudal comum (Manchikanti, Pain Physician 2009). Os próprios autores apontam a falta de grupo placebo e o cegamento talvez inadequado, e na comparação de soluções o soro hipertônico, com ou sem hialuronidase, reduziu a parcela que precisou de novos tratamentos (Heavner, Reg Anesth Pain Med 1999).',
-    pro: 'Na síndrome pós-laminectomia nem toda dor vem da fibrose, pois estenose residual, faceta e instabilidade também a causam, e a cicatriz na imagem não prova que ela dói. Volume pequeno, injeção lenta e pausas para o líquido escoar protegem da hipertensão epidural, mais ainda na epiduroscopia, que depende de soro para enxergar (Gill, Pain Med 2005).'
+    ind: 'Dor lombar e radicular crônica na síndrome pós-laminectomia, ou dor radicular sem cirurgia prévia que a ressonância não explica, quando se quer ver a fibrose e a raiz diretamente, soltar aderências sob visão e deixar o fármaco no ponto exato. A técnica serve sobretudo para o diagnóstico visual das aderências epidurais e, como tratamento, para liberar cicatrizes, lavar o espaço e aplicar fármacos com precisão (Marchesini, Korean J Pain 2018).',
+    alvo: 'O espaço epidural visto por dentro: dura, raízes, vasos, gordura e as faixas de fibrose que unem a dura e a raiz ao ligamento e ao osso depois da cirurgia. A endoscopia mostra se a raiz está presa, avermelhada ou livre, o que a ressonância e a epidurografia só sugerem.',
+    tec: 'Decúbito ventral e acesso pelo hiato sacral com agulha, fio-guia, dilatador e introdutor, por onde passa um fibroscópio flexível de ponta dirigível e com canal de trabalho, que sobe pelo canal sacral até L5-S1 sob radioscopia e visão direta. A visão depende de distender o espaço com soro, que precisa entrar devagar e em pouco volume; Pela ponta do endoscópio as aderências são soltas mecanicamente sob visão, em alguns sistemas também com laser (Helm, Pain Physician 2016), e o fármaco é deixado sobre a raiz.',
+    inj: 'Soro fisiológico para distender o espaço e enxergar e, ao final, corticoide e anestésico local, às vezes com hialuronidase, deixados sobre a raiz. Num ensaio com 48 pacientes, a adesiólise mecânica isolada foi comparada à mesma adesiólise somada a metilprednisolona e hialuronidase (Rapčan, Pain Med 2018).',
+    risco: 'Injeção rápida ou em grande volume eleva a pressão epidural, que passa ao líquor e à bainha do nervo óptico: uma revisão reuniu 12 casos de perda visual com hemorragia retiniana após volumes de 20 a 120 mL, a maioria com recuperação (Gill, Pain Med 2005). Há ainda punção dural com ou sem cefaleia, dor lombar ou na perna transitória, sintomas neurológicos passageiros, bexiga neurogênica, convulsões e um caso de pneumoencéfalo sintomático (Marchesini, Korean J Pain 2018).',
+    evid: 'Num ensaio duplo-cego com 60 pacientes com ciática crônica, o corticoide deixado sobre a raiz por epiduroscopia não aliviou mais que a injeção caudal comum em 6 meses (Dashfield, Br J Anaesth 2005). Com 48 pacientes, dor e incapacidade melhoraram em 6 meses nos dois grupos, mas a maior parte voltou ao valor inicial em 1 ano, e só o grupo com fármacos manteve ganho no ODI (Rapčan, Pain Med 2018); A revisão sistemática achou um único ensaio controlado e classificou a evidência da endoscopia como de nível II a III, abaixo da adesiólise por cateter (Helm, Pain Physician 2016).',
+    pro: 'A força da epiduroscopia é diagnóstica: ela mostra se há fibrose e onde ela prende a raiz, mas levar o corticoide ao ponto sob visão não aliviou mais que a injeção caudal (Dashfield, Br J Anaesth 2005). Volume pequeno, injeção lenta e pausas para o líquido escoar protegem da hipertensão epidural, mais ainda aqui, porque a técnica depende de soro para enxergar (Gill, Pain Med 2005).'
+  },
+  {
+    id: 'ube', levels: ['L3', 'L4', 'L5', 'S'], cat: 3, name: 'Endoscopia biportal (UBE)', lv: 'L4-L5 esquerdo, interlaminar',
+    mods: { lamCut: { 'L4.L': { y0: -0.85 }, 'L4.R': { x: -0.1 } }, remove: ['flav.L4-L5.L'],
+      needles: [{ to: ['L4', 0.55, -1.75, -3.85], via: ['L4', 1.5, 3.2, -11], r: 0.2, tipR: 1, tipL: 0.12, len: 10, key: 'ube.scope', info: 'ubeScope', level: 'L4' }, { to: ['L4', 0.8, -1.0, -3.45], via: ['L4', 1.6, -6.3, -10.5], r: 0.13, tipR: 1.7, tipL: 0.28, len: 10, key: 'ube.tool', info: 'ubeTool', level: 'L4' }] },
+    cam: { t: 'lamcut.L4.L', az: 150, el: 22, d: 19 }, show: 'bone disc lig neuro', hide: ['itl.', 'isp.', 'SSL'], focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['ube.scope', 'Endoscópio (portal de visão)'], ['ube.tool', 'Broca (portal de trabalho)'], ['lamcut.L4.L', 'Laminotomia parcial de L4'], ['dura.L4-L5.L', 'Saco dural exposto'], ['flav.L4-L5.R', 'Amarelo do lado direito']],
+    ind: 'Estenose do canal lombar com claudicação neurogênica ou dor radicular e hérnia de disco com indicação cirúrgica, as mesmas indicações da microdescompressão, aqui em L4-L5 pelo lado esquerdo. A via interlaminar serve à estenose central e do recesso lateral e às hérnias paramedianas, e a mesma entrada unilateral permite descomprimir os dois lados por baixo do processo espinhoso.',
+    alvo: 'O espaço interlaminar L4-L5 esquerdo, entre a borda inferior da lâmina de L4, a borda superior da lâmina de L5 e a base do espinhoso, sob o qual ficam o ligamento amarelo e o recesso lateral onde a raiz L5 é comprimida. Na estenose o alvo é o ligamento amarelo espessado e a parte medial da faceta hipertrófica; Na hérnia, o fragmento que empurra a raiz L5 e o saco dural.',
+    tec: 'Decúbito ventral, anestesia geral ou raquianestesia e duas incisões pequenas na linha das lâminas, uma acima e outra abaixo do espaço L4-L5, que convergem sobre a junção da lâmina de L4 com o espinhoso. Pelo portal de visão entra um endoscópio com irrigação contínua de soro, e pelo portal de trabalho, independente dele, entram brocas, pinças de Kerrison e sonda de radiofrequência, como numa artroscopia de joelho. A laminotomia remove a borda inferior da lâmina de L4 e a superior de L5 até as inserções do ligamento amarelo, e a flavectomia retira o ligamento e expõe a dura e a raiz L5; Inclinando o endoscópio por baixo do espinhoso, chega-se ao recesso do lado oposto.',
+    inj: 'Não se injeta fármaco: o soro corre sem parar pelo portal de visão e sai pelo de trabalho, o que abre o espaço, lava o sangue e mantém a imagem limpa, e a radiofrequência bipolar faz a hemostasia do osso e das veias epidurais. A saída livre pelo portal de trabalho é o que impede o acúmulo de pressão, por isso a altura da bolsa ou a pressão da bomba fica no mínimo que ainda dá visão.',
+    risco: 'Na meta-análise das descompressões biportais por estenose, os eventos adversos somaram 4,0%, e a rotura dural foi o mais comum, com 3,0% (Lv, Oper Neurosurg 2024). O hematoma epidural sintomático ocorreu em 4,6% com hemostático local com trombina e em 9,5% sem ele, diferença sem significância, e o hematoma foi maior quando a descompressão precisou ser bilateral (Ko, Asian Spine J 2024). Com rotura dural, o soro sob pressão pode passar ao espaço subaracnoide e causar hipertensão arterial refratária, taquicardia, agitação ao despertar, cefaleia e até convulsão (Guo, Front Med 2026; Jiang, Eur Spine J 2025).',
+    evid: 'Em ensaios randomizados com 64 pacientes cada, a via biportal não diferiu da microscopia no ODI em 12 meses na estenose, 29 contra 30 pontos (Park, Spine J 2019), e foi não inferior na hérnia de disco, com dor na incisão um pouco menor nas primeiras 48 horas (Park, Spine J 2022). Na meta-análise da estenose, a biportal teve menos sangramento, internação mais curta e ODI menor que a microscopia, com eventos adversos iguais, e resultado semelhante ao da endoscopia uniportal na maioria dos desfechos (Lv, Oper Neurosurg 2024). Contra a uniportal, outra meta-análise de 11 estudos com 1.199 pacientes achou tempo cirúrgico menor e saco dural mais amplo com a biportal, sem diferença nas complicações (Lobo, Global Spine J 2025).',
+    pro: 'A vantagem da biportal é separar a óptica dos instrumentos: o ângulo entre os portais dá liberdade de movimento parecida com a da cirurgia aberta, com instrumental comum de coluna, sem descolar a musculatura dos dois lados. Os ensaios são pequenos, abertos e de seguimento curto (Park, Spine J 2019), e hipertensão, taquicardia e agitação ao despertar podem ser o sinal de soro de irrigação passando por uma rotura dural (Guo, Front Med 2026).'
+  },
+  {
+    id: 'racz', levels: ['L4', 'L5', 'S'], cat: 3, name: 'Neurólise epidural de Racz', lv: 'Hiato sacral até L5-S1 esquerdo',
+    mods: { sacralCanal: true, needles: [{ to: ['S3', 0, 0, -1.45], via: ['S3', 0, -8.88, 0.24], g: 17, key: 'needle.caudal', level: 'S3' }],
+      scopes: [{ path: [['S3', 0, 0, -1.45], ['S3', 0.05, 0.9, -1.55], ['S2', 0.35, -0.03, -2.0], ['S1', 0.75, -0.8, -2.45], ['S1', 0.8, 0.5, -1.92], ['L5-S1', 0.92, -0.2, -1.85]], r: 0.06, key: 'racz', info: 'raczCath', level: 'S' }],
+      contrast: [{ path: ['needle.caudal', 'sacCanal.S2', ['S1', -0.45, 0.4, -2.2]], r: 0.28, key: 'contrast.caudal', level: 'S' }, { root: 'S1.L', at: 'racz', key: 'contrast.root' },
+        { at: ['L5-S1', 1.02, -0.1, -1.9], r: [0.34, 0.42, 0.25], q: 'L5-S1', lumpy: 0.12, kind: 'scar', info: 'scar', key: 'scar', level: 'L5-S1' }] },
+    cam: { t: 'sacCanal.S1', az: 150, el: 10, d: 24 }, show: 'bone disc neuro', ghost: true, focus: ['L4', 'L5', 'S', 'Co'], hot: [],
+    labels: [['racz', 'Ponta curva junto à raiz S1'], ['racz.meio', 'Cateter de Racz no canal sacral'], ['scar', 'Fibrose (falha de enchimento)'], ['contrast.root', 'Contraste ao longo da raiz S1'], ['contrast.caudal', 'Contraste no canal sacral'], ['hiatus', 'Hiato sacral']],
+    ind: 'Dor lombar e radicular crônica na síndrome pós-laminectomia, em que a fibrose epidural pode prender a raiz e impedir que o fármaco injetado chegue até ela, após falha de bloqueios epidurais comuns; Também se usa em estenose e hérnia com dor radicular refratária. Entre as formas de adesiólise, a técnica por cateter guiada por radioscopia é a que tem mais ensaios (Helm, Pain Physician 2016).',
+    alvo: 'O espaço epidural ventrolateral de L5-S1, junto à raiz afetada, onde a cicatriz da cirurgia anterior une dura, raiz e ligamento e cria falhas de enchimento no contraste. O cateter fica no plano ventrolateral do forame para que os fármacos cheguem a esse ponto (Helm, Pain Physician 2016), e a falha de enchimento que se abre após a injeção é o sinal de que as aderências cederam.',
+    tec: 'Decúbito ventral e agulha pelo hiato sacral até o canal sacral, com a posição conferida por contraste. Pela agulha passa o cateter de Racz, de ponta com mola e dirigível, que sobe sob radioscopia até a região anterolateral de L5-S1, do lado da dor, e é girado e avançado para soltar mecanicamente as aderências; A epidurografia antes e depois mostra a falha de enchimento e sua abertura, e o cateter pode ficar para novas doses no mesmo dia ou nos dias seguintes.',
+    inj: 'A sequência é contraste para mostrar a falha, hialuronidase para desfazer a matriz da fibrose e espalhar o injetado, anestésico local com corticoide e, por fim, soro hipertônico a 10% (Heavner, Reg Anesth Pain Med 1999). O soro hipertônico só entra depois de excluída, pelo contraste e por dose-teste do anestésico, a posição subdural ou subaracnoide, onde é muito lesivo.',
+    risco: 'Anestésico ou soro hipertônico no espaço subdural ou subaracnoide pode causar bloqueio extenso, dor intensa e lesão neurológica, e por isso a dose-teste vem antes. Injeção rápida ou em grande volume no espaço epidural eleva a pressão do líquor e pode causar hemorragia retiniana com perda visual (Gill, Pain Med 2005); Há ainda punção dural com cefaleia, injeção intravascular, infecção e ruptura ou retenção do cateter.',
+    evid: 'Num ensaio com 120 pacientes com síndrome pós-laminectomia, 73% dos tratados com adesiólise, com lidocaína, soro a 10% e betametasona não particulada, tiveram alívio de pelo menos 50% e melhora funcional em 12 meses, contra 12% com injeção caudal comum, sem grupo placebo e com cegamento talvez inadequado, segundo os próprios autores (Manchikanti, Pain Physician 2009). Na comparação de soluções, o soro hipertônico, com ou sem hialuronidase, reduziu a parcela que precisou de novos tratamentos (Heavner, Reg Anesth Pain Med 1999); Uma revisão sistemática com o próprio Racz entre os autores classificou a evidência como forte, com base em 7 ensaios positivos (Helm, Pain Physician 2016).',
+    pro: 'Na síndrome pós-laminectomia nem toda dor vem da fibrose, pois estenose residual, faceta e instabilidade também a causam, e a cicatriz na imagem não prova que ela dói. O efeito depende de o cateter chegar ao ponto ventrolateral da raiz afetada, e é a epidurografia que passa a contornar a raiz depois da adesiólise que mostra que o fármaco chegou lá.'
   },
   {
     id: 'vplasty', levels: ['T12', 'L1', 'L2'], cat: 4, name: 'Vertebroplastia e cifoplastia', lv: 'L1',
@@ -2778,6 +2979,33 @@ const PROC = [
     pro: 'Antibiótico prévio não mudou de forma significativa a sensibilidade da cultura, 46,2% contra 44,6% (Chang, AJR 2023), por isso ele não impede a biópsia, mas uma biópsia negativa não afasta infecção (Pupaibool, Spine J 2015). Guia por TC ou por radioscopia teve sensibilidade microbiológica semelhante (Chang, AJR 2023), e o que pesa mais é a escolha do alvo.'
   },
   {
+    id: 'bvn', levels: ['L3', 'L4', 'L5', 'S'], cat: 4, name: 'Neurotomia do nervo basivertebral', lv: 'L4 e L5',
+    mods: { bvn: ['L4.L', 'L5.L'], modic: ['L4-L5'], disc: { 'L4-L5': { h: 0.8, state: 'degen' } } },
+    cam: { t: 'nuc.L4-L5', az: 55, el: 18, d: 22 }, show: 'bone disc neuro', hide: ['root.', 'drg.'], ghost: true, focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['bvn.L4', 'Nervo basivertebral de L4'], ['bvnrf.L5', 'Lesão de RF no terminal do nervo'], ['probe.L4', 'Cânula curva até o terminal'], ['intro.L4.meio', 'Introdutor pelo pedículo'], ['modic.L4', 'Placa com alteração de Modic']],
+    ind: 'Dor lombar axial crônica, há pelo menos 6 meses, sem resposta ao tratamento conservador, com alterações de Modic tipo 1 ou 2 nas placas terminais entre L3 e S1, o padrão chamado de dor vertebrogênica (Khalil, Spine J 2019). Aqui os alvos são os corpos de L4 e L5, vizinhos às placas com Modic no disco L4-L5; Dor radicular e outras causas evidentes de dor lombar não são alvo do procedimento.',
+    alvo: 'O nervo basivertebral, que entra no corpo vertebral pelo forame vascular da parede posterior, junto com a veia basivertebral, e se ramifica no centro do corpo em direção às placas terminais superior e inferior, levando as fibras de dor da placa lesada (Michalik, Pain Med 2021). O alvo é o ponto em que o tronco se divide, no centro do corpo de L4 e no de L5, porque uma lesão ali desnerva as duas placas do mesmo corpo.',
+    tec: 'Decúbito ventral, sedação ou anestesia geral e radioscopia em AP e perfil. Uma cânula entra pelo pedículo de L4, como numa vertebroplastia, e por dentro dela um estilete curvo abre um trajeto que vira para a linha média até o ponto de divisão do nervo; Por esse trajeto passa a sonda bipolar de radiofrequência, e o mesmo se repete em L5. A posição da ponta é conferida nas duas incidências antes de aquecer, longe da parede posterior e do canal.',
+    inj: 'Não se injeta fármaco nem cimento: o tratamento é a energia térmica da radiofrequência, gerada entre os dois polos da sonda dentro do osso esponjoso, com anestesia local no trajeto. Como o calor fica no centro do corpo, longe da parede posterior, o canal e as raízes ficam fora da lesão, desde que a sonda não escape do osso.',
+    risco: 'Os riscos são os da via transpedicular, como lesão da raiz se a cânula rompe a parede medial ou inferior do pedículo, fratura do pedículo ou do corpo, sangramento e infecção, além de lesão térmica se a sonda ficar perto da parede posterior. Os ensaios mediram sobretudo dor e função, e o efeito do calor sobre o osso tratado além de alguns anos ainda é pouco conhecido.',
+    evid: 'No SMART, duplo-cego contra simulação com 225 pacientes, o ODI caiu 20,5 pontos com a ablação e 15,2 com a simulação em 3 meses, na análise por protocolo, e 75,6% contra 55,3% melhoraram pelo menos 10 pontos (Fischgrund, Eur Spine J 2018); No seguimento dos tratados, com 100 de 117 avaliados após média de 6,4 anos, o ODI foi de 42,8 para 16,9, 66% tinham mais de 50% de alívio e 34% estavam sem dor (Fischgrund, Eur Spine J 2020). No INTRACEPT, aberto contra tratamento padrão com 140 pacientes, a análise interina mostrou queda do ODI de 25,3 contra 4,4 pontos em 3 meses (Khalil, Spine J 2019), e a final, diferença de 20,3 pontos a favor da ablação em 3 meses e queda de 25,7 pontos em 12 meses, com 64% tendo pelo menos 50% de alívio e 29% sem dor (Smuck, Reg Anesth Pain Med 2021).',
+    pro: 'Contra simulação, a diferença no SMART foi de cerca de 5 pontos de ODI, relatada na análise por protocolo, enquanto o ganho grande do INTRACEPT veio de um ensaio aberto contra tratamento padrão (Fischgrund, Eur Spine J 2018; Khalil, Spine J 2019). Todos os estudos até então foram financiados pela indústria, e a seleção por Modic tipo 1 ou 2 é o que define o candidato (Michalik, Pain Med 2021); A proporção em uso de opioide não mudou com a ablação em 12 meses (Smuck, Reg Anesth Pain Med 2021).'
+  },
+  {
+    id: 'chemabl', levels: ['L2', 'L3', 'L4'], cat: 4, name: 'Ablação química de tumor e cisto', lv: 'Corpo de L3',
+    mods: { needles: [{ to: ['L3', 0.75, 0.15, -0.1], via: 'L3.ped.L', g: 11, len: 8.5, key: 'trocar.L', info: 'trocar', level: 'L3' }],
+      contrast: [{ at: ['L3', 0.4, 0.12, 0.42], r: [1.2, 0.9, 0.95], q: 'L3', lumpy: 0.12, kind: 'cyst', info: 'cyst', key: 'cyst', level: 'L3' }, { at: ['L3', 0.3, -0.05, 0.3], r: [0.98, 0.72, 0.78], q: 'L3', lumpy: 0.14, kind: 'sclero', info: 'sclero', key: 'sclero', level: 'L3' }] },
+    cam: { t: 'L3', az: 70, el: 15, d: 20 }, show: 'bone disc', ghost: true, focus: ['L2', 'L3', 'L4'], hot: [],
+    labels: [['cyst', 'Lesão cística no corpo de L3'], ['sclero', 'Esclerosante preenchendo a lesão'], ['trocar.L.meio', 'Agulha pelo pedículo'], ['L3.ped.L', 'Pedículo de L3']],
+    ind: 'Cisto ósseo aneurismático da coluna sem déficit neurológico grave nem instabilidade, em que a injeção percutânea é opção de primeira linha (Liu, Global Spine J 2025), e hemangioma vertebral agressivo, que cresce para fora do corpo e comprime a medula ou a raiz (Doppman, Radiology 2000). A biópsia vem antes, para afastar tumor maligno com áreas de cisto aneurismático secundário (Hyde, J Craniovertebr Junction Spine 2026).',
+    alvo: 'No cisto ósseo aneurismático, as cavidades cheias de sangue separadas por septos, com níveis líquido-líquido na RM, que costumam ocupar os elementos posteriores e invadir o corpo e o canal (Hyde, J Craniovertebr Junction Spine 2026). No hemangioma agressivo, os espaços vasculares do corpo vertebral e o componente epidural, mapeados por angiografia por TC antes da punção para dirigir a agulha às lacunas que recebem fluxo (Doppman, Radiology 2000).',
+    tec: 'Agulha por via transpedicular ou posterolateral sob TC ou radioscopia, e contraste antes do agente, para ver se ele enche a cavidade ou foge rápido por veias de drenagem, como as epidurais. No cisto, o esclerosante é injetado em sessões repetidas até a cavidade ossificar, com média de 3 injeções por paciente com polidocanol (Rastogi, JBJS Br 2006) e de 2 a 14 sessões com doxiciclina (Shiels, Clin Orthop Relat Res 2013); No hemangioma, o etanol é injetado devagar dentro da lesão, sob controle de imagem.',
+    inj: 'No cisto aneurismático, polidocanol a 3% (Rastogi, JBJS Br 2006) ou doxiciclina, às vezes em suspensão com albumina para ficar mais tempo na cavidade (Liu, Global Spine J 2025). No hemangioma, etanol absoluto, de 5 a 50 mL na série pioneira, cujos autores recomendam menos de 15 mL, porque os dois pacientes que receberam 42 e 50 mL tiveram fratura do corpo tratado (Doppman, Radiology 2000).',
+    risco: 'O etanol necrosa o osso e o tecido vizinho: todos os 14 pacientes de uma série tiveram piora neurológica transitória após a ablação, um teve abscesso paravertebral e outro voltou a ter sintomas por colapso do corpo tratado (Goyal, AJNR 1999). Fratura patológica ocorreu nos que receberam os maiores volumes de etanol (Doppman, Radiology 2000), e a fuga do agente por veias de drenagem pode causar embolia e lesão de raiz ou medula; Com polidocanol, as complicações do ensaio randomizado foram menores e regrediram (Varshney, Clin Orthop Relat Res 2010).',
+    evid: 'Em 72 cistos aneurismáticos tratados com polidocanol, a lesão reduziu em média 76,6%, 10 curaram com uma única injeção e a recidiva foi de 2,8% (Rastogi, JBJS Br 2006), e num ensaio com 94 pacientes randomizados a escleroterapia cicatrizou 93,3% contra 84,8% da curetagem com enxerto, com menos complicações (Varshney, Clin Orthop Relat Res 2010). Com doxiciclina, os 20 pacientes cicatrizaram e a recidiva foi de 5% após mais de 24 meses (Shiels, Clin Orthop Relat Res 2013); No hemangioma, o etanol obliterou as 11 lesões e 5 de 6 paraplégicos se recuperaram por completo (Doppman, Radiology 2000).',
+    pro: 'Quase todos os dados do cisto vêm de séries com ossos longos e pelve, e na coluna as séries são pequenas: com doxiciclina e albumina, 14 cistos da coluna móvel encolheram sem recidiva nem complicação em seguimento médio de 68,1 meses (Liu, Global Spine J 2025). Déficit grave, instabilidade ou deformidade pedem cirurgia, que corrige rápido a compressão (Liu, Global Spine J 2025), e no hemangioma o volume de etanol é o que mais pesa no risco de colapso (Doppman, Radiology 2000).'
+  },
+  {
     id: 'tlif', levels: ['L3', 'L4', 'L5', 'S'], cat: 5, name: 'Artrodese intersomática com cage (TLIF)', lv: 'L4-L5',
     mods: { disc: { 'L4-L5': { discectomy: true } }, cage: { at: 'L4-L5', side: 'L' }, screws: ['L4.L', 'L4.R', 'L5.L', 'L5.R'], facetectomy: ['L4-L5.L'] },
     cam: { t: 'cage', az: 115, el: 22, d: 30 }, show: 'bone disc', ghost: true, ax: 'L4-L5', focus: ['L3', 'L4', 'L5', 'S'], hot: [],
@@ -2802,6 +3030,63 @@ const PROC = [
     risco: 'Os riscos da via anterior são disfagia, rouquidão por lesão do nervo laríngeo recorrente, hematoma cervical e, raramente, lesão do esôfago, da dura ou da artéria vertebral. A ossificação heterotópica em volta da prótese chegou a 70% em 10 anos, com 37% graves (graus 3 e 4), capazes de reduzir ou abolir o movimento (Sheng, Spine 2023); Afundamento, migração e desgaste do implante também ocorrem.',
     evid: 'Na meta-análise dos ensaios randomizados multicêntricos, a reoperação no nível vizinho em 7 anos foi de 4,3% contra 10,8% em 1 nível e de 5,1% contra 10,0% em 2 níveis, e a reoperação no próprio nível também foi menor com a prótese (Badhiwala, J Spine Surg 2020). Em 10 anos do ensaio IDE da prótese Bryan, o sucesso global foi de 81,3% contra 66,3%, e a cirurgia nos níveis vizinhos foi de 9,7% contra 15,8%, diferença sem significância (Lavelle, Spine 2019).',
     pro: 'A diferença na reoperação vizinha só aparece depois de cerca de 5 anos (Badhiwala, J Spine Surg 2020), e a ossificação heterotópica cresce com o tempo, por isso o seguimento curto engana nos dois sentidos. Na lombar, a prótese discal foi estatisticamente melhor que a artrodese em 2 anos, mas a diferença, 5,2 pontos em 100 na dor lombar, ficou abaixo do limiar de relevância clínica (Jacobs, Cochrane 2012).'
+  },
+  {
+    id: 'decomp', levels: ['L3', 'L4', 'L5'], cat: 5, name: 'Descompressão do canal (laminectomia)', lv: 'L4, para estenose L3-L4 e L4-L5',
+    mods: { ...DZ.find(d => d.id === 'sten').mods, pinch: [], lamCut: { 'L4.L': { x: 1.25 }, 'L4.R': { x: 1.25 }, 'L5.L': { y1: -0.25 }, 'L5.R': { y1: -0.25 } },
+      remove: ['L4.sp', 'flav.L3-L4.L', 'flav.L3-L4.R', 'flav.L4-L5.L', 'flav.L4-L5.R', 'isp.L3-L4', 'isp.L4-L5'] },
+    cam: { t: 'L4', az: 180, el: 30, d: 24 }, show: 'bone disc lig neuro', hide: ['itl.'], focus: ['L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['lamcut.L4.L', 'Lâmina de L4 retirada na linha média'], ['cap.L4-L5.R', 'Faceta preservada'], ['L4.pars.L', 'Pars preservada'], ['dura.L4-L5', 'Saco dural no calibre normal'], ['lamcut.L5.R', 'Borda de cima de L5 retirada']],
+    ind: 'Estenose degenerativa do canal lombar com claudicação neurogênica ou dor radicular que limita a marcha, com pelo menos 12 semanas de sintomas, como no SPORT (Weinstein, NEJM 2008), aqui em L4-L5. A descompressão isolada serve também à estenose com listese degenerativa de baixo grau num só nível (Austevoll, NEJM 2021), e a fusão fica para casos selecionados.',
+    alvo: 'O canal central e os recessos laterais em L4-L5, estreitados pelo ligamento amarelo espessado e dobrado, pela hipertrofia das facetas e pelo abaulamento do disco, que comprimem a cauda equina e as raízes L5 no recesso. A descompressão retira o ligamento amarelo, o osso que o cobre e a parte medial das facetas sobre o recesso, sem tocar o disco quando não há hérnia.',
+    tec: 'Na laminectomia clássica, incisão na linha média, descolamento dos músculos dos dois lados e retirada do espinhoso, das lâminas e dos ligamentos supraespinhoso e interespinhoso, com facetectomia medial bilateral. As técnicas que preservam a linha média mantêm o espinhoso e esses ligamentos: a laminotomia bilateral abre uma janela de cada lado do espinhoso, e a laminotomia unilateral com descompressão bilateral entra por um lado e escava por baixo do espinhoso até o recesso oposto (Overdevest, Cochrane 2015). Em todas, a facetectomia é medial e parcial, para não desestabilizar o segmento.',
+    inj: 'Não se injeta fármaco como tratamento: a cirurgia é feita sob anestesia geral ou raquianestesia, com hemostasia por cera óssea, bipolar e agentes hemostáticos. O microscópio ou a lupa dão a luz e a ampliação para separar o ligamento amarelo da dura, o momento de maior risco de rotura dural.',
+    risco: 'No SPORT, a rotura dural foi a complicação mais comum, em 9% dos operados, e a reoperação em 2 anos foi de 8%, menos da metade por estenose recidivada (Weinstein, NEJM 2008). A laminectomia ampla pode deixar o segmento instável; As técnicas que preservam a linha média tiveram numericamente menos instabilidade iatrogênica, em taxas baixas nos dois grupos (Overdevest, Cochrane 2015). No estudo sueco, a reoperação lombar em seguimento médio de 6,5 anos foi de 21% com descompressão isolada e 22% com fusão (Försth, NEJM 2016).',
+    evid: 'No SPORT, com 289 randomizados e muita troca de grupo (67% dos sorteados para cirurgia operaram, e 43% dos sorteados para tratamento clínico também), a análise por intenção de tratar deu 7,8 pontos a mais na dor do SF-36 com a cirurgia, e a análise como tratado mostrou ganho em todos os desfechos até 2 anos (Weinstein, NEJM 2008). No estudo sueco com 247 pacientes, somar fusão à descompressão não melhorou o ODI em 2 anos (27 com fusão contra 24 sem) nem em 5, com ou sem listese (Försth, NEJM 2016); No NORDSTEN-DS, com listese degenerativa de 3 mm ou mais, a descompressão isolada não foi inferior à fusão, com 71,4% contra 72,9% atingindo redução de pelo menos 30% no ODI em 2 anos, e reoperação de 12,5% contra 9,1% (Austevoll, NEJM 2021).',
+    pro: 'A revisão Cochrane achou efeito parecido entre as técnicas que preservam a linha média e a laminectomia em incapacidade e dor na perna, com evidência de qualidade baixa ou muito baixa, e menos dor lombar após laminotomia bilateral, em diferença pequena demais para ser clinicamente importante (Overdevest, Cochrane 2015). No estudo sueco, a fusão somada alongou a internação (7,4 contra 4,1 dias) e aumentou tempo cirúrgico, sangramento e custo, sem ganho clínico (Försth, NEJM 2016).'
+  },
+  {
+    id: 'debride', levels: ['L1', 'L2', 'L3', 'L4'], cat: 5, name: 'Debridamento de espondilodiscite', lv: 'L2-L3, fixação de L1 a L4',
+    mods: { ...DZ.find(d => d.id === 'discitis').mods, disc: { 'L2-L3': { h: 0.8, discectomy: 'ant' } }, erosion: [], abscess: null,
+      cage: { at: 'L2-L3', shape: 'block', grow: 0.3 }, screws: ['L1.L', 'L1.R', 'L4.L', 'L4.R'] },
+    cam: { t: 'cage', az: 60, el: 12, d: 30 }, show: 'bone disc', ghost: true, ax: 'L2-L3', focus: ['L1', 'L2', 'L3', 'L4'], hot: [],
+    labels: [['cage', 'Enxerto estrutural no espaço desbridado'], ['screw.L1.L', 'Parafuso em L1 (nível acima)'], ['screw.L4.L', 'Parafuso em L4 (nível abaixo)'], ['rod.L', 'Haste']],
+    ind: 'Espondilodiscite piogênica com falha do antibiótico, déficit neurológico, abscesso epidural com compressão, instabilidade ou deformidade progressiva por destruição do corpo, ou dor intratável. A maioria cura só com antibiótico, e os estudos que compararam cirurgia e antibiótico isolado não mostraram benefício adicional de longo prazo da cirurgia (Rutges, Eur Spine J 2015).',
+    alvo: 'O foco de infecção no disco e nas placas terminais vizinhas, com tecido necrótico, pus e sequestro ósseo, e o abscesso epidural ou paravertebral que dele se estende, como no psoas. O debridamento remove esse tecido até osso sangrante, descomprime a dura e prepara o leito do enxerto que vai reconstruir a coluna anterior.',
+    tec: 'Na via anterior, retroperitoneal na lombar, o disco e os corpos destruídos são ressecados sob visão direta e o defeito é preenchido com enxerto estrutural de crista ilíaca ou cage de titânio; Na via posterior, o debridamento é feito pelo forame ou por costotransversectomia, com cage intersomático. A fixação com parafusos pediculares no mesmo tempo estabiliza o segmento, e numa série pareada a instrumentação não aumentou recidiva nem mortalidade em relação à cirurgia sem implante (Kim, Bone Joint J 2019). A via anterior isolada teve melhor resultado clínico em dois estudos prospectivos (Rutges, Eur Spine J 2015).',
+    inj: 'O antibiótico é dirigido pela cultura do material colhido na biópsia ou na cirurgia, e a cirurgia não o substitui. No ensaio francês com 359 pacientes, 6 semanas de antibiótico não foram inferiores a 12, com cura em 1 ano de 90,9% nos dois grupos (Bernard, Lancet 2015); Estudos por germe sugerem pelo menos 8 semanas para o estafilococo dourado (Rutges, Eur Spine J 2015).',
+    risco: 'A doença é grave: no ensaio de Bernard, a morte foi o evento adverso mais comum, em 8% e 7% dos dois grupos (Bernard, Lancet 2015), e numa coorte prospectiva de operados a mortalidade foi de 20% em 1 ano e 23% em 2 anos (Yagdiran, Eur Spine J 2020). Aos riscos da doença somam-se os da cirurgia: sangramento, lesão de grandes vasos e do ureter na via anterior, rotura dural, recidiva da infecção, falha do implante e pseudoartrose.',
+    evid: 'Numa coorte pareada por escore de propensão, os tratados sem cirurgia tiveram mortalidade em 1 ano de 25,0% contra 3,7% dos operados e falha do tratamento de 42,9% contra 14,8%, numa análise retrospectiva em que a escolha da cirurgia seguiu critérios clínicos (Kernich, JBJS 2023). Com cirurgia, a qualidade de vida melhorou já no primeiro ano, mas ficou abaixo da população geral (Yagdiran, Eur Spine J 2020), e na revisão sistemática várias técnicas curaram a infecção, sem vantagem de longo prazo comprovada sobre o antibiótico isolado (Rutges, Eur Spine J 2015).',
+    pro: 'Bacteremia e tratamento sem cirurgia foram fatores independentes de falha (Kernich, JBJS 2023), e a duração de 6 semanas vale para infecção com germe identificado, que era critério de entrada no ensaio (Bernard, Lancet 2015). A espondilodiscite nativa teve cerca de três vezes o risco de morte em 2 anos da pós-operatória, mesmo ajustada para ASA e comorbidades (Breuninger, Spine 2020), sinal de que o prognóstico depende sobretudo do hospedeiro.'
+  },
+  {
+    id: 'osteot', levels: ['L1', 'L2', 'L3', 'L4', 'L5'], cat: 5, name: 'Osteotomia para deformidade (subtração pedicular)', lv: 'L3, fixação de L1 a L5',
+    mods: { wedge: { L3: -30 }, crush: { L3: 0.3 }, sag: { 'L1-L2': 6, 'L2-L3': 8, 'L3-L4': 8, 'L4-L5': 8 },
+      remove: ['L3.sp', ...['L', 'R'].flatMap(s => [...['ped', 'lam', 'tp', 'sap', 'iap', 'pars', 'mam'].map(p => `L3.${p}.${s}`), `flav.L2-L3.${s}`, `flav.L3-L4.${s}`, `cap.L2-L3.${s}`, `cap.L3-L4.${s}`, `itl.L2-L3.${s}`, `itl.L3-L4.${s}`]), 'isp.L2-L3', 'isp.L3-L4'],
+      screws: ['L1.L', 'L1.R', 'L2.L', 'L2.R', 'L4.L', 'L4.R', 'L5.L', 'L5.R'] },
+    cam: { t: 'L3.canal', az: 80, el: 6, d: 34 }, show: 'bone disc', ax: 'L3', focus: ['T12', 'L1', 'L2', 'L3', 'L4', 'L5', 'S'], hot: [],
+    labels: [['L3.body', 'L3 com a cunha fechada'], ['rod.L', 'Haste moldada em lordose'], ['screw.L2.L', 'Parafusos em L1 e L2'], ['screw.L4.L', 'Parafusos em L4 e L5'], ['cam:L1', 'Lordose recuperada']],
+    ind: 'Desequilíbrio sagital fixo, em que a pessoa só fica em pé com a linha de prumo de C7 à frente do sacro, como no dorso plano (flat back) e na cifose lombar degenerativa, com dor e cansaço ao ficar em pé (Bridwell, JBJS 2003). A PSO em L3 entra quando a deformidade é rígida e precisa de cerca de 30° de lordose num só nível, o que uma osteotomia de Smith-Petersen isolada não dá, porque corrige em média 10,7° por segmento (Cho, Spine 2005).',
+    alvo: 'O corpo de L3, no meio da lordose lombar perdida e abaixo do cone medular, do qual a PSO retira os elementos posteriores, os dois pedículos e uma cunha do corpo com base posterior e ápice na parede anterior. Ao fechar a cunha, a coluna gira em torno da parede anterior intacta e a lordose aumenta sem alongar a coluna anterior. O alvo radiológico são os parâmetros sem desvio da classificação SRS-Schwab: PI-LL menor que 10°, SVA menor que 4 cm e versão pélvica menor que 20° (Schwab, Spine 2012).',
+    tec: 'Decúbito ventral em mesa que permite estender o quadril, parafusos pediculares em vários níveis acima e abaixo e ressecção de lâminas, facetas e pedículos de L3, com as raízes L3 e L4 expostas; A cunha é escavada por dentro dos pedículos e as paredes laterais e posterior do corpo são derrubadas por último. O fechamento é controlado pelas hastes, com a dura e as raízes à vista, porque subluxação, compressão dorsal residual e dobra da dura explicam os déficits após PSO (Buchowski, Spine 2007).',
+    inj: 'Não se injeta fármaco como tratamento; O cuidado é com o sangue, porque a perda média foi de 2.617 mL com a PSO contra 1.398 mL com as osteotomias de Smith-Petersen (Cho, Spine 2005). Por isso entram ácido tranexâmico, recuperação intraoperatória de sangue e hemostasia das veias epidurais antes de cortar o corpo.',
+    risco: 'Déficit neurológico, perda motora de 2 graus ou mais ou do controle esfincteriano, ocorreu em 11,1% de 108 PSO lombares e foi permanente em 2,8%, e a monitorização intraoperatória não detectou esses déficits (Buchowski, Spine 2007). A fratura de haste sintomática ocorreu em 15,8% dos pacientes com PSO, 89% delas no nível da osteotomia ou ao lado dele (Smith, Neurosurgery 2012), e houve pseudoartrose no foco da PSO e, com mais frequência, na coluna torácica (Bridwell, JBJS 2003).',
+    evid: 'A PSO lombar aumentou a lordose em média 34,1° e recuou a linha de prumo de C7 em 13,5 cm (Bridwell, JBJS 2003), e numa série de 108 PSO a lordose foi de 17,1° para 49,3° e o desvio sagital de 131 para 23 mm (Buchowski, Spine 2007). Três ou mais osteotomias de Smith-Petersen deram correção angular parecida com uma PSO (33,0° contra 31,7°), mas melhoraram menos o equilíbrio sagital (5,5 contra 11,2 cm) e desviaram mais o tronco para o lado côncavo (Cho, Spine 2005).',
+    pro: 'A classificação de Schwab ordena as osteotomias pelo osso retirado e pelo potencial de desestabilizar: ressecção parcial da faceta (grau 1), faceta completa, como Smith-Petersen e Ponte (grau 2), PSO (grau 3), PSO estendida ao disco (grau 4) e ressecção de uma ou mais vértebras inteiras, a VCR (graus 5 e 6), reservada às deformidades angulares rígidas (Schwab, Neurosurgery 2014). Hastes de cobalto-cromo fraturaram menos que as de titânio ou aço, e o desalinhamento sagital que persiste após a cirurgia pode aumentar o risco de fratura (Smith, Neurosurgery 2012).'
+  },
+  {
+    id: 'tumres', levels: ['T12', 'L1', 'L2'], cat: 5, name: 'Ressecção de tumor e cisto', lv: 'L1-L2, intradural extramedular',
+    mods: { intradural: { at: 'L1-L2', x: 0.45, y: 0.3, z: -0.12, r: [0.46, 0.85, 0.42], dir: [-1, 0, 0.55] }, durotomy: { at: 'L1-L2', len: 1.0, gap: 0.85 },
+      lamCut: { 'L1.L': { x: 1.0 }, 'L1.R': { x: 1.0 } }, remove: ['L1.sp', 'flav.T12-L1.L', 'flav.T12-L1.R', 'flav.L1-L2.L', 'flav.L1-L2.R', 'isp.T12-L1', 'isp.L1-L2'] },
+    cam: { t: 'schwannoma', az: 172, el: 10, d: 15 }, show: 'bone lig neuro', hide: ['itl.'], focus: ['T12', 'L1', 'L2'], hot: [],
+    labels: [['schwannoma', 'Schwannoma intradural'], ['roots.pushed', 'Raízes deslocadas'], ['durotomy', 'Dura aberta, bordas afastadas'], ['lamcut.L1.L', 'Laminectomia de L1'], ['conus', 'Cone medular']],
+    ind: 'Tumor intradural extramedular sintomático ou em crescimento, como o schwannoma, que com o meningioma responde pela maioria dessas lesões (Yu, J Orthop Surg Res 2023), aqui em L1-L2, na altura do cone medular e da cauda equina, com dor, déficit radicular ou disfunção esfincteriana. Entre os cistos, o sinovial facetário, que nasce de uma faceta degenerada e comprime a raiz como uma hérnia, é ressecado junto com a descompressão, e o de Tarlov, cisto perineural das raízes sacrais quase sempre achado ocasional, raramente pede cirurgia.',
+    alvo: 'O schwannoma nasce da bainha de uma raiz e cresce dentro do saco dural empurrando o cone e as raízes da cauda equina, das quais costuma se separar por um plano de aracnoide. O alvo é retirar a massa inteira com a cápsula, sacrificando só o fascículo de onde ela nasce e preservando as raízes vizinhas.',
+    tec: 'Decúbito ventral, laminectomia ou laminoplastia de L1 e L2 na extensão do tumor, abertura da dura na linha média sob microscópio e abertura da aracnoide para expor a lesão. Com monitorização de potenciais evocados motores e somatossensitivos e eletromiografia, o fascículo de origem é identificado, o tumor grande é esvaziado por dentro e a cápsula é dissecada das raízes; A dura é fechada de forma estanque, às vezes com selante ou enxerto, para evitar fístula liquórica.',
+    inj: 'Não se injeta fármaco como tratamento; A anestesia é venosa total, sem bloqueador neuromuscular após a intubação, porque gases halogenados e relaxantes atrapalham os potenciais motores e a eletromiografia. Na monitorização multimodal de 87 tumores intradurais extramedulares, a sensibilidade foi de 100% e a especificidade de 96% para déficit pós-operatório (Yu, J Orthop Surg Res 2023).',
+    risco: 'Numa série de 221 tumores da bainha neural, as complicações somaram 32%, com 15% de piora sensitiva, 5% de piora motora, 4% de fístula liquórica ou pseudomeningocele e 5% de infecção da ferida (Safaee, J Neurosurg Spine 2016). Em 244 schwannomas, a piora motora foi de 13,1% e a sensitiva de 20,5%, e a ressecção subtotal e o tumor em halteres associaram-se à piora motora (Ando, J Clin Neurosci 2020).',
+    evid: 'Na meta-análise de 2.542 schwannomas espinhais, 93,8% tiveram ressecção total e a recidiva foi de 5,3% em seguimento combinado de 40,6 meses (Alvarez-Crespo, World Neurosurg 2023). No banco multicêntrico com 169 pacientes, 5,32% recidivaram, em média 1,7 ano após a cirurgia, mais nos tumores maiores e após ressecção intralesional que em bloco (Fehlings, Spine 2016), e o uso de monitorização associou-se a mais ressecção total, 79% contra 66% (Safaee, J Neurosurg Spine 2016).',
+    pro: 'A ressecção total é o que mais protege contra a recidiva (Alvarez-Crespo, World Neurosurg 2023), mas a monitorização estável não garante ausência de déficit: 20 de 216 pacientes com potenciais motores estáveis acordaram com déficit, que regrediu na internação na maioria (Ando, J Clin Neurosci 2020). O fechamento estanque da dura pesa tanto quanto a ressecção, porque fístula, pseudomeningocele e infecção foram mais comuns nas lesões intradurais e em halteres (Safaee, J Neurosurg Spine 2016).'
   }
 ];
 // nomes das peças novas no cartão de estrutura (clique no 3D)
@@ -2837,7 +3122,23 @@ Object.assign(INFO, {
   splanch: ['Nervo esplâncnico maior', 'Fibras que descem pelos corpos torácicos até o gânglio celíaco.'],
   latbranch: ['Ramo lateral', 'Ramo do ramo dorsal sacral que corre para a articulação sacroilíaca.'],
   adrPlate: ['Placa da prótese', 'Placa metálica presa à placa terminal por uma quilha.'],
-  adrCore: ['Núcleo da prótese', 'Peça de polietileno entre as placas, que deixa o segmento se mover.']
+  adrCore: ['Núcleo da prótese', 'Peça de polietileno entre as placas, que deixa o segmento se mover.'],
+  spinal: ['Agulha espinhal de ponta de lápis', 'Agulha fina (25G) de ponta cônica com orifício lateral, que afasta as fibras da dura em vez de cortá-las.'],
+  csfdrug: ['Solução no líquor', 'Anestésico ou neurolítico hiperbárico, mais pesado que o líquor, que desce para as raízes sacrais com o paciente sentado.'],
+  fiber: ['Fibra de laser', 'Fibra óptica fina passada pela agulha, que leva a energia do laser até o núcleo.'],
+  vapor: ['Zona de vaporização', 'Núcleo vaporizado e carbonizado pelo laser em volta da ponta da fibra.'],
+  ozone: ['Oxigênio e ozônio', 'Mistura de gás injetada, que se espalha em bolhas pelo núcleo e em volta da raiz.'],
+  ubeScope: ['Endoscópio rígido', 'Ótica de cerca de 4 mm do portal de visão, com soro correndo continuamente.'],
+  ubeTool: ['Broca', 'Instrumento do portal de trabalho, que desgasta a lâmina; Pinças e radiofrequência entram pelo mesmo portal.'],
+  raczCath: ['Cateter de Racz', 'Cateter de aço em espiral, de ponta curva e dirigível, levado pelo hiato sacral até a raiz.'],
+  scar: ['Fibrose epidural', 'Cicatriz que prende a raiz e impede o contraste de passar: a falha de enchimento da epidurografia.'],
+  bvn: ['Nervo basivertebral', 'Ramo do nervo sinuvertebral que entra pela parede posterior do corpo e leva a dor das placas terminais.'],
+  bvnProbe: ['Cânula curva com eletrodo', 'Sai da ponta do introdutor e faz uma curva até o terminal do nervo, onde aplica a radiofrequência.'],
+  modic: ['Alteração de Modic', 'Edema ou gordura na medula óssea junto à placa terminal, visto na ressonância.'],
+  cyst: ['Lesão cística', 'Cavidade cheia de sangue ou de vasos no corpo vertebral, como no cisto ósseo aneurismático e no hemangioma.'],
+  sclero: ['Agente esclerosante', 'Líquido ou espuma que preenche a lesão e provoca fibrose e fechamento dos espaços vasculares.'],
+  graft: ['Enxerto estrutural', 'Bloco de osso ou cage de titânio que preenche o espaço desbridado e sustenta a coluna anterior.'],
+  schwannoma: ['Schwannoma', 'Tumor benigno da bainha de uma raiz, dentro da dura e fora da medula, que cresce devagar e empurra as raízes vizinhas.']
 });
 
 /* ================= Aplicação ================= */
@@ -2914,7 +3215,11 @@ Object.assign(INFO, {
       mbranch: { c: '#EBC229', r: .5, cut: '#D2A21A', L: 'neuro' }, ganglion: { c: '#DDA61B', r: .5, cut: '#C98F12', L: 'neuro' },
       // dentro do disco o corte cobre o que é transparente: contraste e lesão térmica intradiscais são opacos e ganham tampa própria
       dye: { c: '#2F6FD6', r: .35, cut: '#3B7BE0', L: 'path' }, heat: { c: '#E8771E', r: .45, cut: '#F08A24', L: 'path' },
-      implant: { c: '#8C97A4', r: .3, m: .3, cut: '#A3ADB8', L: 'path' }, poly: { c: '#F4F3EE', r: .4, cut: '#FFFFFF', L: 'path' }
+      implant: { c: '#8C97A4', r: .3, m: .3, cut: '#A3ADB8', L: 'path' }, poly: { c: '#F4F3EE', r: .4, cut: '#FFFFFF', L: 'path' },
+      // núcleo vaporizado pelo laser e gás no disco: opacos, pelo mesmo motivo do contraste intradiscal
+      burn: { c: '#4A2C1C', r: .85, cut: '#3A2216', L: 'path' }, gas: { c: '#EEF6FA', r: .3, cut: '#FFFFFF', L: 'path' },
+      cyst: { c: '#8A2D3B', r: .5, op: .4, L: 'path', noCut: 1 }, sclero: { c: '#9B3FA0', r: .4, op: .6, L: 'path', noCut: 1 },
+      scar: { c: '#B9A08F', r: .8, op: .8, L: 'path', noCut: 1 }, modic: { c: '#D8A548', r: .6, op: .35, L: 'path', noCut: 1 }
     };
     TINT = { C: '#C9D8E8', T: '#D3E2C8', L: '#EBD3A6', S: '#E6C8BE' };
     C = h => new THREE.Color(h).convertSRGBToLinear();
@@ -2976,7 +3281,7 @@ Object.assign(INFO, {
      dentro do volume e um plano sólido na cor de corte cobre essa área. Grupos de dentro (núcleo) vêm por último. */
   // nervos por último e, em destaque, num vermelho mais escuro: a raiz comprimida passa por dentro da hérnia
   // cimento, cage e metal ficam por cima do osso e do disco onde estão
-  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6, ganglion: 6, dye: 5, heat: 5, implant: 6, poly: 6 };
+  const CAP_RANK = { disc: 1, discDeg: 1, discInf: 1, lamA: 2, lamB: 3, nucleus: 4, nucDeg: 4, herniation: 5, cord: 6, root: 6, drg: 6, cement: 5, cage: 5, metal: 6, needleTip: 6, mbranch: 6, ganglion: 6, dye: 5, heat: 5, implant: 6, poly: 6, burn: 5, gas: 5 };
   // no mesmo nível, destaque e seleção por cima: senão a ordem de criação dos grupos decidia se a faceta quente cobria a lâmina ou o contrário
   const capGroups = new Map(); // 'rank|cor' -> { layer, rank, pri, mat }
   function capLayer(m, u, K, variant) {

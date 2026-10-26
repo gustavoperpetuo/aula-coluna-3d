@@ -221,7 +221,10 @@ const LIG_CACHE = new Map();
 function buildSpine(mods = {}) {
   const root = new THREE.Group();
   const reg = new Map(); const anchors = new Map(); const meshes = [];
+  // remove: peças que o procedimento retira (espinhoso, ligamento amarelo, elementos posteriores), pela chave da malha
+  const RM = new Set(mods.remove || []);
   const add = (geo, kind, key, info, extra = {}) => {
+    if (RM.has(key)) return null;
     const m = new THREE.Mesh(geo, null);
     m.userData = Object.assign({ kind, key, info: info || kind, base: kind }, extra);
     if (!reg.has(key)) reg.set(key, []); reg.get(key).push(m);
@@ -340,7 +343,7 @@ function buildSpine(mods = {}) {
   for (let i = 0; i < 24; i++) {
     const l = LEVELS[i], fr = F[l.n];
     const g = new THREE.Group(); g.position.copy(fr.p); g.quaternion.copy(fr.q); root.add(g);
-    const part = (geo, kind, key, info) => { const m = add(geo, kind, key, info, { level: l.n, region: l.r }); g.add(m); return m; };
+    const part = (geo, kind, key, info) => { const m = add(geo, kind, key, info, { level: l.n, region: l.r }); if (m) g.add(m); return m; };
     const S = [1, -1]; const sd = s => s > 0 ? 'L' : 'R';
     const h = fr.h, widen = md('widen', l.n, 1), W = l.W * widen, D = fr.Dw, w = fr.w;
     const dA = fr.thAbove ?? 0.6, dB = fr.thBelow ?? 0.6;
@@ -495,7 +498,22 @@ function buildSpine(mods = {}) {
       part(rod(v(s * px, py, -D / 2 + 0.35), v(s * px, py, zP), l.pw / 2 + 0.08, { f: (l.pw / 2 + 0.08) / (l.ph / 2), side: v(1, 0, 0) }), 'bone', `${l.n}.ped.${side}`, 'pedicle');
       // lâmina alta (sobreposta como telha)
       const lamA = v(s * (px - 0.1), -0.12 * h - 0.2, zP - 0.35), lamB = v(s * 0.07, -0.26 * h - 0.3, -D / 2 - l.ca - 0.35);
-      part(rod(lamA, lamB, 1.05, { f: 0.3 }), 'bone', `${l.n}.lam.${side}`, 'lamina');
+      const lam = rod(lamA, lamB, 1.05, { f: 0.3 }), lc = (mods.lamCut || {})[l.n + '.' + side];
+      // laminectomia ou laminotomia ({ 'L4.L': { x, y0, y1 } }): fica a parte com |x| >= x e y entre y0 e y1 (quadro da vértebra);
+      // o que passa é achatado no plano do corte, a peça continua fechada. Âncora no meio da face cortada
+      if (lc) {
+        const a = lam.attributes.position, c = v(0, 0, 0); let nc = 0;
+        for (let i = 0; i < a.count; i++) {
+          const x0 = a.getX(i), y0 = a.getY(i); let x = x0, y = y0;
+          if (lc.x !== undefined && s * x < lc.x) x = s * lc.x;
+          if (lc.y0 !== undefined && y < lc.y0) y = lc.y0;
+          if (lc.y1 !== undefined && y > lc.y1) y = lc.y1;
+          if (x !== x0 || y !== y0) { a.setXY(i, x, y); c.add(v(x, y, a.getZ(i))); nc++; }
+        }
+        lam.computeVertexNormals();
+        if (nc) anchors.set(`lamcut.${l.n}.${side}`, toW(F[l.n], ...c.divideScalar(nc).toArray()));
+      }
+      part(lam, 'bone', `${l.n}.lam.${side}`, 'lamina');
       // processo transverso
       const tl = [1.8, 2.15, 2.45, 2.15, 1.75][k - 1];
       const tpA = v(s * (px + 0.05), py, zP + 0.3), tpB = v(s * (px + tl), py - 0.05, zP + 0.2 + (k === 5 ? 0.2 : 0));
@@ -909,9 +927,11 @@ function buildSpine(mods = {}) {
   // supraespinhoso (C7 ao sacro) e nucal
   {
     const tips = [];
-    for (let i = 6; i < 24; i++) { const n = LEVELS[i].n, P = VP[n]; tips.push(toW(F[n], 0, P.spTip.y, P.spTip.z - P.spR * 0.75)); }
+    for (let i = 6; i < 24; i++) { const n = LEVELS[i].n, P = VP[n]; tips.push(RM.has(n + '.sp') ? null : toW(F[n], 0, P.spTip.y, P.spTip.z - P.spR * 0.75)); }
     tips.push(toW(SB[1], 0, 0.3, -3.1));
-    add(tube(tips, () => 0.17, { N: 8, density: 1.6 }), mods.ossify ? 'osteo' : 'lig', 'SSL', 'SSL', { level: null, region: 'L' });
+    // espinhoso retirado: o supraespinhoso sai junto, e sobra um trecho de cada lado
+    const runs = [[]]; tips.forEach(t => t ? runs[runs.length - 1].push(t) : runs.push([]));
+    runs.filter(r => r.length > 1).forEach(r => add(tube(r, () => 0.17, { N: 8, density: 1.6 }), mods.ossify ? 'osteo' : 'lig', 'SSL', 'SSL', { level: null, region: 'L' }));
     anchors.set('SSL', toW(F.L2, 0, VP.L2.spTip.y, VP.L2.spTip.z - 0.8));
     const att = [toW(F.C1, 0, -0.05, -3.0)]; for (let i = 1; i <= 5; i++) { const n = LEVELS[i].n, P = VP[n]; att.push(toW(F[n], 0, P.spTip.y, P.spTip.z - 0.2)); }
     const c7 = tips[0], eop = anchors.get('EOP');
@@ -984,23 +1004,60 @@ function buildSpine(mods = {}) {
   // (as raízes que descem por ele chegam junto, para não ficarem fora do saco)
   const duraClose = u => 1 - sm(KI.S2 + 0.1 - (mods.sacralCanal ? 1.9 : 1.0), KI.S2 + 0.1, u) * 0.9;
   // dura
+  // seção interna do saco dural em u: centro e meios eixos (o mesmo cálculo da dura, usado pelo injetado no líquor)
+  const duraSec = u => {
+    const s = spineAt(u), pf = pinch(u, 'dura'), close = duraClose(u);
+    return { s, c: s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q)), rx: s.cw / 2 * 0.8 * close * (0.4 + 0.6 * pf), rz: s.ca / 2 * 0.86 * close * pf };
+  };
   {
     const uEnd = KI.S2 + 0.1; const rr = [];
+    // durotomia ({ at: 'L1-L2', len, gap }): fenda posterior na linha média, mais aberta no meio, com as bordas afastadas para fora;
+    // a dura vira folha aberta (anéis sem fechar, costura atrás). gap: meia abertura em radianos no meio da fenda
+    const dt = mods.durotomy, N = dt ? 21 : 20, G = dt ? dt.gap || 0.9 : 0;
+    const op = u => dt ? Math.max(0, 1 - ((u - KI[dt.at]) / (dt.len || 1)) ** 2) : 0;
+    const ang = (k, g) => dt ? 1.5 * Math.PI + G * g + (2 * Math.PI - 2 * G * g) * k / (N - 1) : 2 * Math.PI * k / N;
     for (let u = 0; u <= uEnd + 1e-6; u += 0.15) {
-      const s = spineAt(u); const pf = pinch(u, 'dura');
-      let rx = s.cw / 2 * 0.8, rz = s.ca / 2 * 0.86;
-      const close = duraClose(u);
-      rx *= close * (0.4 + 0.6 * pf); rz *= close * pf;
-      const r = []; const c = s.p.clone().add(v(0, 0, s.zc + (1 - pf) * 0.25).applyQuaternion(s.q));
-      for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; r.push(c.clone().add(v(Math.cos(t) * rx, 0, Math.sin(t) * rz).applyQuaternion(s.q))); }
+      const { s, c, rx, rz } = duraSec(u), g = op(u), r = [];
+      for (let k = 0; k < N; k++) {
+        const t = ang(k, g), e = g * Math.max(Math.exp(-(((k / (N - 1)) / 0.12) ** 2)), Math.exp(-(((1 - k / (N - 1)) / 0.12) ** 2))), f = 1 + 0.55 * e;
+        r.push(c.clone().add(v(Math.cos(t) * rx * f, 0, Math.sin(t) * rz * f - 0.35 * e).applyQuaternion(s.q)));
+      }
       rr.push(r);
     }
-    const s0 = spineAt(0); const top = []; for (let k = 0; k < 20; k++) { const t = 2 * Math.PI * k / 20; top.push(SP(0, 1.5 * Math.cos(t), 0.6, -1.25 + 1.7 * Math.sin(t))); }
+    const s0 = spineAt(0); const top = []; for (let k = 0; k < N; k++) { const t = ang(k, 0); top.push(SP(0, 1.5 * Math.cos(t), 0.6, -1.25 + 1.7 * Math.sin(t))); }
     rr.unshift(top);
-    add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 }); // bainha aberta em cima, onde entra no crânio
+    if (dt) {
+      // folha: a mesma malha do loft sem ligar a última coluna à primeira (casca, como a dura normal)
+      const pos = [], idx = [];
+      rr.forEach(r => r.forEach(p => pos.push(p.x, p.y, p.z)));
+      for (let i = 0; i < rr.length - 1; i++) for (let k = 0; k < N - 1; k++) { const a = i * N + k; idx.push(a, a + 1, a + N, a + 1, a + N + 1, a + N); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      add(g, 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 });
+      const { s, c, rx, rz } = duraSec(KI[dt.at]);
+      anchors.set('durotomy', c.clone().add(v(Math.cos(1.5 * Math.PI + G) * rx * 1.5, 0, Math.sin(1.5 * Math.PI + G) * rz * 1.5 - 0.35).applyQuaternion(s.q)));
+    } else add(loft(rr, false, true), 'dura', 'dura', 'dura', { level: null, region: null, shell: 1 }); // bainha aberta em cima, onde entra no crânio
+    // superfície posterior da dura em cada vértebra e disco lombar (rótulo do saco exposto numa janela óssea)
+    for (let u = KI.T12; u <= KI['L5-S1'] + 1e-6; u += 1) { const { s, c, rx, rz } = duraSec(u); anchors.set('dura.' + KF[u].name, c.clone().add(v(0, 0, -rz * 0.9).applyQuaternion(s.q))); [1, -1].forEach(sg => anchors.set(`dura.${KF[u].name}.${sg > 0 ? 'L' : 'R'}`, c.clone().add(v(sg * rx * 0.6, 0, -rz * 0.72).applyQuaternion(s.q)))); }
     anchors.set('dura', SP('L3', LV.L3.cw / 2 * 0.8, 0, -LV.L3.D / 2 - LV.L3.ca / 2));
     anchors.set('duraEnd', SP(uEnd - 0.4, 0, 0, spineAt(uEnd - 0.4).zc));
     anchors.set('cauda', SP('L3-L4', 0, 0, spineAt(KI['L3-L4']).zc - 0.1));
+  }
+  // massa intradural ({ at, x, y, z, r: [rx, ry, rz], dir }): x, y, z a partir do centro do saco; as raízes e o filamento
+  // que caem dentro dela (com folga) são empurrados na direção dir até a superfície
+  let idPush = p => p;
+  if (mods.intradural) {
+    const o = mods.intradural, { s, c } = duraSec(KI[o.at]), C = c.clone().add(v(o.x || 0, o.y || 0, o.z || 0).applyQuaternion(s.q)), qi = s.q.clone().invert();
+    const R = v(...o.r), Rm = R.clone().addScalar(0.18), dir = v(...(o.dir || [-1, 0, 0.6])).normalize(), Q = (d, t) => d.clone().addScaledVector(dir, t).divide(Rm).lengthSq();
+    add(ellip(C, R.x, R.y, R.z, 24, s.q), 'tumor', 'schwannoma', 'schwannoma', { level: o.at });
+    anchors.set('schwannoma', C.clone());
+    let best = 0;
+    idPush = p => {
+      const d = p.clone().sub(C).applyQuaternion(qi); if (Q(d, 0) >= 1) return p;
+      let lo = 0, hi = 4; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (Q(d, m) < 1) lo = m; else hi = m; }
+      const out = C.clone().add(d.addScaledVector(dir, hi).applyQuaternion(s.q));
+      if (hi > best) { best = hi; anchors.set('roots.pushed', out.clone()); }
+      return out;
+    };
   }
   // raízes nervosas
   const NERVES = [];
@@ -1049,7 +1106,7 @@ function buildSpine(mods = {}) {
       pts.push(cordSurf(u0, s * 0.92, 0.1));
       if (nv.reg === 'L' || nv.reg === 'S') {
         const rk = nv.rank;
-        for (let u = u0 + 0.8; u < uExit - 0.7; u += 0.5) {
+        for (let u = u0 + 0.8; u < uExit - 0.7; u += mods.intradural ? 0.25 : 0.5) {
           const s_ = spineAt(u); const ramp = sm(uExit - 3.0, uExit - 0.7, u);
           const pf = 0.35 + 0.65 * pinch(u, 'dura');
           const rc = mods.sacralCanal ? Math.max(0.5, duraClose(u)) : 1, xm = s_.cw / 2 * (0.6 - 0.045 * rk) * pf * rc, zm = -s_.ca / 2 * (0.05 + 0.045 * rk) * pf * rc;
@@ -1060,6 +1117,7 @@ function buildSpine(mods = {}) {
         const s_ = spineAt((u0 + uExit) / 2); pts.push(s_.p.clone().add(v(s * s_.cw / 2 * 0.74, 0, s_.zc + 0.05).applyQuaternion(s_.q)));
       }
       pts.push(fl, e1, e2);
+      if (mods.intradural) pts.forEach((p, i) => pts[i] = idPush(p));
       const r = nv.reg === 'C' ? 0.15 : nv.reg === 'T' ? 0.1 : nv.reg === 'L' ? 0.17 + 0.015 * nv.rank : n === 'S1' ? 0.2 : n === 'S2' ? 0.15 : n === 'Co1' ? 0.05 : 0.1 - 0.015 * (+n.slice(1) - 3);
       const rIn = Math.min(r, nv.reg === 'C' ? 0.08 : nv.reg === 'T' ? 0.05 : 0.065);
       let Ltot = 0, Lf = 0; for (let i = 1; i < pts.length; i++) { const dl = pts[i].distanceTo(pts[i - 1]); Ltot += dl; if (i <= pts.length - 3) Lf += dl; }
@@ -1081,7 +1139,7 @@ function buildSpine(mods = {}) {
     const pts = [SP(uConus, 0, 0, spineAt(uConus).zc)];
     for (let u = uConus + 1; u < KI.S2; u += 1.5) pts.push(SP(u, 0, 0, spineAt(u).zc - 0.15));
     pts.push(toW(SB[4], 0, 0, -0.9), toW(SB[5], 0, -0.4, -0.6), F.Co1.p.clone().add(v(0, 0, -0.5).applyQuaternion(F.Co1.q)));
-    add(tube(pts, () => 0.045, { N: 6 }), 'cord', 'filum', 'filum', { level: null });
+    add(tube(pts.map(idPush), () => 0.045, { N: 6 }), 'cord', 'filum', 'filum', { level: null });
     anchors.set('filum', SP(KI.S1, 0, 0, spineAt(KI.S1).zc - 0.15));
   }
 
@@ -1245,7 +1303,7 @@ function buildSpine(mods = {}) {
   const ptOf = a => a instanceof V3 ? a.clone() : typeof a === 'string' ? anchors.get(a).clone() : toW(F[a[0]] || discKF[a[0]], a[1], a[2], a[3]);
   // rotação do quadro de um ponto ou nome de quadro (para orientar gotas de contraste)
   const qOf = a => { const n = Array.isArray(a) ? a[0] : a, fr = typeof n === 'string' && (F[n] || discKF[n]); return fr ? fr.q : null; };
-  const GAUGE = { 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
+  const GAUGE = { 25: 0.026, 22: 0.036, 20: 0.045, 18: 0.064, 17: 0.074, 11: 0.15 }; // raio externo (cm) por calibre
   // agulha da pele (from) até a ponta (to), ou to + via (um ponto do trajeto) + len; ponta na cor de destaque, canhão do lado da pele
   // r: raio próprio (cânula de endoscopia); tipR/tipL: ponta romba e curta em vez do bisel fino
   const needle = o => {
@@ -1447,10 +1505,11 @@ function buildSpine(mods = {}) {
   }
 
   // instrumento flexível ou curvo (epiduroscópio, sonda de RF resfriada): tubo pelo trajeto, último trecho na cor da ponta e cateter opcional saindo dela
+  // kind: material do corpo (cateter de plástico na cor da ponta)
   const scope = o => {
     const pts = o.path.map(ptOf), r = o.r || 0.12, k = o.key || 'scope', ex = { level: o.level || null }, n = pts.length;
     const end = pts[n - 1], d = new V3().subVectors(end, pts[n - 2]).normalize(), neck = end.clone().addScaledVector(d, -Math.max(0.25, 3 * r));
-    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), 'metal', k, o.info || 'scope', ex);
+    add(tube(pts.slice(0, n - 1).concat([neck]), () => r, { N: 12 }), o.kind || 'metal', k, o.info || 'scope', ex);
     add(rod(neck, end, r, { r2: r * 0.8, seg: 12 }), 'needleTip', k, o.info || 'scope', ex);
     anchors.set(k, end.clone()); anchors.set(k + '.meio', pts[Math.floor(n / 2)].clone());
     if (o.cath) { const ce = end.clone().addScaledVector(d, o.cath); add(rod(end.clone().addScaledVector(d, -0.05), ce, 0.035, { seg: 8 }), 'needleTip', k + '.cath', 'catheter', ex); anchors.set(k + '.cath', ce); }
@@ -1459,7 +1518,22 @@ function buildSpine(mods = {}) {
   (mods.needles || []).forEach(needle);
   LBN.forEach(needle);
   // contraste: 'root' ('L4.L', na ponta, na bainha da raiz e no epidural anterior); 'at' + r (gota, raio ou [rx, ry, rz] no quadro do ponto);
-  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação)
+  // 'path' + r (faixa pelo trajeto); 'epi' ([nível, nível]: lâmina fina no epidural posterior, logo atrás da dura); 'sij' ('R' e faixa de y: dentro da articulação);
+  // 'csf' ([nível, nível]: nuvem no líquor, fina no ponto da injeção e enchendo o saco dural embaixo, onde a solução pesada se junta).
+  // Na gota: foam (n bolhas soltas dentro dela), lumpy (borda irregular); kind e info trocam o material e o cartão (gás, esclerosante, fibrose, queimado)
+  // bolinhas pseudoaleatórias (sempre as mesmas) dentro do elipsoide at, r, q
+  const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const foam = (at, r, q, n) => mergeGeoms(Array.from({ length: n }, (_, i) => {
+    const b = (r[3] || 0.07) + ((r[4] || 0.16) - (r[3] || 0.07)) * rnd(4 * i), u = rnd(4 * i + 1) * 2 - 1, ph = rnd(4 * i + 2) * 2 * Math.PI, rr = Math.cbrt(rnd(4 * i + 3));
+    const p = v(Math.sqrt(1 - u * u) * Math.cos(ph) * rr * Math.max(0.01, r[0] - b), u * rr * Math.max(0.01, r[1] - b), Math.sqrt(1 - u * u) * Math.sin(ph) * rr * Math.max(0.01, r[2] - b));
+    if (q) p.applyQuaternion(q);
+    return ellip(p.add(at), b, b, b, 10);
+  }));
+  const blob = (at, r, q, amp) => {
+    const g = new THREE.SphereGeometry(1, 28, 18), a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i), k = 1 + amp * (Math.sin(5 * x + 1.3) * Math.sin(4 * y + 0.7) * Math.sin(4.5 * z + 2.1) + 0.5 * Math.sin(9 * x + 6 * z)); a.setXYZ(i, x * k * r[0], y * k * r[1], z * k * r[2]); }
+    g.applyMatrix4(new THREE.Matrix4().compose(at, q || new THREE.Quaternion(), v(1, 1, 1))); g.computeVertexNormals(); return g;
+  };
   (mods.contrast || []).forEach(c => {
     const k = c.key || 'contrast';
     if (c.root) {
@@ -1492,11 +1566,21 @@ function buildSpine(mods = {}) {
       });
       g = loft(rings, true, true, 0, 0, true);
       at = rings[Math.floor(rings.length / 2)][3].clone().lerp(rings[Math.floor(rings.length / 2)][10], 0.5);
+    } else if (c.csf) {
+      // seção do saco dural encolhida: 25% no ponto da injeção, 85% embaixo; borda ondulada de nuvem; fecha nas pontas
+      const u0 = KI[c.csf[0]], u1 = KI[c.csf[1]], rings = [];
+      for (let u = u0; u <= u1 + 1e-6; u += 0.12) {
+        const t = (u - u0) / (u1 - u0), { s, c: cc, rx, rz } = duraSec(u), f = (0.25 + 0.6 * sm(0, 0.65, t)) * Math.min(1, 0.15 + (1 - t) * 12), ring = [];
+        for (let i = 0; i < 16; i++) { const th = 2 * Math.PI * i / 16, w = f * (1 + 0.1 * Math.sin(3 * th + 7 * t) * Math.sin(11 * t + 1)); ring.push(cc.clone().add(v(Math.cos(th) * rx * w, 0, Math.sin(th) * rz * w).applyQuaternion(s.q))); }
+        rings.push(ring);
+      }
+      g = loft(rings, true, true);
+      at = duraSec(u0 + (u1 - u0) * 0.7).c;
     } else {
-      at = ptOf(c.at); const r = [].concat(c.r || 0.2);
-      g = ellip(at, r[0], r[1] ?? r[0], r[2] ?? r[0], 14, qOf(c.q || c.at));
+      at = ptOf(c.at); const r = [].concat(c.r || 0.2), rr = [r[0], r[1] ?? r[0], r[2] ?? r[0], r[3], r[4]], q = qOf(c.q || c.at);
+      g = c.foam ? foam(at, rr, q, c.foam) : c.lumpy ? blob(at, rr, q, c.lumpy) : ellip(at, rr[0], rr[1], rr[2], 14, q);
     }
-    add(g, 'contrast', k, 'contrast', { level: c.level || null });
+    add(g, c.kind || 'contrast', k, c.info || 'contrast', { level: c.level || null });
     anchors.set(k, at);
   });
   // radiofrequência do ramo medial ('L3.L'): agulha paralela ao nervo, com a ponta ao lado dele; lesão em volta da parte ativa
@@ -1548,6 +1632,29 @@ function buildSpine(mods = {}) {
     }
     add(mergeGeoms(ch), 'heat', 'channels', 'channel', { level: dn });
   }
+  // nervo basivertebral (['L4.L']): entra pelo forame basivertebral, no meio da parede posterior do corpo, e se ramifica no
+  // terminal, a 38% da profundidade a partir dela. Introdutor pelo pedículo do lado indicado até o terço posterior e cânula
+  // curva dali até o terminal, com a lesão de radiofrequência em volta
+  (mods.bvn || []).forEach(k => {
+    const [n, side] = k.split('.'), s = side === 'L' ? 1 : -1, f = F[n], l = LV[n], D = f.Dw, post = postMidZ('L', D), L = (x, y, z) => toW(f, x, y, z);
+    const T = v(0, 0, post + 0.38 * D), br = [tube([L(s * 0.55, -0.15, post - 0.5), L(s * 0.15, -0.05, post - 0.35), L(0.08, 0, post + 0.05), L(0.06, 0, post + 0.2 * D), toW(f, ...T.toArray())], () => 0.045, { N: 8 })];
+    [[0.8, 0.7, 0.3], [-0.8, 0.7, 0.3], [0.8, -0.7, 0.3], [-0.8, -0.7, 0.3], [0.15, 0.5, 0.85], [-0.15, -0.5, 0.85]].forEach(([x, y, z]) =>
+      br.push(tube([T, T.clone().add(v(x * 0.45, y * 0.35, z * 0.55)), T.clone().add(v(x, y, z))].map(p => toW(f, ...p.toArray())), () => 0.028, { N: 6 })));
+    add(mergeGeoms(br), 'mbranch', 'bvn.' + n, 'bvn', { level: n });
+    anchors.set('bvn.' + n, L(0.06, 0, post + 0.12 * D));
+    const a = (5 + 3 * +n.slice(1)) * deg, d = v(-s * Math.sin(a), 0, Math.cos(a)), c = v(s * l.px, 0.12 * f.h, (-D / 2 + 0.35 - D / 2 - l.pl) / 2), tip = c.clone().addScaledVector(d, (post + 0.3 - c.z) / d.z);
+    needle({ to: toW(f, ...tip.toArray()), via: toW(f, ...c.toArray()), g: 11, len: 8.5, key: 'intro.' + n, level: n, info: 'introducer' });
+    scope({ path: [tip, tip.clone().addScaledVector(d, 0.35), v(tip.x * 0.45, tip.y * 0.4, (tip.z + T.z) / 2 + 0.2), T].map(p => toW(f, ...p.toArray())), r: 0.06, key: 'probe.' + n, level: n, info: 'bvnProbe' });
+    add(ellip(toW(f, ...T.toArray()), 0.55, 0.42, 0.5, 16, f.q), 'rfLesion', 'bvnrf.' + n, 'rflesion', { level: n });
+    anchors.set('bvnrf.' + n, toW(f, ...T.toArray()));
+  });
+  // alteração de Modic (['L4-L5']): faixa de edema na medula óssea logo acima e logo abaixo do disco, junto às placas terminais
+  (mods.modic || []).forEach(dn => {
+    const [un, ln] = dn.split('-'); [[un, -1], [ln, 1]].forEach(([n, s]) => {
+      const f = F[n], l = LV[n]; add(ellip(toW(f, 0, s * (f.h / 2 - 0.28), 0.05), l.W * 0.4, 0.2, f.Dw * 0.38, 18, f.q), 'modic', 'modic.' + n, 'modic', { level: n });
+      anchors.set('modic.' + n, toW(f, l.W * 0.25, s * (f.h / 2 - 0.28), f.Dw * 0.2));
+    });
+  });
   // cimento ('L1'): massa irregular na metade anterior do corpo, abaixo da placa de cima já em cunha
   if (mods.cement) {
     const n = mods.cement, f = F[n], D = f.Dw, W = LV[n].W * md('widen', n, 1), z0 = 0.08 * D;
@@ -1559,7 +1666,12 @@ function buildSpine(mods = {}) {
     anchors.set('cement', toW(f, 0, yc, z0));
   }
   // cage em banana ({ at: 'L4-L5', side: 'L' }): arco na metade anterior do disco, de um lado ao outro, girado para o lado do acesso
-  if (mods.cage) {
+  // bloco ({ at, shape: 'block', grow }): enxerto estrutural no meio do espaço desbridado, entrando grow em cada corpo (placas retiradas)
+  if (mods.cage && mods.cage.shape === 'block') {
+    const kf = discKF[mods.cage.at], K = KF[KI[mods.cage.at]], ol = bodyOutline(K.reg, K.W * 0.55, K.D * 0.55, 32), h = kf.th / 2 + (mods.cage.grow || 0);
+    add(loft([[-h, 0.94], [-h + 0.1, 1], [h - 0.1, 1], [h, 0.94]].map(([y, s]) => ol.map(([x, z]) => toW(kf, x * s, y, 0.12 * K.D + z * s))), true, true), 'cage', 'cage', 'graft', { level: mods.cage.at });
+    anchors.set('cage', toW(kf, 0, 0, 0.12 * K.D + 0.25 * K.D));
+  } else if (mods.cage) {
     const kf = discKF[mods.cage.at], rot = (mods.cage.side === 'R' ? 15 : -15) * deg, pts = [];
     for (let a = -55; a <= 55; a += 11) { const t = a * deg, x = 1.5 * Math.sin(t), z = -0.55 + 1.5 * Math.cos(t); pts.push(toW(kf, x * Math.cos(rot) - z * Math.sin(rot), 0, x * Math.sin(rot) + z * Math.cos(rot))); }
     const up = v(0, 1, 0).applyQuaternion(kf.q);
@@ -1580,7 +1692,9 @@ function buildSpine(mods = {}) {
     if (hs.length < 2) return;
     hs.sort((a, b) => a[0] - b[0]);
     const a = hs[0][1], b = hs[hs.length - 1][1], u = new V3().subVectors(b, a).normalize();
-    add(rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
+    // mais de dois parafusos: haste moldada passando por todas as cabeças (lordose); com dois, reta
+    const P = hs.map(h => h[1]), ua = new V3().subVectors(P[0], P[1]).normalize(), ub = new V3().subVectors(P[P.length - 1], P[P.length - 2]).normalize();
+    add(hs.length > 2 ? tube([P[0].clone().addScaledVector(ua, 0.5), ...P, P[P.length - 1].clone().addScaledVector(ub, 0.5)], () => 0.28, { N: 14 }) : rod(a.clone().addScaledVector(u, -0.5), b.clone().addScaledVector(u, 0.5), 0.28), 'metal', 'rod.' + side, 'rod', { level: null });
     anchors.set('rod.' + side, a.clone().lerp(b, 0.5));
   });
   // artroplastia discal cervical ('C5-C6'): placa metálica com quilha encostada em cada placa terminal (quilha dentro do corpo)

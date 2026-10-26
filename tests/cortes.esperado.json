@@ -153,6 +153,12 @@
   ]
  },
  {
+  "l": "epicath ax L2",
+  "lost": [
+   "tuohy"
+  ]
+ },
+ {
   "l": "rfface sag",
   "lost": []
  },
@@ -182,6 +188,14 @@
   ]
  },
  {
+  "l": "pldd sag",
+  "lost": []
+ },
+ {
+  "l": "ozone sag",
+  "lost": []
+ },
+ {
   "l": "endodisc sag",
   "lost": []
  },
@@ -198,6 +212,22 @@
   ]
  },
  {
+  "l": "ube sag",
+  "lost": []
+ },
+ {
+  "l": "racz sag",
+  "lost": []
+ },
+ {
+  "l": "racz ax L5-S1",
+  "lost": [
+   "racz",
+   "needle.caudal",
+   "contrast.caudal"
+  ]
+ },
+ {
   "l": "vplasty sag [cfg]",
   "lost": [
    "trocar.L"
@@ -205,6 +235,24 @@
  },
  {
   "l": "biopsy sag",
+  "lost": []
+ },
+ {
+  "l": "bvn sag",
+  "lost": []
+ },
+ {
+  "l": "bvn ax L4",
+  "lost": [
+   "intro.L5",
+   "probe.L5",
+   "bvnrf.L5",
+   "modic.L4",
+   "modic.L5"
+  ]
+ },
+ {
+  "l": "chemabl sag",
   "lost": []
  },
  {
@@ -221,6 +269,44 @@
    "screw.L5.L",
    "screw.L5.R"
   ]
+ },
+ {
+  "l": "debride sag",
+  "lost": [
+   "screw.L1.L",
+   "screw.L4.L",
+   "rod.L"
+  ]
+ },
+ {
+  "l": "debride ax L2-L3",
+  "lost": [
+   "screw.L4.L",
+   "screw.L4.R"
+  ]
+ },
+ {
+  "l": "osteot sag",
+  "lost": [
+   "screw.L1.L",
+   "screw.L2.L",
+   "screw.L4.L",
+   "screw.L5.L",
+   "rod.L"
+  ]
+ },
+ {
+  "l": "osteot ax L3",
+  "lost": [
+   "screw.L4.L",
+   "screw.L4.R",
+   "screw.L5.L",
+   "screw.L5.R"
+  ]
+ },
+ {
+  "l": "tumres sag",
+  "lost": []
  },
  {
   "l": "step28 sag",
