@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "build.py": {
-    "mtime": 1793126525.1056948,
-    "seen": 1793127989.7580469,
-    "ast_hash": "10308ec83669f2bef0bac3de1445a12a",
+    "mtime": 1793139202.3368304,
+    "seen": 1793139778.4764235,
+    "ast_hash": "68962451906491c5e5a98bb6eb8c57cb",
     "semantic_hash": ""
   },
   "package.json": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/home.html": {
-    "mtime": 1793123005.487274,
-    "seen": 1793123647.4604402,
-    "ast_hash": "b6682b1b671d69a9f388007fdc11b7ed",
+    "mtime": 1793139220.3950956,
+    "seen": 1793139778.4765463,
+    "ast_hash": "4a42f47c78470df7bde1f38c40cece01",
     "semantic_hash": ""
   },
   "src/coluna-lateral.webp": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "functions/_middleware.js": {
-    "mtime": 1793128801.1354494,
-    "seen": 1793129387.9467227,
-    "ast_hash": "5ea6c3ebd14552e0b3c966a1bc84bdc0",
+    "mtime": 1793139220.3955262,
+    "seen": 1793139778.4764273,
+    "ast_hash": "f50fda109c865284c9349aceec5366d7",
     "semantic_hash": ""
   },
   "src/auth.js": {
@@ -168,27 +168,33 @@
     "semantic_hash": ""
   },
   "src/entrar.js": {
-    "mtime": 1793128002.9246302,
-    "seen": 1793128468.0953517,
-    "ast_hash": "e51f2449ac2ac5b247dd679e5431bbaf",
+    "mtime": 1793139220.39458,
+    "seen": 1793139778.476498,
+    "ast_hash": "cfc655d7f82ae5f8f53983099fb12f56",
     "semantic_hash": ""
   },
   "tests/middleware.mjs": {
-    "mtime": 1793128800.0194492,
-    "seen": 1793129387.9467483,
-    "ast_hash": "b887c6a4e187ad613d06ba44a5f3213b",
+    "mtime": 1793139202.3346057,
+    "seen": 1793139778.4765313,
+    "ast_hash": "5073839bc08b22792bfe65f4399cb550",
     "semantic_hash": ""
   },
   "src/entrar.html": {
-    "mtime": 1793128871.1616535,
-    "seen": 1793129387.9467595,
-    "ast_hash": "56df87bdff0dc3d71c7dbbd9d48eb5b9",
+    "mtime": 1793139220.394066,
+    "seen": 1793139778.4765434,
+    "ast_hash": "27fb2144d0400f9ba74d603f0b6ad8b1",
     "semantic_hash": ""
   },
   "src/privacidade.html": {
-    "mtime": 1793126695.3833358,
-    "seen": 1793127989.758093,
-    "ast_hash": "4e662309df77913a3ba6ac9bea4df38b",
+    "mtime": 1793139220.395337,
+    "seen": 1793139778.476548,
+    "ast_hash": "84b5ec51b09be320caa2931e86beb235",
+    "semantic_hash": ""
+  },
+  "src/coluna-deitada.webp": {
+    "mtime": 1793139197.7038388,
+    "seen": 1793139778.4765496,
+    "ast_hash": "ede8b04baaaf833689b21cfe8b97ce5c",
     "semantic_hash": ""
   }
 }

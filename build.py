@@ -35,5 +35,5 @@ assert '—' not in entrar and '–' not in entrar, 'travessão encontrado no lo
 (root / 'dist' / 'entrar.html').write_text(entrar, encoding='utf-8')
 # política de privacidade, pública (o Google exige a URL para publicar o app OAuth)
 (root / 'dist' / 'privacidade.html').write_text(doc + (src / 'privacidade.html').read_text(encoding='utf-8'), encoding='utf-8')
-for f in ('coluna-lateral.webp', 'icone-32.png', 'icone-180.png'): (root / 'dist' / f).write_bytes((src / f).read_bytes())
+for f in ('coluna-lateral.webp', 'coluna-deitada.webp', 'icone-32.png', 'icone-180.png'): (root / 'dist' / f).write_bytes((src / f).read_bytes())
 print(len(home), 'bytes (home)')

@@ -2,7 +2,7 @@
 // O token de acesso chega no cookie sb (src/auth.js o mantém em dia, inclusive na renovação) ou no Authorization: Bearer.
 // Assinatura ES256 conferida com a JWKS pública do projeto (sem segredo na Cloudflare), mais validade, audiência e emissor.
 const SUPABASE = 'https://ugvqhjyeekyufxuyvozc.supabase.co', EMISSOR = SUPABASE + '/auth/v1';
-const ABERTO = new Set(['/entrar', '/entrar.html', '/privacidade', '/privacidade.html', '/icone-32.png', '/icone-180.png', '/coluna-lateral.webp']);
+const ABERTO = new Set(['/entrar', '/entrar.html', '/privacidade', '/privacidade.html', '/icone-32.png', '/icone-180.png', '/coluna-deitada.webp']);
 
 let jwks = null, lidaEm = 0;
 async function chaves(forcar) {
@@ -39,7 +39,7 @@ export async function verificar(token) {
 // JSON como o de /api/pergunta, para o tira-dúvidas mostrar a mensagem
 const json = (obj, status) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 const INDISPONIVEL = 'Login indisponível agora. Tente de novo em alguns minutos.';
-const pagina = t => new Response(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aulas de coluna</title><p style="font:18px/1.5 system-ui,sans-serif;color:#18221F;max-width:28em;margin:20vh auto 0;padding:0 16px">${t}</p></html>`, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } });
+const pagina = t => new Response(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atlas da Coluna</title><p style="font:18px/1.5 system-ui,sans-serif;color:#18221F;max-width:28em;margin:20vh auto 0;padding:0 16px">${t}</p></html>`, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } });
 
 export async function onRequest({ request, next }) {
   const url = new URL(request.url);

@@ -32,7 +32,7 @@
           : 'Não foi possível entrar. Código: ' + (error.code || error.status || 'desconhecido') + '.');
       }
     });
-    google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'pt-BR' });
+    google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'pt-BR', width: 240 });
   };
   if (!erro.hidden) return; // com erro na URL fica aqui, mesmo que reste uma sessão antiga
   SB.auth.onAuthStateChange((ev, s) => {

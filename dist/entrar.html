@@ -4,159 +4,81 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="icon" type="image/png" sizes="32x32" href="/icone-32.png">
 <link rel="apple-touch-icon" href="/icone-180.png">
-<title>Entrar | Aulas de coluna</title>
-<meta name="description" content="Anatomia, doenças e procedimentos da coluna vertebral num modelo 3D interativo. Acesso com o e-mail corporativo das empresas do grupo.">
-<meta name="theme-color" content="#00276f">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<title>Entrar | Atlas da Coluna</title>
 <style>
-/* Login: painel azul da Renova com o modelo da aula, e à direita o papel claro do hub. Página pública, ver functions/_middleware.js. */
+/* Login: opção B do design system Renova (branco, cinzas de texto, cantos retos, sem sombra). Página pública, ver functions/_middleware.js. */
 :root {
-  --navy: #00276f;
-  --navy-deep: #001b4f;
-  --on-navy-2: #b8c4e0;
-  --paper: #EEF1F0;
-  --panel: #FFFFFF;
-  --ink: #18221F;
-  --ink-2: #3F4B49;
-  --ink-3: #5F6B68;
-  --line: #D6DEDB;
-  --path: #B5432B;
-  --f-title: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --f-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --surface: #FFFFFF;
+  --carbon: #171A20;
+  --graphite: #393C41;
+  --pewter: #5C5E62;
+  --f: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   color-scheme: light;
 }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
-[hidden] { display: none !important; }
-.pagina { display: grid; grid-template-columns: minmax(340px, 40%) minmax(0, 1fr); min-height: 100svh; }
-
-/* painel da marca: logo, modelo com as regiões e legenda */
-.marca { position: sticky; top: 0; height: 100svh; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr; padding: 40px 48px 32px; color: var(--on-navy-2); background: radial-gradient(110% 70% at 62% 48%, #0b3b8f 0%, var(--navy) 46%, var(--navy-deep) 100%); overflow: hidden; }
-.logo { display: block; width: 176px; height: auto; }
-.placa { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding-left: 96px; }
-.modelo { position: relative; height: clamp(300px, calc(100svh - 230px), 760px); aspect-ratio: 244 / 1240; }
-.modelo img { display: block; width: 100%; height: 100%; }
-.regioes { list-style: none; margin: 0; padding: 0; font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .12em; text-transform: uppercase; }
-/* --a e --b: início e fim de cada região na altura da imagem, medidos pela cor das vértebras */
-.regioes li { position: absolute; right: calc(100% + 24px); top: var(--a); height: calc(var(--b) - var(--a) - 1.2%); padding-right: 12px; border-right: 1px solid rgba(184, 196, 224, .45); }
-.placa figcaption { margin-left: -96px; font-size: 13px; }
-
-/* conteúdo */
-main { display: grid; align-content: center; padding: 56px clamp(32px, 6vw, 104px); }
-.conteudo { max-width: 540px; }
-.sobre, .temas h2 { margin: 0 0 14px; font-size: 13px; font-weight: 700; line-height: 1.2; letter-spacing: .14em; text-transform: uppercase; color: var(--navy); }
-h1 { margin: 0; font-family: var(--f-title); font-size: 54px; font-weight: 600; line-height: 1.04; letter-spacing: -0.025em; text-wrap: balance; }
-.lede { margin: 18px 0 0; font-size: 20px; line-height: 1.5; color: var(--ink-2); }
-.acesso { margin-top: 36px; padding: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px rgba(24, 34, 31, .04), 0 16px 36px -20px rgba(0, 39, 111, .28); }
-.acesso h2 { margin: 0; font-family: var(--f-title); font-size: 20px; font-weight: 600; line-height: 1.25; }
-.nota { margin: 6px 0 0; font-size: 16px; color: var(--ink-2); text-wrap: pretty; }
-.gbtn { margin-top: 20px; min-height: 44px; }
+body { margin: 0; min-height: 100svh; display: flex; flex-direction: column; background: var(--surface); color: var(--carbon); font-family: var(--f); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--carbon); outline-offset: 3px; }
+header { height: 56px; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; }
+.logo { height: 22px; width: auto; display: block; }
+header a { font-size: 14px; font-weight: 500; color: var(--pewter); text-decoration: none; padding: 12px 16px; border-radius: 4px; transition: color .33s; }
+header a:hover { color: var(--carbon); }
+main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 112px 16px 48px; text-align: center; }
+h1 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 500; }
+.lede { margin: 16px 0 0; font-size: 17px; line-height: 26px; color: var(--graphite); }
+.gbtn { margin-top: 40px; min-height: 44px; display: flex; justify-content: center; }
 .gbtn:empty { display: none; }
-.gbtn:not(:empty) + .btn { display: none; }
-.btn { margin-top: 20px; display: inline-flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 22px 0 6px; border: 0; border-radius: 8px; background: var(--navy); color: #fff; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
-.btn:hover { background: #0b3b8f; }
+.btn { margin-top: 40px; height: 44px; min-width: 240px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 12px; padding: 0 12px; background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 4px; font: 500 14px Arial, sans-serif; color: #3C4043; cursor: pointer; transition: background .33s; }
+.btn:hover { background: #F8F9FA; }
 .btn:disabled { opacity: .5; cursor: default; }
-.g { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 5px; background: #fff; }
-.g svg { width: 18px; height: 18px; }
-.erro { margin: 16px 0 0; padding: 10px 14px; border-left: 3px solid var(--path); border-radius: 0 6px 6px 0; background: #FCF1EE; color: #9A3A24; font-size: 15px; font-weight: 600; }
-.temas { margin-top: 44px; }
-.temas h2 { margin-bottom: 4px; color: var(--ink-3); }
-.temas ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 32px; }
-.temas li { padding: 16px 0 14px; border-top: 1px solid var(--line); }
-.temas h3 { margin: 0; font-family: var(--f-title); font-size: 16px; font-weight: 600; line-height: 1.3; }
-.temas p { margin: 4px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); text-wrap: pretty; }
-.breve h3 { color: var(--ink-2); }
-.selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #E4EAF5; color: var(--navy); font-family: var(--f-body); font-size: 12px; font-weight: 700; line-height: 1.5; }
-footer { margin-top: 24px; font-size: 15px; }
-footer a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); text-underline-offset: 3px; }
-footer a:hover { color: var(--navy); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .conteudo { animation: surge .5s cubic-bezier(.2, .7, .2, 1) both; }
-  .modelo { animation: surge .8s .1s cubic-bezier(.2, .7, .2, 1) both; }
-  .btn { transition: background-color .15s; }
-}
-@keyframes surge { from { opacity: 0; transform: translateY(10px); } }
-
-/* celular e tablet em pé: faixa azul só com o logo, sem o modelo (como o hub, que o esconde no celular) */
-@media (max-width: 800px) {
-  .pagina { display: block; }
-  .marca { position: static; height: auto; padding: 16px; background: var(--navy); }
-  .logo { width: 140px; }
-  .placa { display: none; }
-  main { display: block; padding: 36px 16px 24px; }
-  h1 { font-size: 38px; }
-  .lede { font-size: 18px; }
-  .acesso { margin-top: 28px; padding: 20px; }
-  .temas { margin-top: 36px; }
+.btn svg { width: 18px; height: 18px; }
+.btn span { flex: 1; text-align: center; }
+.gbtn:not(:empty) + .btn { display: none; }
+.nota { margin: 12px 0 0; font-size: 14px; line-height: 20px; color: var(--pewter); }
+.erro { margin: 16px 0 0; font-size: 14px; line-height: 20px; font-weight: 500; color: #B3261E; }
+[hidden] { display: none !important; }
+.coluna { margin-top: 56px; width: min(1120px, 100%); height: auto; display: block; }
+@media (max-width: 700px) {
+  header { padding: 0 16px; }
+  .logo { height: 18px; }
+  header a { padding: 12px 8px; }
+  main { padding-top: 96px; }
+  h1 { font-size: 28px; line-height: 34px; }
+  .lede { font-size: 16px; line-height: 24px; }
+  .btn { width: 100%; }
+  .coluna { margin-top: 72px; }
 }
 </style>
 
-<div class="pagina">
-  <aside class="marca">
-    <svg class="logo" viewBox="0 0 648 160" width="176" height="43" role="img" aria-label="Renova Medical">
-      <g fill="#ffffff">
-        <path d="M26.6 3H77.5C96 3 104 9.8 104 24.4C104 44.2 91.8 57.7 70.3 63.1L95.1 109.5H71.6L46.9 64.4L49.1 53.6C68.3 51.7 81.2 41 81.2 28.2C81.2 23.5 77.8 21.6 69.2 21.6H43.3L25.7 109.5H3.1Z"/>
-        <path d="M124.7 3H201L197.2 21.4H142.4L137.1 46.8H189.8L186 64.8H133.3L128 90.4H183.6L179.5 109.5H102.2Z"/>
-        <path d="M217.9 3H238.7L278.6 78.7L294.6 3H316L293.8 109.5H270.1L232.4 34.9L217 109.5H195.8Z"/>
-        <path fill-rule="evenodd" d="M386.5 2.9C353.8 2.9 330.5 20.3 321.9 54.3C312.7 91.1 323.9 109.7 365.1 109.7C400.3 109.7 421.7 91.4 430 53.5C437.8 17.8 425.8 2.9 386.5 2.9ZM381.8 21.2C405.3 21.2 412.6 31 407.1 55.3C401.5 80.6 388.7 91.5 366.8 91.5C345.4 91.5 338.1 82.7 344.7 55.5C350.6 31.3 362.8 21.2 381.8 21.2Z"/>
-        <path d="M446.6 3H471.3L487.5 82.2L537.7 3H563.7L492.6 109.5H468Z"/>
-        <path d="M597.4 3H620.1L645 109.5H622L616.2 81.8H579.2L590.1 63.3H611.6L603.7 25.7L550.5 109.5H526.1Z"/>
-      </g>
-      <g fill="#bfc0c2">
-        <path d="M166.1 133H170.7L173.4 150.9L186.2 133H191L185.7 156H181.6L185.5 138.8L173.1 156H170.1L167.3 138.6L163.4 156H159.7Z"/>
-        <path d="M227.2 133H242.8L242 136.5H230.4L228.9 142.5H240.2L239.4 145.9H228.1L226.6 152.6H238.4L237.6 156H221.8Z"/>
-        <path fill-rule="evenodd" d="M278.8 133H286.5C295.6 133 299.2 137.9 297.1 145.8C295.3 152.6 290.4 156 282.5 156H273.4ZM282 136.5L278.3 152.6H282.9C288.3 152.6 291.6 150 293 144.8C294.4 139.2 292.4 136.5 286.9 136.5Z"/>
-        <path d="M335.6 133H339.6L334.2 156H330.2Z"/>
-        <path d="M393.4 133.9L392.5 137.5C390.5 136.7 388.4 136.3 385.9 136.3C380 136.3 376.1 140.2 375.1 145.7C374.1 150.6 376.7 152.8 381.5 152.8C384 152.8 386.4 152.3 389 151.2L388.1 155.1C385.6 156 383.4 156.4 380.7 156.4C373.2 156.4 369.4 152.8 371.1 145C372.7 137.4 378.1 132.7 386.2 132.7C388.7 132.7 391.1 133.1 393.4 133.9Z"/>
-        <path fill-rule="evenodd" d="M438.6 133H442.1L446.1 156H442L441 150H431.1L427 156H422.8ZM438.9 138L433.3 146.6H440.5Z"/>
-        <path d="M486.3 133H490.3L485.7 152.5H496.7L495.9 156H480.9Z"/>
-      </g>
-    </svg>
-    <figure class="placa">
-      <div class="modelo">
-        <img src="/coluna-lateral.webp" width="244" height="1240" alt="Modelo 3D da coluna em vista lateral, do crânio ao cóccix, com as regiões cervical, torácica, lombar e sacral em cores diferentes.">
-        <ol class="regioes" aria-hidden="true">
-          <li style="--a: 5.2%; --b: 21.3%">Cervical</li>
-          <li style="--a: 21.3%; --b: 62%">Torácica</li>
-          <li style="--a: 62%; --b: 84.5%">Lombar</li>
-          <li style="--a: 84.5%; --b: 100%">Sacral</li>
-        </ol>
-      </div>
-      <figcaption>Modelo 3D usado nas aulas</figcaption>
-    </figure>
-  </aside>
-
-  <main>
-    <div class="conteudo">
-      <p class="sobre">Curso interno</p>
-      <h1>Aulas de coluna</h1>
-      <p class="lede">Anatomia, doenças e procedimentos da coluna vertebral, estudados num modelo 3D interativo.</p>
-
-      <section class="acesso" aria-labelledby="t-acesso">
-        <h2 id="t-acesso">Acesso</h2>
-        <p class="nota">Entre com a conta Google do seu e-mail corporativo. O acesso é só para e-mails das empresas do grupo.</p>
-        <div class="gbtn" id="gbtn"></div>
-        <button class="btn" id="google" type="button"><span class="g" aria-hidden="true"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>Entrar com Google</button>
-        <p class="erro" id="erro" role="alert" hidden></p>
-      </section>
-
-      <section class="temas" aria-labelledby="t-temas">
-        <h2 id="t-temas">No curso</h2>
-        <ul>
-          <li><h3>Anatomia</h3><p>Da vértebra típica à medula e aos vasos.</p></li>
-          <li><h3>Doenças</h3><p>No mesmo modelo, com cortes sagital e axial.</p></li>
-          <li><h3>Procedimentos</h3><p>Bloqueios, radiofrequência, endoscopia e cirurgia.</p></li>
-          <li class="breve"><h3>Leitura de ressonância</h3><p><span class="selo">Em breve</span></p></li>
-        </ul>
-      </section>
-
-      <footer><a href="/privacidade">Privacidade</a></footer>
-    </div>
-  </main>
-</div>
+<header>
+  <svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 0 648 160" role="img" aria-label="Renova Medical" shape-rendering="geometricPrecision">
+<g fill="#00276f">
+<path d="M26.6 3H77.5C96 3 104 9.8 104 24.4C104 44.2 91.8 57.7 70.3 63.1L95.1 109.5H71.6L46.9 64.4L49.1 53.6C68.3 51.7 81.2 41 81.2 28.2C81.2 23.5 77.8 21.6 69.2 21.6H43.3L25.7 109.5H3.1Z"/>
+<path d="M124.7 3H201L197.2 21.4H142.4L137.1 46.8H189.8L186 64.8H133.3L128 90.4H183.6L179.5 109.5H102.2Z"/>
+<path d="M217.9 3H238.7L278.6 78.7L294.6 3H316L293.8 109.5H270.1L232.4 34.9L217 109.5H195.8Z"/>
+<path fill-rule="evenodd" d="M386.5 2.9C353.8 2.9 330.5 20.3 321.9 54.3C312.7 91.1 323.9 109.7 365.1 109.7C400.3 109.7 421.7 91.4 430 53.5C437.8 17.8 425.8 2.9 386.5 2.9ZM381.8 21.2C405.3 21.2 412.6 31 407.1 55.3C401.5 80.6 388.7 91.5 366.8 91.5C345.4 91.5 338.1 82.7 344.7 55.5C350.6 31.3 362.8 21.2 381.8 21.2Z"/>
+<path d="M446.6 3H471.3L487.5 82.2L537.7 3H563.7L492.6 109.5H468Z"/>
+<path d="M597.4 3H620.1L645 109.5H622L616.2 81.8H579.2L590.1 63.3H611.6L603.7 25.7L550.5 109.5H526.1Z"/>
+</g>
+<g fill="#a6a6a6">
+<path d="M166.1 133H170.7L173.4 150.9L186.2 133H191L185.7 156H181.6L185.5 138.8L173.1 156H170.1L167.3 138.6L163.4 156H159.7Z"/>
+<path d="M227.2 133H242.8L242 136.5H230.4L228.9 142.5H240.2L239.4 145.9H228.1L226.6 152.6H238.4L237.6 156H221.8Z"/>
+<path fill-rule="evenodd" d="M278.8 133H286.5C295.6 133 299.2 137.9 297.1 145.8C295.3 152.6 290.4 156 282.5 156H273.4ZM282 136.5L278.3 152.6H282.9C288.3 152.6 291.6 150 293 144.8C294.4 139.2 292.4 136.5 286.9 136.5Z"/>
+<path d="M335.6 133H339.6L334.2 156H330.2Z"/>
+<path d="M393.4 133.9L392.5 137.5C390.5 136.7 388.4 136.3 385.9 136.3C380 136.3 376.1 140.2 375.1 145.7C374.1 150.6 376.7 152.8 381.5 152.8C384 152.8 386.4 152.3 389 151.2L388.1 155.1C385.6 156 383.4 156.4 380.7 156.4C373.2 156.4 369.4 152.8 371.1 145C372.7 137.4 378.1 132.7 386.2 132.7C388.7 132.7 391.1 133.1 393.4 133.9Z"/>
+<path fill-rule="evenodd" d="M438.6 133H442.1L446.1 156H442L441 150H431.1L427 156H422.8ZM438.9 138L433.3 146.6H440.5Z"/>
+<path d="M486.3 133H490.3L485.7 152.5H496.7L495.9 156H480.9Z"/>
+</g>
+</svg>
+  <a href="/privacidade">Privacidade</a>
+</header>
+<main>
+  <h1>Atlas da Coluna</h1>
+  <p class="lede">Anatomia, doenças e procedimentos estudados no mesmo modelo 3D.</p>
+  <div class="gbtn" id="gbtn"></div>
+  <button class="btn" id="google" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Fazer login com o Google</span></button>
+  <p class="nota">Acesso com o e-mail das empresas do grupo.</p>
+  <p class="erro" id="erro" role="alert" hidden></p>
+  <img class="coluna" src="/coluna-deitada.webp" width="1240" height="244" alt="Modelo 3D da coluna vertebral, deitada, do crânio ao cóccix.">
+</main>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>
@@ -213,7 +135,7 @@ try {
           : 'Não foi possível entrar. Código: ' + (error.code || error.status || 'desconhecido') + '.');
       }
     });
-    google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'pt-BR' });
+    google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'pt-BR', width: 240 });
   };
   if (!erro.hidden) return; // com erro na URL fica aqui, mesmo que reste uma sessão antiga
   SB.auth.onAuthStateChange((ev, s) => {
