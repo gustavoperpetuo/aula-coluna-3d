@@ -4169,8 +4169,10 @@ Object.assign(INFO, {
       } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
       out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
-    // voz (functions/api/transcrever.js): grava até 60 s e põe o texto no campo, sem enviar, para a pessoa revisar antes
-    if (window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // voz (functions/api/transcrever.js): grava até 60 s e põe o texto no campo, sem enviar, para a pessoa revisar antes.
+    // Captura o PCM direto do microfone (Web Audio); o caminho MediaRecorder + decodeAudioData chegava mudo ao servidor no Chrome do Mac
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       mic.hidden = false;
       mic.onclick = async () => {
         if (rec) return parar();
@@ -4179,32 +4181,41 @@ Object.assign(INFO, {
         try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (err) {
           return line({ NotAllowedError: 'Permissão do microfone negada. Libere o microfone nas configurações do navegador.', NotFoundError: 'Nenhum microfone encontrado neste aparelho.' }[err.name] || 'Não foi possível usar o microfone.');
         } finally { mic.disabled = false; }
-        const partes = [], t0 = Date.now(), dica = inp.placeholder;
+        // taxa nativa do aparelho: fixar 16 kHz aqui quebra no Firefox (fonte e contexto com taxas diferentes); a reamostragem fica em wav()
+        const ctx = new AC(), fonte = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), partes = [];
+        proc.onaudioprocess = e => partes.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        fonte.connect(proc); proc.connect(ctx.destination); // sem ligar ao destino o Chrome não chama onaudioprocess; a saída fica muda
+        await ctx.resume(); // criado depois do await da permissão, o contexto pode nascer suspenso
+        const t0 = Date.now(), dica = inp.placeholder;
         const relogio = () => { const s = Math.floor((Date.now() - t0) / 1000); inp.placeholder = `Gravando… ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s >= 60) parar(); };
         let tique;
-        rec = new MediaRecorder(stream);
-        rec.ondataavailable = e => partes.push(e.data);
-        rec.onstop = async () => {
-          clearInterval(tique); stream.getTracks().forEach(t => t.stop()); rec = null;
-          mic.setAttribute('aria-pressed', 'false'); mic.disabled = true; inp.placeholder = 'Transcrevendo…';
-          try {
-            const r = await fetch('/api/transcrever', { method: 'POST', headers: { 'content-type': 'audio/wav', authorization: await bearer() }, body: await wav(new Blob(partes)) });
-            const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
-            if (d.texto) inp.value = (inp.value.trim() + ' ' + d.texto).trim(); else line(d.erro || 'Não entendi o áudio. Tente de novo.');
-          } catch (err) { line(err instanceof TypeError ? 'Sem conexão com o servidor.' : 'Não consegui ler o áudio gravado. Tente de novo.'); }
-          inp.placeholder = dica; mic.disabled = false; inp.focus();
+        rec = {
+          state: 'recording', stop: async () => {
+            rec = null; clearInterval(tique); proc.disconnect(); fonte.disconnect(); stream.getTracks().forEach(t => t.stop());
+            const taxa = ctx.sampleRate; ctx.close();
+            mic.setAttribute('aria-pressed', 'false'); mic.disabled = true; inp.placeholder = 'Transcrevendo…';
+            try {
+              const r = await fetch('/api/transcrever', { method: 'POST', headers: { 'content-type': 'audio/wav', authorization: await bearer() }, body: wav(partes, taxa) });
+              const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
+              if (d.texto) inp.value = (inp.value.trim() + ' ' + d.texto).trim(); else line(d.erro || 'Não entendi o áudio. Tente de novo.');
+            } catch (err) { line(err instanceof TypeError ? 'Sem conexão com o servidor.' : 'Não consegui ler o áudio gravado. Tente de novo.'); }
+            inp.placeholder = dica; mic.disabled = false; inp.focus();
+          }
         };
-        rec.start(); mic.setAttribute('aria-pressed', 'true'); relogio(); tique = setInterval(relogio, 250);
+        mic.setAttribute('aria-pressed', 'true'); relogio(); tique = setInterval(relogio, 250);
       };
     }
-    // WAV 16 kHz mono 16 bits: a página do modelo não lista os formatos aceitos, e WAV é o que os exemplos do Workers AI usam.
-    // decodeAudioData já reamostra para a taxa do contexto; os canais viram a média
-    async function wav(blob) {
-      const a = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(await blob.arrayBuffer());
-      const n = a.length, ch = Array.from({ length: a.numberOfChannels }, (_, c) => a.getChannelData(c)), v = new DataView(new ArrayBuffer(44 + n * 2));
-      let o = 0; const str = t => { for (const c of t) v.setUint8(o++, c.charCodeAt(0)); }, u32 = x => { v.setUint32(o, x, true); o += 4; }, u16 = x => { v.setUint16(o, x, true); o += 2; };
+    // WAV 16 kHz mono 16 bits, o formato dos exemplos do Workers AI; reamostra por interpolação linear da taxa do aparelho
+    function wav(partes, taxa) {
+      const tot = partes.reduce((n, p) => n + p.length, 0), x = new Float32Array(tot); let k = 0;
+      for (const p of partes) { x.set(p, k); k += p.length; }
+      const n = Math.floor(tot * 16000 / taxa), v = new DataView(new ArrayBuffer(44 + n * 2));
+      let o = 0; const str = t => { for (const c of t) v.setUint8(o++, c.charCodeAt(0)); }, u32 = y => { v.setUint32(o, y, true); o += 4; }, u16 = y => { v.setUint16(o, y, true); o += 2; };
       str('RIFF'); u32(36 + n * 2); str('WAVEfmt '); u32(16); u16(1); u16(1); u32(16000); u32(32000); u16(2); u16(16); str('data'); u32(n * 2);
-      for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch.reduce((s, d) => s + d[i], 0) / ch.length)) * 0x7fff, true);
+      for (let i = 0; i < n; i++) {
+        const t = i * taxa / 16000, j = Math.floor(t), f = t - j, y = (x[j] || 0) * (1 - f) + (x[j + 1] || 0) * f;
+        v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, y)) * 0x7fff, true);
+      }
       return new Blob([v], { type: 'audio/wav' });
     }
   }

@@ -1,17 +1,17 @@
 # Graph Report - aula-coluna-3d  (2026-10-27)
 
 ## Corpus Check
-- 27 files · ~90,026 words
+- 27 files · ~90,684 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 219 nodes · 378 edges · 18 communities (12 shown, 6 thin omitted)
+- 222 nodes · 381 edges · 18 communities (12 shown, 6 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a1fc475c`
+- Built from commit: `c95c0e96`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -66,8 +66,8 @@ Cohesion: 0.20
 Nodes (22): Como o código funciona, BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic() (+14 more)
 
 ### Community 1 - "app.js"
-Cohesion: 0.15
-Nodes (25): aliasKey(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard(), describe() (+17 more)
+Cohesion: 0.17
+Nodes (23): aliasKey(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard(), describe() (+15 more)
 
 ### Community 3 - "playwright"
 Cohesion: 0.10
@@ -87,7 +87,7 @@ Nodes (8): Ações, Começar, Continuar, Parar, Pendências da última rodada, R
 
 ### Community 7 - "app.js"
 Cohesion: 0.10
-Nodes (33): applyConfig(), bindQuiz(), cats(), chapterDone(), closeDz(), cutTargets(), dzCfg(), edgeFade() (+25 more)
+Nodes (35): applyConfig(), bindQuiz(), cats(), chapterDone(), closeDz(), cutTargets(), dzCfg(), edgeFade() (+27 more)
 
 ### Community 8 - "content.js"
 Cohesion: 0.22
@@ -106,28 +106,26 @@ Cohesion: 0.23
 Nodes (8): json(), onRequestPost(), @anthropic-ai/sdk, claudeOk(), env, falhas, resposta(), supabase()
 
 ### Community 17 - "transcrever.mjs"
-Cohesion: 0.28
-Nodes (5): json(), onRequestPost(), falhas, grande, ok
+Cohesion: 0.20
+Nodes (7): json(), onRequestPost(), cota, falhas, grande, ok, som
 
 ## Knowledge Gaps
 - **2 isolated node(s):** `@supabase/supabase-js`, `three`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 98 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 101 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Como o código funciona` connect `geo.js` to `app.js`, `Aula 3D da coluna vertebral`, `app.js`?**
-  _High betweenness centrality (0.102) - this node is a cross-community bridge._
+  _High betweenness centrality (0.099) - this node is a cross-community bridge._
 - **What connects `@supabase/supabase-js`, `three` to the rest of the system?**
   _2 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `app.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.14666666666666667 - nodes in this community are weakly interconnected._
-- **Why does `applyVisuals()` connect `app.js` to `geo.js`, `app.js`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **Should `playwright` be split into smaller, more focused modules?**
   _Cohesion score 0.1 - nodes in this community are weakly interconnected._
+- **Why does `applyVisuals()` connect `app.js` to `geo.js`, `app.js`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.125 - nodes in this community are weakly interconnected._
 - **Should `app.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.10253699788583509 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0966183574879227 - nodes in this community are weakly interconnected._

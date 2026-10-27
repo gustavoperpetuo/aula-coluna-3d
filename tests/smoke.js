@@ -4,15 +4,10 @@ const fs=require('fs');
 const SESSAO={access_token:'a.b.c',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'r',user:{id:'u1',aud:'authenticated',email:'gustavo@salvadormedical.com.br',user_metadata:{full_name:'Gustavo Perpetuo'}}};
 async function logado(p,{remoto,local}){
  p.gravado=[]; p.perguntas=[]; p.voz=[];
- // microfone simulado: getUserMedia devolve uma faixa falsa e o MediaRecorder entrega, ao parar, 0,5 s de WAV 44,1 kHz estéreo
+ // microfone simulado: getUserMedia devolve uma faixa de verdade, um tom de 440 Hz do Web Audio, e marca quando ela é solta
  await p.addInitScript(()=>{
-  const faixa={parada:false,stop(){this.parada=true}}; window.__faixa=faixa;
-  Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>({getTracks:()=>[faixa]})}});
-  window.MediaRecorder=class{start(){this.state='recording'} stop(){this.state='inactive';
-   const n=22050,v=new DataView(new ArrayBuffer(44+n*4)); let o=0; const s=t=>{for(const c of t)v.setUint8(o++,c.charCodeAt(0))},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
-   s('RIFF');u32(36+n*4);s('WAVEfmt ');u32(16);u16(1);u16(2);u32(44100);u32(176400);u16(4);u16(16);s('data');u32(n*4);
-   for(let i=0;i<n*2;i++)v.setInt16(44+i*2,Math.sin(i/20)*8000,true);
-   this.ondataavailable({data:new Blob([v],{type:'audio/wav'})}); this.onstop();}};
+  const faixa={parada:false}; window.__faixa=faixa;
+  Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>{const c=new AudioContext(),o=c.createOscillator(),d=c.createMediaStreamDestination(); o.connect(d); o.start(); await c.resume(); const tr=d.stream.getTracks()[0],st=tr.stop.bind(tr); tr.stop=()=>{faixa.parada=true; st()}; return d.stream;}}});
  });
  await p.addInitScript(([s,l])=>{if(!sessionStorage.getItem('saiu')&&!sessionStorage.getItem('ja')){sessionStorage.setItem('ja','1'); localStorage.setItem('sb-ugvqhjyeekyufxuyvozc-auth-token',JSON.stringify(s)); localStorage.setItem('coluna3d.v1',JSON.stringify(l));}},[SESSAO,local]);
  const cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
@@ -36,7 +31,7 @@ async function page(b,W,H,block,conta){
  if(conta) await logado(p,conta);
  await p.goto('http://local.test/'); await p.waitForTimeout(2500); p.errs=errs; return p;}
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
  const shot=async(p,name)=>{await p.waitForTimeout(1700); await p.screenshot({path:__dirname+'/out/v_'+name+'.png',timeout:120000});};
  // desktop
  let p=await page(b,1440,900);
@@ -96,12 +91,12 @@ async function page(b,W,H,block,conta){
  const m2=await p.evaluate(()=>({pressed:document.querySelector('#askmic').getAttribute('aria-pressed'),ph:document.querySelector('#askq').placeholder}));
  await p.evaluate(()=>document.querySelector('#askmic').click()); await p.waitForTimeout(800);
  const m3=await p.evaluate(()=>({val:document.querySelector('#askq').value,pressed:document.querySelector('#askmic').getAttribute('aria-pressed'),ph:document.querySelector('#askq').placeholder,solto:window.__faixa.parada,foco:document.activeElement.id}));
- const v0=p.voz[0]||{h:{}}, wv=v0.b&&{riff:v0.b.toString('latin1',0,4),canais:v0.b.readUInt16LE(22),taxa:v0.b.readUInt32LE(24),bytes:v0.b.length};
+ const v0=p.voz[0]||{h:{}}, wv=v0.b&&{riff:v0.b.toString('latin1',0,4),canais:v0.b.readUInt16LE(22),taxa:v0.b.readUInt32LE(24),bytes:v0.b.length,rms:Math.round(Math.sqrt(Array.from({length:(v0.b.length-44)>>1},(_,i)=>v0.b.readInt16LE(44+i*2)**2).reduce((a,b)=>a+b,0)/Math.max(1,(v0.b.length-44)>>1)))};
  console.log('voz',JSON.stringify({m0,m1,m2,m3,wv}));
  if(!m0.vis||m0.w<44||m0.h<44||m0.label!=='Gravar pergunta por voz'||m1!=='askmic') bad.push('microfone: '+JSON.stringify(m0)+' foco '+m1);
  if(m2.pressed!=='true'||!/^Gravando… 0:0\d$/.test(m2.ph)) bad.push('gravando: '+JSON.stringify(m2));
  if(m3.val!=='Dúvida: Onde fica o forame?'||m3.pressed!=='false'||m3.ph!=='Sua dúvida (restam 29 hoje)'||!m3.solto||m3.foco!=='askq') bad.push('voz: '+JSON.stringify(m3));
- if(v0.h.authorization!=='Bearer a.b.c'||v0.h['content-type']!=='audio/wav'||!wv||wv.riff!=='RIFF'||wv.canais!==1||wv.taxa!==16000||wv.bytes!==44+16000) bad.push('voz enviada: '+JSON.stringify(wv)+' '+v0.h.authorization);
+ if(v0.h.authorization!=='Bearer a.b.c'||v0.h['content-type']!=='audio/wav'||!wv||wv.riff!=='RIFF'||wv.canais!==1||wv.taxa!==16000||wv.bytes<44+3200||wv.rms<1000) bad.push('voz enviada: '+JSON.stringify(wv)+' '+v0.h.authorization);
  if(p.perguntas.length!==1) bad.push('a voz enviou a pergunta sozinha');
  // hub: nome e Sair no canto, sem rolagem lateral em 390 px
  await p.goto('http://local.test/hub'); await p.waitForTimeout(800);
