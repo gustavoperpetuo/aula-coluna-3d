@@ -552,7 +552,10 @@ function buildSpine(mods = {}) {
     // espinhoso em machadinha
     const root_ = v(0, -0.26 * h - 0.4, -D / 2 - l.ca - 0.55);
     const tip = root_.clone().add(v(0, -0.35, -2.7 + (k === 5 ? 0.6 : 0)));
-    part(mergeGeoms([rod(root_, tip, 0.95, { r2: 0.85, f: 0.33 }), ellip(tip, 0.38, 0.7, 0.35)]), 'bone', `${l.n}.sp`, 'spinous');
+    const spg = rod(root_, tip, 0.95, { r2: 0.85, f: 0.33 }), und = (mods.spUnder || {})[l.n];
+    // undercutting ({ L4: 0.5 }): a face ventral da base do espinhoso é desgastada; o que passa do plano é achatado nele
+    if (und) { const a = spg.attributes.position, zc = root_.z + 0.95 - und; for (let i = 0; i < a.count; i++) if (a.getZ(i) > zc) a.setZ(i, zc); spg.computeVertexNormals(); anchors.set(`spcut.${l.n}`, toW(F[l.n], 0, root_.y, zc)); }
+    part(mergeGeoms([spg, ellip(tip, 0.38, 0.7, 0.35)]), 'bone', `${l.n}.sp`, 'spinous');
     P.spRoot = root_; P.spTip = tip; P.spR = 0.9;
   }
 
@@ -900,7 +903,16 @@ function buildSpine(mods = {}) {
       const b = toW(fU, s * 0.08, PU.lam.y - PU.lam.r * 0.75, PU.lam.z + 0.35 + 0.12 * (thick - 1));
       const c = toW(fL, s * 0.08, PL.lam.y + PL.lam.r * 0.65, PL.lam.z + 0.3 + 0.12 * (thick - 1));
       const d = toW(fL, xlL * 0.95, PL.lam.y + PL.lam.r * 0.45, PL.lam.z + 0.5 + 0.12 * (thick - 1));
-      add(quadSlab(a, b, c, d, 0.32 * thick), thick > 1.2 ? 'flavumHyp' : 'flavum', `flav.${dn}.${side}`, 'flavum', { level: dn, region: lu.r });
+      // flavotomia ({ 'L5-S1.L': [x1, x2] }): sai a faixa do amarelo entre as distâncias x1 e x2 da linha média, o resto fica em duas placas
+      const op = (mods.flavOpen || {})[dn + '.' + side];
+      let slabs = [[a, b, c, d]];
+      if (op) {
+        const xa = Math.abs(xl) * 0.95, xd = Math.abs(xlL) * 0.95, at = x => [a.clone().lerp(b, (xa - x) / (xa - 0.08)), d.clone().lerp(c, (xd - x) / (xd - 0.08))];
+        const [p1, q1] = at(op[0]), [p2, q2] = at(Math.min(op[1], xa, xd));
+        slabs = [[p1, b, c, q1]]; if (op[1] < Math.min(xa, xd)) slabs.push([a, p2, q2, d]);
+        anchors.set(`flavopen.${dn}.${side}`, p1.clone().add(q1).add(p2).add(q2).multiplyScalar(0.25));
+      }
+      slabs.forEach(([a, b, c, d]) => add(quadSlab(a, b, c, d, 0.32 * thick), thick > 1.2 ? 'flavumHyp' : 'flavum', `flav.${dn}.${side}`, 'flavum', { level: dn, region: lu.r }));
       anchors.set(`flav.${dn}.${side}`, a.clone().lerp(c, 0.5));
       // cápsula facetária
       const fs = ((mods.facet || {})[dn]) || 1;

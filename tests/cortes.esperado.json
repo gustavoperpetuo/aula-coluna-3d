@@ -206,6 +206,22 @@
   ]
  },
  {
+  "l": "endoil sag",
+  "lost": [
+   "drg.S1.L"
+  ]
+ },
+ {
+  "l": "endoil ax L5-S1",
+  "lost": [
+   "drg.S1.L"
+  ]
+ },
+ {
+  "l": "endosten sag",
+  "lost": []
+ },
+ {
   "l": "epidurosc ax L5-S1",
   "lost": [
    "scope"
