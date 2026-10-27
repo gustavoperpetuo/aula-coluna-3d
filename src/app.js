@@ -736,9 +736,9 @@
     let h = `<button class="back" id="back">← ${P ? 'Todos os procedimentos' : 'Todas as doenças'}</button><div class="eyebrow">${cats()[d.cat]}, ${i + 1} de ${L.length}</div><h2>${esc(d.name)}</h2><div class="lvtag">${esc(d.lv)}</div>`;
     // procedimento não tem versão "normal" para comparar: sem a alternância
     // caixa curta e igual em todos: deixa claro que cada procedimento tem o seu paciente e a sua região
-    if (P) h += `<dl class="quando"><dt>Indicado para</dt><dd>${esc(d.casos)}</dd><dt>Região da coluna</dt><dd>${esc(d.regiao)}</dd><dt>Não indicado quando</dt><dd>${esc(d.nao)}</dd></dl>`;
+    if (P) h += `<dl class="quando"><dt>Indicado para</dt><dd>${esc(d.ind)}</dd><dt>Região da coluna</dt><dd>${esc(d.regiao)}</dd><dt>Não indicado quando</dt><dd>${esc(d.nao)}</dd></dl>`;
     if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
-    (P ? [['Indicação', d.ind], ['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
+    (P ? [['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
       : [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]]).forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
     h += seeHtml(P || S.dzOn ? d.labels : neutralLabels(d));
