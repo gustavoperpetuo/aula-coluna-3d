@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "build.py": {
-    "mtime": 1793123005.487754,
-    "seen": 1793123647.4603908,
-    "ast_hash": "81e00001b5c254223219a2acb97f62b7",
+    "mtime": 1793126525.1056948,
+    "seen": 1793127989.7580469,
+    "ast_hash": "10308ec83669f2bef0bac3de1445a12a",
     "semantic_hash": ""
   },
   "package.json": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "functions/_middleware.js": {
-    "mtime": 1793122927.373626,
-    "seen": 1793123647.4603953,
-    "ast_hash": "1133a12702c51667c3dbf5e0a63da231",
+    "mtime": 1793126525.1059346,
+    "seen": 1793127989.7580514,
+    "ast_hash": "a5e917b1487cb9e07880a46b62fdb299",
     "semantic_hash": ""
   },
   "src/auth.js": {
@@ -168,21 +168,27 @@
     "semantic_hash": ""
   },
   "src/entrar.js": {
-    "mtime": 1793122935.8056266,
-    "seen": 1793123647.4604104,
-    "ast_hash": "40bdcfd79e37463f5c6225096a735cca",
+    "mtime": 1793127858.4142973,
+    "seen": 1793127989.7580643,
+    "ast_hash": "44d662b77d08361a2eaae93f6a85d13c",
     "semantic_hash": ""
   },
   "tests/middleware.mjs": {
-    "mtime": 1793122931.2336264,
-    "seen": 1793123647.460424,
-    "ast_hash": "8462a5b83bb81836ebaa6f87adc8bd36",
+    "mtime": 1793126528.627314,
+    "seen": 1793127989.758077,
+    "ast_hash": "f0a541ee03a65a431a31ccb1c902988e",
     "semantic_hash": ""
   },
   "src/entrar.html": {
-    "mtime": 1793121456.6975386,
-    "seen": 1793122758.302794,
-    "ast_hash": "f683a71ce14292d6e88af07afe74b940",
+    "mtime": 1793127858.4136953,
+    "seen": 1793127989.758088,
+    "ast_hash": "8952d832450e1f48641cedd72c4581ff",
+    "semantic_hash": ""
+  },
+  "src/privacidade.html": {
+    "mtime": 1793126695.3833358,
+    "seen": 1793127989.758093,
+    "ast_hash": "4e662309df77913a3ba6ac9bea4df38b",
     "semantic_hash": ""
   }
 }

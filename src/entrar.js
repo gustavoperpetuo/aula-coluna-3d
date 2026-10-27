@@ -16,6 +16,22 @@
       : 'Não foi possível entrar. Código: ' + (codigo || 'desconhecido') + '.');
   if (!SB) { falha('Sem conexão com o serviço de login. Tente de novo em instantes.'); btn.disabled = true; return; }
   btn.onclick = () => { guarda('entrou', null); SB.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/entrar' } }); };
+  /* botão do Google na própria página: o Google mostra o endereço do site, não o do Supabase, e o Supabase só recebe o token.
+     Se o script do Google não carregar, fica o botão acima (fluxo por redirecionamento). */
+  window.onGoogleLibraryLoad = async () => {
+    const cru = crypto.randomUUID(), h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cru));
+    google.accounts.id.initialize({
+      client_id: '921714836663-pbtkcien4pdpcqqj4dfsiv1ntm6k5cah.apps.googleusercontent.com',
+      nonce: [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''),
+      callback: async r => {
+        guarda('entrou', null); erro.hidden = true;
+        const { error } = await SB.auth.signInWithIdToken({ provider: 'google', token: r.credential, nonce: cru });
+        if (error) falha(/Cadastro só com e-mail|Database error saving new user/i.test(error.message) ? 'Use o e-mail de uma das empresas do grupo.'
+          : 'Não foi possível entrar. Código: ' + (error.code || error.status || 'desconhecido') + '.');
+      }
+    });
+    google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'pt-BR' });
+  };
   if (!erro.hidden) return; // com erro na URL fica aqui, mesmo que reste uma sessão antiga
   SB.auth.onAuthStateChange((ev, s) => {
     if (!s) return;

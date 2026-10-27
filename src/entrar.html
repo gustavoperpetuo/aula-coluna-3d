@@ -21,6 +21,9 @@ p { margin: 0; font-size: 19px; color: var(--ink-2); }
 .btn { margin-top: 32px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
 .btn:hover { background: #0A5558; }
 .btn:disabled { opacity: .5; cursor: default; }
+.gbtn { margin-top: 32px; min-height: 44px; }
+.gbtn:empty { display: none; }
+.gbtn:not(:empty) + .btn { display: none; }
 .erro { margin-top: 18px; font-size: 16px; font-weight: 600; color: var(--path); }
 [hidden] { display: none !important; }
 .nota { margin-top: 40px; font-size: 15px; }
@@ -35,7 +38,9 @@ p { margin: 0; font-size: 19px; color: var(--ink-2); }
 <main>
   <h1>Aulas de coluna</h1>
   <p>Acesso com o e-mail de uma das empresas do grupo.</p>
+  <div class="gbtn" id="gbtn"></div>
   <button class="btn" id="google" type="button">Entrar com Google</button>
   <p class="erro" id="erro" role="alert" hidden></p>
   <p class="nota"><a href="/privacidade">Privacidade</a></p>
 </main>
+<script src="https://accounts.google.com/gsi/client" async></script>
