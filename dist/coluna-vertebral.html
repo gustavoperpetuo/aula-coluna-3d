@@ -4192,13 +4192,13 @@ Object.assign(INFO, {
         rec = {
           state: 'recording', stop: async () => {
             rec = null; clearInterval(tique); proc.disconnect(); fonte.disconnect(); stream.getTracks().forEach(t => t.stop());
-            const taxa = ctx.sampleRate, estado = ctx.state; ctx.close();
-            // diagnóstico: silêncio já no navegador aparece com o microfone e a taxa, para saber de onde ele vem
+            const taxa = ctx.sampleRate; ctx.close();
+            // silêncio exato já no navegador: o microfone escolhido está desligado (ex.: o do MacBook com a tampa fechada); nem chama o servidor
             let pico = 0; for (const p of partes) for (let i = 0; i < p.length; i++) pico = Math.max(pico, Math.abs(p[i]));
             if (pico < 0.002) {
               const f = stream.getAudioTracks()[0] || {};
               mic.setAttribute('aria-pressed', 'false'); inp.placeholder = dica; inp.focus();
-              return line(`O microfone não captou som (no navegador). Diagnóstico: ${f.label || 'microfone sem nome'}, ${f.muted ? 'mudo' : 'ativo'}, ${f.readyState || '?'}, contexto ${estado} a ${taxa} Hz, ${partes.length} blocos, pico ${pico.toFixed(4)}.`);
+              return line(`O microfone ${f.label ? '"' + f.label + '" ' : ''}não captou som. Escolha outro no cadeado ao lado do endereço do site ou nas configurações de microfone do navegador.`);
             }
             mic.setAttribute('aria-pressed', 'false'); mic.disabled = true; inp.placeholder = 'Transcrevendo…';
             try {
