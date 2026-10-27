@@ -18,14 +18,15 @@ const DZ = [
     mods: { disc: { 'L4-L5': { hern: { side: 1, size: 1 }, h: 0.85 } }, hotRoots: ['L5.L'], pinch: [{ at: 'L4-L5', f: 0.75, w: 0.4, what: 'dura' }] },
     cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 18 }, show: 'bone disc lig neuro', clip: 'ax:L4-L5', hot: ['hernia'],
     labels: [['hernia', 'Extrusão posterolateral'], ['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']],
-    // variantes no mesmo disco (app.js, dzCfg): posição e forma. f: compressão do saco dural (sem f, o saco fica livre); roots: raízes em destaque.
+    // variantes no mesmo disco (app.js, dzCfg): posição e forma. f: compressão do saco dural (sem f, o saco fica livre); roots: raízes em destaque;
+    // down: o sequestro desce atrás de L5 (vista sagital); hug: as raízes que saem encostadas no disco, dos dois lados (geo.js, rootHug)
     // posterolateral com extrusão é a doença acima, sem mudança
     hv: {
       zone: {
-        central: { name: 'Central', adj: 'central', f: 0.55, roots: ['L5', 'S1', 'S2', 'S3', 'S4', 'S5'], labels: [['cauda', 'Saco dural e cauda equina comprimidos'], ['nuc.L4-L5', 'Núcleo']], cap: 'Central: atrás do meio do disco, comprime o saco dural de frente e as raízes da cauda equina dos dois lados.' },
-        pl: { name: 'Posterolateral', adj: 'posterolateral', f: 0.75, roots: ['L5.L'], labels: [['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']], cap: 'Posterolateral: na zona subarticular (recesso lateral), comprime a raiz que desce, a L5 numa hérnia L4-L5.' },
-        foram: { name: 'Foraminal', adj: 'foraminal', roots: ['L4.L'], labels: [['drg.L4.L', 'Gânglio e raiz L4 comprimidos'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Foraminal: dentro do forame, entre as bordas medial e lateral do pedículo, comprime a raiz que sai, a L4, e o gânglio dela, com o saco dural livre.' },
-        extra: { name: 'Extraforaminal', adj: 'extraforaminal', roots: ['L4.L'], labels: [['root.L4.L', 'Raiz L4 comprimida fora do forame'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Extraforaminal: além da borda lateral do pedículo, fora do forame, comprime a raiz L4 já fora do canal.' }
+        central: { name: 'Central', adj: 'central', f: 0.55, down: 1, roots: ['L5', 'S1', 'S2', 'S3', 'S4', 'S5'], labels: [['cauda', 'Saco dural e cauda equina comprimidos'], ['nuc.L4-L5', 'Núcleo']], cap: 'Central: atrás do meio do disco, comprime o saco dural de frente e as raízes da cauda equina dos dois lados.' },
+        pl: { name: 'Posterolateral', adj: 'posterolateral', f: 0.75, down: 1, roots: ['L5.L'], labels: [['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']], cap: 'Posterolateral: na zona subarticular (recesso lateral), comprime a raiz que desce, a L5 numa hérnia L4-L5.' },
+        foram: { name: 'Foraminal', adj: 'foraminal', hug: { 'L4.L': [-0.6, 0.35], 'L4.R': [-0.6, 0.35] }, roots: ['L4.L'], labels: [['drg.L4.L', 'Gânglio e raiz L4 comprimidos'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Foraminal: dentro do forame, entre as bordas medial e lateral do pedículo, comprime a raiz que sai, a L4, e o gânglio dela, com o saco dural livre.' },
+        extra: { name: 'Extraforaminal', adj: 'extraforaminal', hug: { 'L4.L': [-0.6, 0.35], 'L4.R': [-0.6, 0.35] }, roots: ['L4.L'], labels: [['root.L4.L', 'Raiz L4 comprimida fora do forame'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Extraforaminal: além da borda lateral do pedículo, fora do forame, comprime a raiz L4 já fora do canal.' }
       },
       morph: {
         prot: { name: 'Protrusão', cap: 'Protrusão: a parte deslocada não é mais larga que a base no disco, uma saliência baixa e larga, em geral contida pelo anel (Fardon, Spine J 2014).' },

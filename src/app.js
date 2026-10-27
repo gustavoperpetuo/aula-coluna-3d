@@ -709,8 +709,10 @@
     if (!hvMemo.has(z + m)) {
       const Z = d.hv.zone[z], M = d.hv.morph[m];
       hvMemo.set(z + m, Object.assign({}, d, {
-        mods: { disc: { 'L4-L5': { ...d.mods.disc['L4-L5'], hern: { zone: z, morph: m } } }, hotRoots: Z.roots, pinch: Z.f ? [{ at: 'L4-L5', f: m === 'prot' ? (1 + Z.f) / 2 : Z.f, w: 0.4, off: m === 'seq' ? 0.45 : 0, what: 'dura' }] : [] },
-        labels: [['hernia', M.name + ' ' + Z.adj], ...Z.labels]
+        mods: { disc: { 'L4-L5': { ...d.mods.disc['L4-L5'], hern: { zone: z, morph: m } } }, hotRoots: Z.roots, pinch: Z.f ? [{ at: 'L4-L5', f: m === 'prot' ? (1 + Z.f) / 2 : Z.f, w: 0.4, off: m === 'seq' ? 0.45 : 0, what: 'dura' }] : [], ...(Z.hug && { rootHug: Z.hug }) },
+        labels: [['hernia', M.name + ' ' + Z.adj], ...Z.labels],
+        // fragmento que desce atrás de L5: o corte axial do disco esconde a migração, o sagital pela hérnia mostra disco e fragmento juntos
+        ...(m === 'seq' && Z.down && { clip: 'sag', cam: { t: 'hernia', az: 90, el: 4, d: 18 } })
       }));
     }
     return hvMemo.get(z + m);
@@ -764,13 +766,15 @@
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     $('#back').onclick = () => { closeDz(); focusTitle(); };
     if (!P) {
-      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, cfg, { hot: [], labels: neutralLabels(cfg) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
-      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(cfg.mods); applyConfig(cfg, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
-      // variante da hérnia: remonta o modelo e volta a câmera ao corte axial da doença
+      // no celular o 3D fica acima do cartão: depois de trocar o modelo, rola até ele; o foco fica no botão, sem puxar a página de volta
+      const keep = sel => { scrollEl.querySelector(sel).focus({ preventScroll: true }); if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); };
+      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, cfg, { hot: [], labels: neutralLabels(cfg) }), false); renderDz(); keep('#t-n'); say('Mostrando a coluna normal.'); };
+      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(cfg.mods); applyConfig(cfg, false); renderDz(); keep('#t-d'); say('Mostrando ' + d.name + '.'); };
+      // variante da hérnia: remonta o modelo e volta a câmera à vista da variante (corte axial; sagital no sequestro que desce)
       scrollEl.querySelectorAll('[data-hv]').forEach(b => b.onclick = () => {
         const [g, k] = b.dataset.hv.split('.'); if (S.hv[g] === k) return;
         S.hv[g] = k; const c = dzCfg(d); rebuild(c.mods); applyConfig(c); renderDz();
-        scrollEl.querySelector(`[data-hv="${g}.${k}"]`).focus(); say(c.labels[0][1] + '.');
+        keep(`[data-hv="${g}.${k}"]`); say(c.labels[0][1] + '.');
       });
     }
     bindSee();

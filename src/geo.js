@@ -754,18 +754,21 @@ function buildSpine(mods = {}) {
         // rt e rn meios eixos da protrusão ao longo da parede e para fora, ext cúpula [x, y, z, rx, ry, rz], seq fragmento de [x, y, z]
         // a [x, y, z] com achatamento f. Junto da parede, nada passa de 0,34 em y: a altura posterior do disco é ~0,38 de cada lado
         const Z = {
-          central: { w: [0, -1.25], a: 0, rt: 1.1, rn: 0.36, seq: [0, 0.15, -2, 0, -1.6, -2.05], f: 2.2 },
-          pl: { w: [0.85, -1.3], a: 0, rt: 0.75, rn: 0.36, seq: [0.85, 0.15, -2.06, 1, -1.6, -2.1], f: 1.6 },
-          foram: { w: [1.9, -1.15], a: 22, rt: 0.65, rn: 0.45, ext: [2.1, 0.12, -1.8, 0.42, 0.42, 0.34], seq: [2.3, 0.45, -1.95, 2.4, -0.35, -1.9], f: 1.4 },
-          extra: { w: [2.22, -0.92], a: 55, rt: 0.55, rn: 0.4, ext: [3.12, 0, -1.22, 0.42, 0.4, 0.36], seq: [3.2, 0.35, -1.3, 3.35, -0.45, -1.25], f: 1.3 }
+          central: { w: [0, -1.25], a: 0, rt: 1.1, rn: 0.5, seq: [0, 0.15, -2, 0, -1.6, -2.05], f: 2.2 },
+          pl: { w: [0.85, -1.3], a: 0, rt: 0.75, rn: 0.5, seq: [0.85, 0.15, -2.06, 1, -1.6, -2.1], f: 1.6 },
+          foram: { w: [1.95, -1.12], a: 35, rt: 0.6, rn: 0.54, ext: [1.85, 0.1, -1.85, 0.42, 0.42, 0.34], seq: [1.75, 0.3, -2, 1.85, -0.45, -1.95], f: 1.4 },
+          extra: { w: [2.24, -0.87], a: 55, rt: 0.55, rn: 0.55, ext: [2.85, 0, -0.72, 0.42, 0.4, 0.36], seq: [3.05, 0.35, -1.2, 3.15, -0.45, -1.15], f: 1.3 }
         }[zn];
         const kx = kf.W / 4.9, kz = kf.D / 3.4, P = (x, y, z) => kf.p.clone().add(v(s * x * kx, y, z * kz).applyQuaternion(qd));
         const a = Z.a * deg, nx = Math.sin(a), nz = -Math.cos(a), [wx, wz] = Z.w; // n: normal da parede, para fora
         if (mo === 'prot') {
-          // centro fora da parede: o que fica dentro do disco também aparece no corte (a hérnia é desenhada por cima do anel)
-          const qp = qd.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), -s * a)), o = 0.55 * Z.rn;
-          add(ellip(P(wx + nx * o, 0, wz + nz * o), Z.rt * kx, 0.34, Z.rn * kz, 18, qp), 'herniation', 'hernia', 'hernia', H);
-          anchors.set('hernia', P(wx + nx * (o + Z.rn * 0.5), 0, wz + nz * (o + Z.rn * 0.5)));
+          // cúpula sobre a parede: a metade de dentro achatada (lente fina no anel), então a parte mais larga é a base, como na
+          // protrusão de Fardon; o centro fica 0,08 para dentro porque a parede é curva e a base é reta
+          const qp = qd.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), -s * a)), g = new THREE.SphereGeometry(1, 18, 10), pa = g.attributes.position;
+          for (let i = 0; i < pa.count; i++) if (pa.getZ(i) > 0) pa.setZ(i, pa.getZ(i) * 0.25); // +z local: para dentro do disco
+          g.scale(Z.rt * kx, 0.34, Z.rn * kz); g.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(qp)); g.translate(...P(wx - nx * 0.08, 0, wz - nz * 0.08).toArray()); g.computeVertexNormals();
+          add(g, 'herniation', 'hernia', 'hernia', H);
+          anchors.set('hernia', P(wx + nx * Z.rn * 0.5, 0, wz + nz * Z.rn * 0.5));
         } else if (mo === 'ext') {
           const [x, y, z, rx, ry, rz] = Z.ext, c = P(x, y, z);
           add(ellip(c, rx * kx, ry, rz * kz, 18, qd), 'herniation', 'hernia', 'hernia', H);
@@ -1145,6 +1148,10 @@ function buildSpine(mods = {}) {
         fl = toW(f, s * (l.px + 0.15), -0.3 * f.h, -l.D / 2 - 0.3);
         if (nv.reg === 'T') { e1 = toW(f, s * (l.px + 1.4), -0.5 * f.h, -l.D / 2 - 0.5); e2 = toW(f, s * (l.px + 3.4), -0.62 * f.h, -l.D / 2 - 0.1); }
         else { e1 = toW(f, s * (l.px + 1.5), -0.55 * f.h - 0.4, -l.D / 2 + 0.2); e2 = toW(f, s * (l.px + 2.8), -f.h - 1.6, -l.D / 2 + 1.6); }
+        // rootHug { 'L4.L': [dx, dz] }: a raiz que sai encostada no canto posterolateral do disco, como no forame real (hérnia foraminal
+        // e extraforaminal); o gânglio, entre fl e e1, vem junto. Sem o mod, o trajeto de sempre
+        const hug = nv.reg === 'L' && (mods.rootHug || {})[n + '.' + side];
+        if (hug) e1.add(v(s * hug[0], 0, hug[1]).applyQuaternion(f.q));
         uExit = KI[n] + 0.35;
       } else {
         const j = +n.slice(1);
