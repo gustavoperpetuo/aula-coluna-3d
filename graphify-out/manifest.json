@@ -6,21 +6,21 @@
     "semantic_hash": ""
   },
   "build.py": {
-    "mtime": 1792750123.2401323,
-    "seen": 1792751189.539761,
-    "ast_hash": "bdb8287d4be503a88b384b6b192faaec",
+    "mtime": 1793123005.487754,
+    "seen": 1793123647.4603908,
+    "ast_hash": "81e00001b5c254223219a2acb97f62b7",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792413479.3344398,
-    "seen": 1792413781.607531,
-    "ast_hash": "e825134f82790d13db69359ece425b08",
+    "mtime": 1793121817.23756,
+    "seen": 1793122758.302752,
+    "ast_hash": "776b954407c41578a8f57da24f6a5000",
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793119559.3166678,
-    "seen": 1793120156.0233788,
-    "ast_hash": "e153c0bba1e949678d014a6994eeafea",
+    "mtime": 1793122996.3179612,
+    "seen": 1793123647.4604032,
+    "ast_hash": "a8f818cafd96dbbdc585af81b76bb560",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -48,27 +48,27 @@
     "semantic_hash": ""
   },
   "tests/cortes.js": {
-    "mtime": 1792751098.2193224,
-    "seen": 1792751189.5397832,
-    "ast_hash": "21fa48012eeeaeb8d337bedd0382cee4",
+    "mtime": 1793121545.180175,
+    "seen": 1793122758.3027725,
+    "ast_hash": "1075e68ebbebf514ff27b86053b8c488",
     "semantic_hash": ""
   },
   "tests/ligamentos.js": {
-    "mtime": 1793116887.3203015,
-    "seen": 1793120156.0233893,
-    "ast_hash": "e11a2247a182383331ae1f7fa0f4926e",
+    "mtime": 1793121545.178421,
+    "seen": 1793122758.3027763,
+    "ast_hash": "a366ab9ab33f9191d70362f7563562c4",
     "semantic_hash": ""
   },
   "tests/regua.js": {
-    "mtime": 1792091060.355628,
-    "seen": 1792092418.276194,
-    "ast_hash": "946af0201d8f05ffec12e39cd972d126",
+    "mtime": 1793121545.177733,
+    "seen": 1793122758.3027835,
+    "ast_hash": "983db18b009b78cdd2ad1b18584ed4e8",
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1792751098.219856,
-    "seen": 1792751189.5397933,
-    "ast_hash": "e9fb36253b88e3059f070d5107c867fd",
+    "mtime": 1793123040.3914373,
+    "seen": 1793123647.4604287,
+    "ast_hash": "437cdf43a50eccac354533c047818789",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792751160.0121086,
-    "seen": 1792751189.5397978,
-    "ast_hash": "c9513a13a69ef18ae1de5eb56506e49a",
+    "mtime": 1793123141.785401,
+    "seen": 1793123647.4604337,
+    "ast_hash": "e3e01a667c46d05b8e02b04e44d8ae39",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -96,15 +96,15 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793116887.3203015,
-    "seen": 1793120156.0233982,
-    "ast_hash": "cd517007c6ae0cf8df5121a24ba16e47",
+    "mtime": 1793121675.1095517,
+    "seen": 1793122758.3027961,
+    "ast_hash": "b834cd2c66b8fdf6536c50b8dcc489ab",
     "semantic_hash": ""
   },
   "src/home.html": {
-    "mtime": 1791926418.8955467,
-    "seen": 1792090765.6384077,
-    "ast_hash": "b13528a0b8783dc7f02eb1e92ce92b45",
+    "mtime": 1793123005.487274,
+    "seen": 1793123647.4604402,
+    "ast_hash": "b6682b1b671d69a9f388007fdc11b7ed",
     "semantic_hash": ""
   },
   "src/coluna-lateral.webp": {
@@ -114,27 +114,27 @@
     "semantic_hash": ""
   },
   "tests/fechadas.js": {
-    "mtime": 1793116887.3203015,
-    "seen": 1793120156.0233881,
-    "ast_hash": "95d040cb9ee5ff502d64a1fbc593b9c9",
+    "mtime": 1793121545.179148,
+    "seen": 1793122758.3027744,
+    "ast_hash": "de300af697eae64438e4cdf8bbce653e",
     "semantic_hash": ""
   },
   "tests/maiusculas.js": {
-    "mtime": 1792751098.219071,
-    "seen": 1792751189.539788,
-    "ast_hash": "3e38400697f3297cd161b9084643aa55",
+    "mtime": 1793121545.1797612,
+    "seen": 1793122758.3027778,
+    "ast_hash": "606875ae926c1fbbe2c894952e3741a9",
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
-    "mtime": 1792752965.1730103,
-    "seen": 1792752974.6819553,
-    "ast_hash": "4fb457efe28c5221253f5ee09c3ac32d",
+    "mtime": 1793121424.5690863,
+    "seen": 1793122758.3027494,
+    "ast_hash": "f406cf8ac2d58c0dea3d66823bbe7b4e",
     "semantic_hash": ""
   },
   "tests/pergunta.mjs": {
-    "mtime": 1792414178.5960786,
-    "seen": 1792414186.4392054,
-    "ast_hash": "bdc463c62e221ac4462efdab5f8ef7f0",
+    "mtime": 1793121441.0855377,
+    "seen": 1793122758.3027813,
+    "ast_hash": "cb73430352e3e775e888d4037100543b",
     "semantic_hash": ""
   },
   "src/proc.js": {
@@ -153,6 +153,36 @@
     "mtime": 1792678120.5072596,
     "seen": 1792751189.5398061,
     "ast_hash": "469fedd8c4b8f5fd35f2d151f34a19e7",
+    "semantic_hash": ""
+  },
+  "functions/_middleware.js": {
+    "mtime": 1793122927.373626,
+    "seen": 1793123647.4603953,
+    "ast_hash": "1133a12702c51667c3dbf5e0a63da231",
+    "semantic_hash": ""
+  },
+  "src/auth.js": {
+    "mtime": 1793122941.4376268,
+    "seen": 1793123647.4604046,
+    "ast_hash": "e6f15ab20659b757560a95db75043e11",
+    "semantic_hash": ""
+  },
+  "src/entrar.js": {
+    "mtime": 1793122935.8056266,
+    "seen": 1793123647.4604104,
+    "ast_hash": "40bdcfd79e37463f5c6225096a735cca",
+    "semantic_hash": ""
+  },
+  "tests/middleware.mjs": {
+    "mtime": 1793122931.2336264,
+    "seen": 1793123647.460424,
+    "ast_hash": "8462a5b83bb81836ebaa6f87adc8bd36",
+    "semantic_hash": ""
+  },
+  "src/entrar.html": {
+    "mtime": 1793121456.6975386,
+    "seen": 1793122758.302794,
+    "ast_hash": "f683a71ce14292d6e88af07afe74b940",
     "semantic_hash": ""
   }
 }

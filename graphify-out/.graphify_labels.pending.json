@@ -8,8 +8,12 @@
   "6": "Retrospectiva: aula 3D da coluna (12/10/2026)",
   "7": "app.js",
   "8": "content.js",
+  "9": "middleware.mjs",
   "10": "disease.js",
+  "11": "pergunta.mjs",
   "12": "build.py",
   "13": "CLAUDE.md",
-  "14": ".claude/CLAUDE.md"
+  "14": ".claude/CLAUDE.md",
+  "15": "auth.js",
+  "16": "entrar.js"
 }

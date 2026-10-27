@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" type="image/png" sizes="32x32" href="/icone-32.png">
+<link rel="apple-touch-icon" href="/icone-180.png">
+<title>Entrar | Aulas de coluna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Login: mesmo sistema do hub (papel claro, Source Sans 3, verde-petróleo). Página pública, ver functions/_middleware.js. */
+:root {
+  --paper: #EEF1F0;
+  --ink: #18221F;
+  --ink-2: #3F4B49;
+  --accent: #0D6669;
+  --path: #B5432B;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+main { max-width: 460px; margin: 0 auto; padding: 18svh 32px 56px; }
+h1 { font-size: 44px; line-height: 1.08; font-weight: 700; margin: 0 0 14px; letter-spacing: -0.01em; }
+p { margin: 0; font-size: 19px; color: var(--ink-2); }
+.btn { margin-top: 32px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
+.btn:hover { background: #0A5558; }
+.btn:disabled { opacity: .5; cursor: default; }
+.erro { margin-top: 18px; font-size: 16px; font-weight: 600; color: var(--path); }
+[hidden] { display: none !important; }
+@media (max-width: 800px) {
+  main { padding: 72px 16px 40px; }
+  h1 { font-size: 34px; }
+  p { font-size: 17px; }
+}
+</style>
+
+<main>
+  <h1>Aulas de coluna</h1>
+  <p>Acesso com o e-mail de uma das empresas do grupo.</p>
+  <button class="btn" id="google" type="button">Entrar com Google</button>
+  <p class="erro" id="erro" role="alert" hidden></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+<script>
+/* ================= Sessão (Supabase) ================= */
+// functions/_middleware.js só libera o site com o token de acesso no cookie sb; aqui o cookie acompanha a sessão, inclusive na renovação.
+// Nas páginas com #conta (aula e hub) mostra o primeiro nome e liga o Sair.
+// Sem o supabase-js (CDN fora do ar) SB fica null e a aula segue só com o localStorage.
+var SB = null;
+try {
+  SB = supabase.createClient('https://ugvqhjyeekyufxuyvozc.supabase.co', 'sb_publishable_FbgScRDcBuqkEt77OKKnpQ_Rb_K07Xq');
+  SB.auth.onAuthStateChange((ev, s) => {
+    document.cookie = 'sb=' + (s ? s.access_token + '; Max-Age=' + Math.max(0, s.expires_at - Math.floor(Date.now() / 1000)) : '; Max-Age=0') + '; Path=/; SameSite=Lax; Secure';
+    const conta = document.getElementById('conta');
+    if (!s || !conta) return;
+    const m = s.user.user_metadata || {}, quem = document.getElementById('quem');
+    quem.textContent = String(m.full_name || m.name || '').split(' ')[0] || s.user.email; quem.title = s.user.email || '';
+    conta.hidden = false;
+    document.getElementById('sair').onclick = () => SB.auth.signOut({ scope: 'local' }).finally(() => location.replace('/entrar'));
+  });
+} catch (e) { SB = null; }
+</script>
+<script>
+/* ================= Login ================= */
+(function () {
+  const btn = document.getElementById('google'), erro = document.getElementById('erro');
+  const falha = t => { erro.textContent = t; erro.hidden = false; };
+  // o Supabase volta para esta página com os tokens no hash ou com error/error_description (e-mail fora dos domínios do grupo é recusado no cadastro)
+  const p = new URLSearchParams(location.search.slice(1) + '&' + location.hash.slice(1));
+  // volta: a página que o middleware recusou; fica na aba para sobreviver à ida ao Google
+  const volta = p.get('volta'), guarda = (k, v) => { try { v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) { } };
+  if (volta) guarda('volta', volta);
+  // o Supabase não repassa o texto do gatilho checar_dominio ("Cadastro só com e-mail das empresas do grupo."): devolve o genérico
+  // "Database error saving new user"; como o único gatilho em auth.users é o de domínio, os dois textos valem como recusa de domínio
+  const codigo = p.get('error_code') || p.get('error');
+  if (codigo || p.get('error_description')) falha(
+    /Cadastro só com e-mail|Database error saving new user/i.test(p.get('error_description') || '') ? 'Use o e-mail de uma das empresas do grupo.'
+      : p.get('error') === 'access_denied' ? 'Login cancelado.'
+      : 'Não foi possível entrar. Código: ' + (codigo || 'desconhecido') + '.');
+  if (!SB) { falha('Sem conexão com o serviço de login. Tente de novo em instantes.'); btn.disabled = true; return; }
+  btn.onclick = () => { guarda('entrou', null); SB.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/entrar' } }); };
+  if (!erro.hidden) return; // com erro na URL fica aqui, mesmo que reste uma sessão antiga
+  SB.auth.onAuthStateChange((ev, s) => {
+    if (!s) return;
+    let v = '/', t = 0;
+    try { v = sessionStorage.getItem('volta') || '/'; t = +sessionStorage.getItem('entrou') || 0; } catch (e) { }
+    // trava contra laço: se o servidor recusar o token recém-entregue, o middleware devolve para cá em segundos e a página fica parada
+    if (Date.now() - t < 10000) return;
+    guarda('entrou', Date.now()); guarda('volta', null);
+    location.replace(/^\/(?![\/\\]|entrar)/.test(v) ? v : '/'); // só caminhos do próprio site
+  });
+})();
+</script>

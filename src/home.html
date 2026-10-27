@@ -45,6 +45,12 @@ footer { margin-top: 36px; font-size: 14px; color: var(--ink-3); }
 figure { margin: 0; position: sticky; top: 40px; justify-self: center; }
 figure img { display: block; height: min(86svh, 860px); width: auto; }
 figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align: center; }
+/* conta: primeiro nome e Sair no canto, como no topo da aula (src/auth.js preenche) */
+.conta { position: absolute; top: 16px; right: 24px; display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--ink-3); }
+.conta[hidden] { display: none; }
+.quem { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sair { border: 0; background: none; padding: 0 6px; min-height: 32px; border-radius: 6px; color: var(--ink-2); font: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sair:hover { color: var(--accent); }
 @media (max-width: 800px) {
   .wrap { grid-template-columns: minmax(0, 1fr) 96px; gap: 20px; padding: 40px 16px 40px; }
   header h1 { font-size: 34px; }
@@ -53,6 +59,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align:
   .aula { grid-template-columns: 32px minmax(0, 1fr); }
   .aula h2 { font-size: 22px; }
   figure { top: 24px; }
+  .conta { top: 6px; right: 12px; }
   figure img { height: min(70svh, 520px); }
   figcaption { display: none; }
 }
@@ -62,6 +69,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align:
 }
 </style>
 
+<div class="conta" id="conta" hidden><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
 <div class="wrap">
   <main>
     <header>
@@ -91,7 +99,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align:
         </div>
       </li>
     </ol>
-    <footer>O progresso fica guardado neste navegador.</footer>
+    <footer>O progresso fica salvo na sua conta.</footer>
   </main>
   <figure>
     <img src="coluna-lateral.webp" width="244" height="1240" alt="Modelo 3D da coluna em vista lateral, do crânio ao cóccix, com as regiões cervical, torácica, lombar e sacral em cores diferentes.">

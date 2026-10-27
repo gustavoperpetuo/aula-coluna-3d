@@ -1,0 +1,38 @@
+<title>Entrar | Aulas de coluna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Login: mesmo sistema do hub (papel claro, Source Sans 3, verde-petróleo). Página pública, ver functions/_middleware.js. */
+:root {
+  --paper: #EEF1F0;
+  --ink: #18221F;
+  --ink-2: #3F4B49;
+  --accent: #0D6669;
+  --path: #B5432B;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+main { max-width: 460px; margin: 0 auto; padding: 18svh 32px 56px; }
+h1 { font-size: 44px; line-height: 1.08; font-weight: 700; margin: 0 0 14px; letter-spacing: -0.01em; }
+p { margin: 0; font-size: 19px; color: var(--ink-2); }
+.btn { margin-top: 32px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
+.btn:hover { background: #0A5558; }
+.btn:disabled { opacity: .5; cursor: default; }
+.erro { margin-top: 18px; font-size: 16px; font-weight: 600; color: var(--path); }
+[hidden] { display: none !important; }
+@media (max-width: 800px) {
+  main { padding: 72px 16px 40px; }
+  h1 { font-size: 34px; }
+  p { font-size: 17px; }
+}
+</style>
+
+<main>
+  <h1>Aulas de coluna</h1>
+  <p>Acesso com o e-mail de uma das empresas do grupo.</p>
+  <button class="btn" id="google" type="button">Entrar com Google</button>
+  <p class="erro" id="erro" role="alert" hidden></p>
+</main>

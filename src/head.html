@@ -43,6 +43,11 @@ button, select { font: inherit; color: inherit; }
 .prog .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform .4s; }
 .progreset { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font-size: 15px; line-height: 1; cursor: pointer; }
 .progreset:hover, .progreset:focus-visible { color: var(--accent); }
+/* conta: discreta, no fim da barra; no celular sobe para a linha do título */
+.conta { order: 1; display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--ink-3); }
+.quem { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sair { border: 0; background: none; padding: 0 6px; min-height: 32px; border-radius: 6px; color: var(--ink-2); font-size: 14px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sair:hover { color: var(--accent); }
 
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "view split panel"; min-height: 0; }
 .panel { grid-area: panel; }
@@ -259,6 +264,8 @@ body.resizing { cursor: col-resize; user-select: none; }
   .prog { margin-left: 0; width: 100%; }
   .prog .bar { flex: 1; width: auto; }
   .top { padding: 8px 16px; gap: 8px 12px; }
+  .brand { order: -2; }
+  .conta { order: -1; margin-left: auto; } /* placeNav() põe a barra de partes logo depois do título */
   .ttog { top: auto; bottom: 12px; left: 12px; }
   .tools { top: auto; bottom: 58px; right: 12px; }
   .chip { padding: 6px 9px; min-height: 40px; }
@@ -284,6 +291,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 <div id="app">
   <header class="top">
     <div class="brand"><h1><a href="/" title="Todas as aulas">Coluna vertebral</a></h1></div>
+    <div class="conta" id="conta" hidden><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
     <div class="seg" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>

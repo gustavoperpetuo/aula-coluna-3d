@@ -8,7 +8,13 @@
 
   /* ---------- estado e progresso (independem do 3D) ---------- */
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
-  const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
+  // cópia na conta (tabela progresso): cada gravação, com atraso, lê a da conta, soma com a local e grava a soma (sync, mais abaixo);
+  // nunca grava por cima sem ler, senão apagaria o progresso de outro aparelho
+  const LISTAS = ['seen', 'dzSeen', 'procSeen'];
+  let contaId = null, pushT = 0;
+  const push = (ms = 1500) => { if (!contaId) return; clearTimeout(pushT); pushT = setTimeout(() => sync(contaId), ms); };
+  const keep = () => { marca(); try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
+  const save = () => { keep(); push(); };
   store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
   const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
@@ -808,16 +814,13 @@
     $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
   }
   let closeAsk = () => false;
-  // tira-dúvidas: só aparece com ?duvidas=<senha>, guardada na aba; a senha confere no servidor (functions/api/pergunta.js)
+  // tira-dúvidas: aparece com a sessão; o servidor confere o token e o limite diário (functions/api/pergunta.js)
   {
-    const q = new URLSearchParams(location.search), k = q.get('duvidas');
-    if (k) { try { sessionStorage.setItem('duvidas', k); } catch (e) { } q.delete('duvidas'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
-    let senha = k; try { senha = senha || sessionStorage.getItem('duvidas'); } catch (e) { }
     const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button'), fab = $('#askfab'), win = $('#askwin');
     const line = (t, cls) => { const p = document.createElement('p'); if (cls) p.className = cls; p.textContent = t; out.appendChild(p); out.scrollTop = out.scrollHeight; return p; };
     const show = on => { win.hidden = !on; fab.hidden = on; fab.setAttribute('aria-expanded', on); (on ? inp : fab).focus(); };
     closeAsk = () => !win.hidden && (show(false), true);
-    if (senha) fab.hidden = false;
+    if (SB) SB.auth.onAuthStateChange((ev, s) => { if (s && win.hidden) fab.hidden = false; });
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
     // a janela é ancorada embaixo à direita, então a alça fica no canto de cima à esquerda: puxar para cima e para a esquerda aumenta
     const grip = $('#askgrip'), size = (w, h) => {
@@ -835,19 +838,60 @@
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
-        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', 'x-senha': senha }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const { data } = await SB.auth.getSession(); // getSession renova o token se precisar
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (data.session ? data.session.access_token : '') }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
         // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
         ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
+        if (typeof d.restantes === 'number') inp.placeholder = `Sua dúvida (${d.restantes === 1 ? 'resta 1' : 'restam ' + d.restantes} hoje)`;
       } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
       out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
   }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
-    store.seen = []; store.dzSeen = []; store.procSeen = []; save();
+    LISTAS.forEach(k => { store[k] = []; }); store.em = {}; store.zeradoEm = Date.now(); save(); push(0); // a conta fica sabendo já; zeradoEm impede que outro aparelho traga as marcas de volta
     if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
   };
+
+  /* ---------- progresso na conta (sem sessão ou sem rede, tudo segue no localStorage; nome e Sair ficam em src/auth.js) ---------- */
+  // hora de cada marca de visto (store.em) e do último "limpar progresso" (store.zeradoEm), para a soma entre aparelhos;
+  // marcas de antes desta versão ficam com hora 0
+  function marca() {
+    const t = store.em ? Date.now() : 0; store.em = store.em || {};
+    LISTAS.forEach(k => store[k].forEach(v => { if (!((k + ':' + v) in store.em)) store.em[k + ':' + v] = t; }));
+  }
+  // teste: fica o resultado com mais acertos; empate, o com mais respostas; empate, o deste aparelho
+  const quizVal = (id, a) => { const qs = (id === 'dz' ? DZ_QUIZ : QUIZ[id.slice(1)]) || []; return Object.entries(a).filter(([i, o]) => qs[i] && qs[i][2] === o).length * 100 + Object.keys(a).length; };
+  // marcas unidas, menos as anteriores ao último "limpar progresso" do outro lado
+  function merge(r) {
+    const el = store.em || {}, er = r.em || {}, zl = store.zeradoEm || 0, zr = r.zeradoEm || 0, em = {};
+    LISTAS.forEach(k => {
+      const loc = store[k].filter(v => (el[k + ':' + v] || 0) >= zr), rem = (Array.isArray(r[k]) ? r[k] : []).filter(v => (er[k + ':' + v] || 0) >= zl);
+      store[k] = [...new Set([...loc, ...rem])];
+      store[k].forEach(v => { const c = k + ':' + v; em[c] = Math.max(el[c] || 0, er[c] || 0); });
+    });
+    store.em = em; store.zeradoEm = Math.max(zl, zr);
+    Object.entries(r.quiz || {}).forEach(([id, a]) => { if (a && typeof a === 'object' && quizVal(id, a) > quizVal(id, store.quiz[id] || {})) store.quiz[id] = a; });
+  }
+  let lendo = false;
+  async function sync(id) {
+    if (lendo) return push(); // uma leitura por vez
+    lendo = true;
+    try {
+      const { data, error } = await SB.from('progresso').select('dados').maybeSingle();
+      if (error) return; // sem rede ou erro: tenta de novo na próxima gravação ou renovação do token
+      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.quiz]), antes = visto();
+      // outra pessoa entrou neste navegador: o progresso local era da anterior e não soma nesta conta
+      if (store.conta && store.conta !== id) { LISTAS.forEach(k => { store[k] = []; }); store.quiz = {}; store.em = {}; store.zeradoEm = 0; }
+      if (data && data.dados) merge(data.dados);
+      store.conta = contaId = id; keep();
+      await SB.from('progresso').upsert({ user_id: id, dados: store, atualizado: new Date().toISOString() });
+      if (visto() !== antes) { if (S.mode === 'anat') renderStep(); else renderDz(); }
+    } catch (e) { } finally { lendo = false; }
+  }
+  // fora do callback: o supabase-js pede para não chamar o cliente dentro dele
+  if (SB) SB.auth.onAuthStateChange((ev, s) => { if (s && !contaId) setTimeout(() => sync(s.user.id)); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if (closeAsk()) return; if (view.classList.contains('full')) setFull(false); else if (!infoEl.hidden) closeCard(); return; }
     const t = e.target, free = t === document.body || t === canvas || (t.closest && t.closest('.nav'));

@@ -49,6 +49,11 @@ button, select { font: inherit; color: inherit; }
 .prog .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform .4s; }
 .progreset { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font-size: 15px; line-height: 1; cursor: pointer; }
 .progreset:hover, .progreset:focus-visible { color: var(--accent); }
+/* conta: discreta, no fim da barra; no celular sobe para a linha do título */
+.conta { order: 1; display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--ink-3); }
+.quem { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sair { border: 0; background: none; padding: 0 6px; min-height: 32px; border-radius: 6px; color: var(--ink-2); font-size: 14px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sair:hover { color: var(--accent); }
 
 .stage { display: grid; grid-template-columns: minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "view split panel"; min-height: 0; }
 .panel { grid-area: panel; }
@@ -265,6 +270,8 @@ body.resizing { cursor: col-resize; user-select: none; }
   .prog { margin-left: 0; width: 100%; }
   .prog .bar { flex: 1; width: auto; }
   .top { padding: 8px 16px; gap: 8px 12px; }
+  .brand { order: -2; }
+  .conta { order: -1; margin-left: auto; } /* placeNav() põe a barra de partes logo depois do título */
   .ttog { top: auto; bottom: 12px; left: 12px; }
   .tools { top: auto; bottom: 58px; right: 12px; }
   .chip { padding: 6px 9px; min-height: 40px; }
@@ -290,6 +297,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 <div id="app">
   <header class="top">
     <div class="brand"><h1><a href="/" title="Todas as aulas">Coluna vertebral</a></h1></div>
+    <div class="conta" id="conta" hidden><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
     <div class="seg" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
@@ -329,6 +337,26 @@ body.resizing { cursor: col-resize; user-select: none; }
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+<script>
+/* ================= Sessão (Supabase) ================= */
+// functions/_middleware.js só libera o site com o token de acesso no cookie sb; aqui o cookie acompanha a sessão, inclusive na renovação.
+// Nas páginas com #conta (aula e hub) mostra o primeiro nome e liga o Sair.
+// Sem o supabase-js (CDN fora do ar) SB fica null e a aula segue só com o localStorage.
+var SB = null;
+try {
+  SB = supabase.createClient('https://ugvqhjyeekyufxuyvozc.supabase.co', 'sb_publishable_FbgScRDcBuqkEt77OKKnpQ_Rb_K07Xq');
+  SB.auth.onAuthStateChange((ev, s) => {
+    document.cookie = 'sb=' + (s ? s.access_token + '; Max-Age=' + Math.max(0, s.expires_at - Math.floor(Date.now() / 1000)) : '; Max-Age=0') + '; Path=/; SameSite=Lax; Secure';
+    const conta = document.getElementById('conta');
+    if (!s || !conta) return;
+    const m = s.user.user_metadata || {}, quem = document.getElementById('quem');
+    quem.textContent = String(m.full_name || m.name || '').split(' ')[0] || s.user.email; quem.title = s.user.email || '';
+    conta.hidden = false;
+    document.getElementById('sair').onclick = () => SB.auth.signOut({ scope: 'local' }).finally(() => location.replace('/entrar'));
+  });
+} catch (e) { SB = null; }
+</script>
 <script>
 /* ============ Geometria procedural da coluna (unidades: cm) ============
    Eixos: y para cima, +z anterior, +x esquerda do paciente. */
@@ -3294,7 +3322,13 @@ Object.assign(INFO, {
 
   /* ---------- estado e progresso (independem do 3D) ---------- */
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
-  const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
+  // cópia na conta (tabela progresso): cada gravação, com atraso, lê a da conta, soma com a local e grava a soma (sync, mais abaixo);
+  // nunca grava por cima sem ler, senão apagaria o progresso de outro aparelho
+  const LISTAS = ['seen', 'dzSeen', 'procSeen'];
+  let contaId = null, pushT = 0;
+  const push = (ms = 1500) => { if (!contaId) return; clearTimeout(pushT); pushT = setTimeout(() => sync(contaId), ms); };
+  const keep = () => { marca(); try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
+  const save = () => { keep(); push(); };
   store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
   const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
@@ -4094,16 +4128,13 @@ Object.assign(INFO, {
     $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
   }
   let closeAsk = () => false;
-  // tira-dúvidas: só aparece com ?duvidas=<senha>, guardada na aba; a senha confere no servidor (functions/api/pergunta.js)
+  // tira-dúvidas: aparece com a sessão; o servidor confere o token e o limite diário (functions/api/pergunta.js)
   {
-    const q = new URLSearchParams(location.search), k = q.get('duvidas');
-    if (k) { try { sessionStorage.setItem('duvidas', k); } catch (e) { } q.delete('duvidas'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
-    let senha = k; try { senha = senha || sessionStorage.getItem('duvidas'); } catch (e) { }
     const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button'), fab = $('#askfab'), win = $('#askwin');
     const line = (t, cls) => { const p = document.createElement('p'); if (cls) p.className = cls; p.textContent = t; out.appendChild(p); out.scrollTop = out.scrollHeight; return p; };
     const show = on => { win.hidden = !on; fab.hidden = on; fab.setAttribute('aria-expanded', on); (on ? inp : fab).focus(); };
     closeAsk = () => !win.hidden && (show(false), true);
-    if (senha) fab.hidden = false;
+    if (SB) SB.auth.onAuthStateChange((ev, s) => { if (s && win.hidden) fab.hidden = false; });
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
     // a janela é ancorada embaixo à direita, então a alça fica no canto de cima à esquerda: puxar para cima e para a esquerda aumenta
     const grip = $('#askgrip'), size = (w, h) => {
@@ -4121,19 +4152,60 @@ Object.assign(INFO, {
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
-        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', 'x-senha': senha }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const { data } = await SB.auth.getSession(); // getSession renova o token se precisar
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (data.session ? data.session.access_token : '') }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
         // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
         ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
+        if (typeof d.restantes === 'number') inp.placeholder = `Sua dúvida (${d.restantes === 1 ? 'resta 1' : 'restam ' + d.restantes} hoje)`;
       } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
       out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
   }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
-    store.seen = []; store.dzSeen = []; store.procSeen = []; save();
+    LISTAS.forEach(k => { store[k] = []; }); store.em = {}; store.zeradoEm = Date.now(); save(); push(0); // a conta fica sabendo já; zeradoEm impede que outro aparelho traga as marcas de volta
     if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
   };
+
+  /* ---------- progresso na conta (sem sessão ou sem rede, tudo segue no localStorage; nome e Sair ficam em src/auth.js) ---------- */
+  // hora de cada marca de visto (store.em) e do último "limpar progresso" (store.zeradoEm), para a soma entre aparelhos;
+  // marcas de antes desta versão ficam com hora 0
+  function marca() {
+    const t = store.em ? Date.now() : 0; store.em = store.em || {};
+    LISTAS.forEach(k => store[k].forEach(v => { if (!((k + ':' + v) in store.em)) store.em[k + ':' + v] = t; }));
+  }
+  // teste: fica o resultado com mais acertos; empate, o com mais respostas; empate, o deste aparelho
+  const quizVal = (id, a) => { const qs = (id === 'dz' ? DZ_QUIZ : QUIZ[id.slice(1)]) || []; return Object.entries(a).filter(([i, o]) => qs[i] && qs[i][2] === o).length * 100 + Object.keys(a).length; };
+  // marcas unidas, menos as anteriores ao último "limpar progresso" do outro lado
+  function merge(r) {
+    const el = store.em || {}, er = r.em || {}, zl = store.zeradoEm || 0, zr = r.zeradoEm || 0, em = {};
+    LISTAS.forEach(k => {
+      const loc = store[k].filter(v => (el[k + ':' + v] || 0) >= zr), rem = (Array.isArray(r[k]) ? r[k] : []).filter(v => (er[k + ':' + v] || 0) >= zl);
+      store[k] = [...new Set([...loc, ...rem])];
+      store[k].forEach(v => { const c = k + ':' + v; em[c] = Math.max(el[c] || 0, er[c] || 0); });
+    });
+    store.em = em; store.zeradoEm = Math.max(zl, zr);
+    Object.entries(r.quiz || {}).forEach(([id, a]) => { if (a && typeof a === 'object' && quizVal(id, a) > quizVal(id, store.quiz[id] || {})) store.quiz[id] = a; });
+  }
+  let lendo = false;
+  async function sync(id) {
+    if (lendo) return push(); // uma leitura por vez
+    lendo = true;
+    try {
+      const { data, error } = await SB.from('progresso').select('dados').maybeSingle();
+      if (error) return; // sem rede ou erro: tenta de novo na próxima gravação ou renovação do token
+      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.quiz]), antes = visto();
+      // outra pessoa entrou neste navegador: o progresso local era da anterior e não soma nesta conta
+      if (store.conta && store.conta !== id) { LISTAS.forEach(k => { store[k] = []; }); store.quiz = {}; store.em = {}; store.zeradoEm = 0; }
+      if (data && data.dados) merge(data.dados);
+      store.conta = contaId = id; keep();
+      await SB.from('progresso').upsert({ user_id: id, dados: store, atualizado: new Date().toISOString() });
+      if (visto() !== antes) { if (S.mode === 'anat') renderStep(); else renderDz(); }
+    } catch (e) { } finally { lendo = false; }
+  }
+  // fora do callback: o supabase-js pede para não chamar o cliente dentro dele
+  if (SB) SB.auth.onAuthStateChange((ev, s) => { if (s && !contaId) setTimeout(() => sync(s.user.id)); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if (closeAsk()) return; if (view.classList.contains('full')) setFull(false); else if (!infoEl.hidden) closeCard(); return; }
     const t = e.target, free = t === document.body || t === canvas || (t.closest && t.closest('.nav'));
