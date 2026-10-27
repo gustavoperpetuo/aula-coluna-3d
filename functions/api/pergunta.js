@@ -4,10 +4,10 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const SUPABASE = 'https://ugvqhjyeekyufxuyvozc.supabase.co', CHAVE_PUBLICA = 'sb_publishable_FbgScRDcBuqkEt77OKKnpQ_Rb_K07Xq';
 
-const SYSTEM = 'Monitor de uma aula de anatomia, doenças e procedimentos da coluna vertebral. Responda em português do Brasil, direto e didático. ' +
+const SYSTEM = 'Assistente de estudo num curso de anatomia, doenças e procedimentos da coluna vertebral. Responda qualquer pergunta, sobre a coluna ou não, em português do Brasil, direto e didático. ' +
   'Estrutura: a resposta numa frase; depois, se ajudar a entender, até 4 tópicos curtos, cada um numa linha começando com "- ". ' +
   'Use **negrito** nas palavras e frases mais importantes. Nenhuma outra formatação (sem títulos, tabelas ou listas numeradas). ' +
-  'Sem introdução, sem repetir a pergunta, sem fechamento. Use o trecho da aula como base. Fora da coluna, diga em uma frase. Sem conduta para paciente específico.';
+  'Sem introdução, sem repetir a pergunta, sem fechamento. O trecho da tela aberta vem junto: use-o quando a pergunta for sobre ele e ignore-o quando não for. Sem conduta para paciente específico.';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       system: SYSTEM,
-      messages: [{ role: 'user', content: `Trecho da aula na tela:\n${contexto}\n\nPergunta: ${pergunta}` }],
+      messages: [{ role: 'user', content: `Trecho da tela aberta (contexto opcional):\n${contexto}\n\nPergunta: ${pergunta}` }],
     });
     if (r.stop_reason === 'refusal') return json({ erro: 'Não consegui responder a essa pergunta.' });
     const texto = r.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();

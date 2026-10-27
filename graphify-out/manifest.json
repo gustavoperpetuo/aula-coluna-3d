@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793141033.416424,
-    "seen": 1793141774.0471349,
-    "ast_hash": "5c4cc4bcbaaae2d014ef172b81276d37",
+    "mtime": 1793144636.7915292,
+    "seen": 1793144765.383762,
+    "ast_hash": "ae3718209190a8a30fd94676606f274c",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
-    "mtime": 1793121424.5690863,
-    "seen": 1793122758.3027494,
-    "ast_hash": "f406cf8ac2d58c0dea3d66823bbe7b4e",
+    "mtime": 1793144636.7906759,
+    "seen": 1793144765.3837216,
+    "ast_hash": "69ec2d8fc4d55b1d4a1e50e1a19a2572",
     "semantic_hash": ""
   },
   "tests/pergunta.mjs": {
