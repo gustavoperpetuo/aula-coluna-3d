@@ -92,7 +92,9 @@ try {
   /* botão do Google na própria página: o Google mostra o endereço do site, não o do Supabase, e o Supabase só recebe o token.
      Se o script do Google não carregar, fica o botão acima (fluxo por redirecionamento). */
   window.onGoogleLibraryLoad = async () => {
-    const cru = crypto.randomUUID(), h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cru));
+    if (!crypto.subtle) return; // fora de https (testes locais) fica o botão por redirecionamento
+    const cru = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cru));
     google.accounts.id.initialize({
       client_id: '921714836663-pbtkcien4pdpcqqj4dfsiv1ntm6k5cah.apps.googleusercontent.com',
       nonce: [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''),

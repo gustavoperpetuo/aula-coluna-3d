@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "src/entrar.js": {
-    "mtime": 1793127858.4142973,
-    "seen": 1793127989.7580643,
-    "ast_hash": "44d662b77d08361a2eaae93f6a85d13c",
+    "mtime": 1793128002.9246302,
+    "seen": 1793128468.0953517,
+    "ast_hash": "e51f2449ac2ac5b247dd679e5431bbaf",
     "semantic_hash": ""
   },
   "tests/middleware.mjs": {
