@@ -29,6 +29,8 @@ p { margin: 0; font-size: 19px; color: var(--ink-2); }
 .btn:disabled { opacity: .5; cursor: default; }
 .erro { margin-top: 18px; font-size: 16px; font-weight: 600; color: var(--path); }
 [hidden] { display: none !important; }
+.nota { margin-top: 40px; font-size: 15px; }
+.nota a { color: var(--ink-2); }
 @media (max-width: 800px) {
   main { padding: 72px 16px 40px; }
   h1 { font-size: 34px; }
@@ -41,6 +43,7 @@ p { margin: 0; font-size: 19px; color: var(--ink-2); }
   <p>Acesso com o e-mail de uma das empresas do grupo.</p>
   <button class="btn" id="google" type="button">Entrar com Google</button>
   <p class="erro" id="erro" role="alert" hidden></p>
+  <p class="nota"><a href="/privacidade">Privacidade</a></p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>

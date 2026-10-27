@@ -20,6 +20,7 @@ async function pede(path, { cookie, auth, html = true } = {}) {
   return r.status === 302 ? '302 ' + r.headers.get('location') : r.status;
 }
 eq('login é público', await pede('/entrar'), 200);
+eq('privacidade é pública', await pede('/privacidade'), 200);
 eq('ícone do login é público', await pede('/icone-32.png', { html: false }), 200);
 eq('HTML sem cookie vai ao login', await pede('/coluna-vertebral?x=1'), '302 https://aula.test/entrar?volta=%2Fcoluna-vertebral%3Fx%3D1');
 eq('imagem sem cookie', await pede('/coluna-lateral.webp', { html: false }), 401);
