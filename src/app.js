@@ -10,7 +10,7 @@
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
   store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
-  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null };
+  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
   let has3D = false, renderer, scene, camera, controls, model = null, V3, deg = Math.PI / 180;
@@ -700,6 +700,21 @@
   }
   // procedimentos reaproveitam o fluxo das doenças (lista, ficha, régua, rótulos); só os campos de texto mudam
   function items() { return S.mode === 'proc' ? PROC : DZ; }
+  // hérnia: posição e forma escolhidas no cartão (d.hv); o padrão (posterolateral, extrusão) é a própria doença.
+  // memo: a mesma escolha devolve o mesmo objeto, e alternar Normal e Com a doença não remonta o modelo
+  const hvMemo = new Map();
+  function dzCfg(d) {
+    const { zone: z, morph: m } = S.hv;
+    if (!d.hv || z === 'pl' && m === 'ext') return d;
+    if (!hvMemo.has(z + m)) {
+      const Z = d.hv.zone[z], M = d.hv.morph[m];
+      hvMemo.set(z + m, Object.assign({}, d, {
+        mods: { disc: { 'L4-L5': { ...d.mods.disc['L4-L5'], hern: { zone: z, morph: m } } }, hotRoots: Z.roots, pinch: Z.f ? [{ at: 'L4-L5', f: m === 'prot' ? (1 + Z.f) / 2 : Z.f, w: 0.4, off: m === 'seq' ? 0.45 : 0, what: 'dura' }] : [] },
+        labels: [['hernia', M.name + ' ' + Z.adj], ...Z.labels]
+      }));
+    }
+    return hvMemo.get(z + m);
+  }
   function cats() { return S.mode === 'proc' ? PROC_CATS : DZ_CATS; }
   function closeDz() { S.dz = null; rebuild({}); applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(); }
   function renderDz(moveFocus) {
@@ -737,16 +752,26 @@
     // procedimento não tem versão "normal" para comparar: sem a alternância
     // caixa curta e igual em todos: deixa claro que cada procedimento tem o seu paciente e a sua região
     if (P) h += `<dl class="quando"><dt>Indicado para</dt><dd>${esc(d.ind)}</dd><dt>Região da coluna</dt><dd>${esc(d.regiao)}</dd><dt>Não indicado quando</dt><dd>${esc(d.nao)}</dd></dl>`;
-    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
+    const cfg = dzCfg(d);
+    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div>`
+      + (d.hv && S.dzOn ? `<div class="hvar">` + [['zone', 'Posição'], ['morph', 'Forma']].map(([g, t]) => `<div class="hvt">${t}</div><div class="seg ${g}" role="group" aria-label="${t} da hérnia">`
+        + Object.entries(d.hv[g]).map(([k, o]) => `<button data-hv="${g}.${k}" aria-pressed="${S.hv[g] === k}">${o.name}</button>`).join('') + `</div>`).join('')
+        + `<p class="hvcap">${esc(d.hv.zone[S.hv.zone].cap + ' ' + d.hv.morph[S.hv.morph].cap)}</p></div>` : '') + `</div>`;
     (P ? [['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
       : [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]]).forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
-    h += seeHtml(P || S.dzOn ? d.labels : neutralLabels(d));
+    h += seeHtml(P || S.dzOn ? cfg.labels : neutralLabels(cfg));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     $('#back').onclick = () => { closeDz(); focusTitle(); };
     if (!P) {
-      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
-      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, cfg, { hot: [], labels: neutralLabels(cfg) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
+      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(cfg.mods); applyConfig(cfg, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+      // variante da hérnia: remonta o modelo e volta a câmera ao corte axial da doença
+      scrollEl.querySelectorAll('[data-hv]').forEach(b => b.onclick = () => {
+        const [g, k] = b.dataset.hv.split('.'); if (S.hv[g] === k) return;
+        S.hv[g] = k; const c = dzCfg(d); rebuild(c.mods); applyConfig(c); renderDz();
+        scrollEl.querySelector(`[data-hv="${g}.${k}"]`).focus(); say(c.labels[0][1] + '.');
+      });
     }
     bindSee();
     const lastDz = i === L.length - 1;
@@ -758,7 +783,7 @@
   // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
     const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
-    S.dz = id; S.dzOn = true;
+    S.dz = id; S.dzOn = true; S.hv = { zone: 'pl', morph: 'ext' };
     if (S.mode !== m) { S.mode = m; syncMode(); }
     if (!seen.includes(id)) { seen.push(id); save(); }
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);

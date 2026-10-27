@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793108862.2614818,
-    "seen": 1793109304.46685,
-    "ast_hash": "36b90e7380ef0e1575bc6038a04ab3ba",
+    "mtime": 1793113991.5201294,
+    "seen": 1793115483.9763157,
+    "ast_hash": "dfecd0c8047cf515dfd88fb3b96409f7",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -30,15 +30,15 @@
     "semantic_hash": ""
   },
   "src/disease.js": {
-    "mtime": 1792248450.419098,
-    "seen": 1792248773.269701,
-    "ast_hash": "44da85afe6347f8798c33d2cf1155739",
+    "mtime": 1793113973.4041283,
+    "seen": 1793115483.976319,
+    "ast_hash": "e0ed4b07cf0b038f8111dcd91532ac02",
     "semantic_hash": ""
   },
   "src/geo.js": {
-    "mtime": 1793104925.9798884,
-    "seen": 1793106359.145574,
-    "ast_hash": "607bb1b4131c3b0044b0b85e2cabc800",
+    "mtime": 1793115211.9342828,
+    "seen": 1793115483.9763203,
+    "ast_hash": "117c805d8dea36d809c333fd060063de",
     "semantic_hash": ""
   },
   "tests/cortes.esperado.json": {
@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "tests/ligamentos.js": {
-    "mtime": 1792751098.2185276,
-    "seen": 1792751189.5397868,
-    "ast_hash": "b295b1e7a4251be07a64548d75c65e93",
+    "mtime": 1793115449.9513206,
+    "seen": 1793115483.976327,
+    "ast_hash": "e11a2247a182383331ae1f7fa0f4926e",
     "semantic_hash": ""
   },
   "tests/regua.js": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793106556.756969,
-    "seen": 1793107010.336771,
-    "ast_hash": "f9263b181cfd630c73fa81e760c252d9",
+    "mtime": 1793113964.5001278,
+    "seen": 1793115483.9763365,
+    "ast_hash": "cd517007c6ae0cf8df5121a24ba16e47",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "tests/fechadas.js": {
-    "mtime": 1792751098.2175384,
-    "seen": 1792751189.5397851,
-    "ast_hash": "02f36fe83ad4a5eb704901477290cb0b",
+    "mtime": 1793115449.950881,
+    "seen": 1793115483.976326,
+    "ast_hash": "95d040cb9ee5ff502d64a1fbc593b9c9",
     "semantic_hash": ""
   },
   "tests/maiusculas.js": {

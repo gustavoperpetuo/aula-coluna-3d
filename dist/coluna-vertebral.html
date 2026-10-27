@@ -241,6 +241,12 @@ body.resizing { cursor: col-resize; user-select: none; }
 .back:hover { color: var(--ink); }
 .lvtag { font-size: 15px; color: var(--path); font-weight: 600; margin: -6px 0 12px; }
 .dzbar { margin: 0 0 16px; }
+/* variantes da hérnia: posição em 2 colunas e forma em 3, para caber em 390 px */
+.hvt { margin: 12px 0 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.hvar .seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; box-sizing: border-box; }
+.hvar .seg.zone { grid-template-columns: repeat(2, 1fr); }
+.hvar .seg button { padding: 6px 8px; }
+.hvcap { margin: 10px 0 0; font-size: 15px; color: var(--ink-2); }
 .sec { margin-top: 16px; }
 .sec h3 { margin: 0 0 2px; font-size: 16.5px; font-weight: 700; color: var(--ink); }
 .sec p { margin: 0; }
@@ -1063,13 +1069,48 @@ function buildSpine(mods = {}) {
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
-    // hérnia
+    // hérnia. zone: 'central', 'pl' (posterolateral), 'foram' ou 'extra'; morph: 'prot', 'ext' ou 'seq'; side: 1 esquerda, -1 direita.
+    // sem zone, o formato antigo { side, size }: side 0 é a central, os outros a posterolateral, sempre extrusão
     if (herni) {
-      const s = herni.side || 0, sz = herni.size || 1;
-      const c = kf.p.clone().add(v(s * 0.3 * kf.cw, 0, kf.post - 0.32 * sz).applyQuaternion(qd));
-      add(ellip(c, (s ? 0.5 : 0.95) * sz, 0.42 + 0.15 * sz, 0.4 * sz, 18, qd), 'herniation', 'hernia', 'hernia', { level: dn });
-      add(rod(nucC, c, 0.2 * sz, { r2: 0.28 * sz }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
-      anchors.set('hernia', c);
+      const zn = herni.zone || (herni.side ? 'pl' : 'central'), mo = herni.morph || 'ext', sz = herni.size || 1;
+      const s = zn === 'central' ? 0 : herni.side || 1;
+      // a central nova levanta o LLP (subligamentar, ver ligTargets) em vez de atravessá-lo
+      const H = { level: dn }; if (herni.zone === 'central') H.lift = 1;
+      if (mo === 'ext' && zn !== 'foram' && zn !== 'extra') {
+        const c = kf.p.clone().add(v(s * 0.3 * kf.cw, 0, kf.post - 0.32 * sz).applyQuaternion(qd));
+        add(ellip(c, (s ? 0.5 : 0.95) * sz, 0.42 + 0.15 * sz, 0.4 * sz, 18, qd), 'herniation', 'hernia', 'hernia', H);
+        add(rod(nucC, c, 0.2 * sz, { r2: 0.28 * sz }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+        anchors.set('hernia', c);
+      } else {
+        // medidas do lado esquerdo do disco L4-L5, escaladas pelo disco: w ponto da parede de onde sai e a inclinação dela (graus),
+        // rt e rn meios eixos da protrusão ao longo da parede e para fora, ext cúpula [x, y, z, rx, ry, rz], seq fragmento de [x, y, z]
+        // a [x, y, z] com achatamento f. Junto da parede, nada passa de 0,34 em y: a altura posterior do disco é ~0,38 de cada lado
+        const Z = {
+          central: { w: [0, -1.25], a: 0, rt: 1.1, rn: 0.36, seq: [0, 0.15, -2, 0, -1.6, -2.05], f: 2.2 },
+          pl: { w: [0.85, -1.3], a: 0, rt: 0.75, rn: 0.36, seq: [0.85, 0.15, -2.06, 1, -1.6, -2.1], f: 1.6 },
+          foram: { w: [1.9, -1.15], a: 22, rt: 0.65, rn: 0.45, ext: [2.1, 0.12, -1.8, 0.42, 0.42, 0.34], seq: [2.3, 0.45, -1.95, 2.4, -0.35, -1.9], f: 1.4 },
+          extra: { w: [2.22, -0.92], a: 55, rt: 0.55, rn: 0.4, ext: [3.12, 0, -1.22, 0.42, 0.4, 0.36], seq: [3.2, 0.35, -1.3, 3.35, -0.45, -1.25], f: 1.3 }
+        }[zn];
+        const kx = kf.W / 4.9, kz = kf.D / 3.4, P = (x, y, z) => kf.p.clone().add(v(s * x * kx, y, z * kz).applyQuaternion(qd));
+        const a = Z.a * deg, nx = Math.sin(a), nz = -Math.cos(a), [wx, wz] = Z.w; // n: normal da parede, para fora
+        if (mo === 'prot') {
+          // centro fora da parede: o que fica dentro do disco também aparece no corte (a hérnia é desenhada por cima do anel)
+          const qp = qd.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), -s * a)), o = 0.55 * Z.rn;
+          add(ellip(P(wx + nx * o, 0, wz + nz * o), Z.rt * kx, 0.34, Z.rn * kz, 18, qp), 'herniation', 'hernia', 'hernia', H);
+          anchors.set('hernia', P(wx + nx * (o + Z.rn * 0.5), 0, wz + nz * (o + Z.rn * 0.5)));
+        } else if (mo === 'ext') {
+          const [x, y, z, rx, ry, rz] = Z.ext, c = P(x, y, z);
+          add(ellip(c, rx * kx, ry, rz * kz, 18, qd), 'herniation', 'hernia', 'hernia', H);
+          add(rod(nucC, c, 0.2, { r2: 0.28 }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+          anchors.set('hernia', c);
+        } else {
+          // sequestro: fragmento solto (malha à parte) e a fissura do anel, que para na parede
+          const [x0, y0, z0, x1, y1, z1] = Z.seq, A = P(x0, y0, z0), B = P(x1, y1, z1);
+          add(rod(A, B, 0.26, { f: Z.f, side: v(1, 0, 0).applyQuaternion(qd) }), 'herniation', 'hernia', 'hernia', H);
+          add(rod(nucC, P(wx - nx * 0.05, 0, wz - nz * 0.05), 0.16, { r2: 0.11 }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+          anchors.set('hernia', A.clone().lerp(B, y0 / (y0 - y1)));
+        }
+      }
     }
     // osteófitos
     const os = (mods.osteo || {})[dn];
@@ -1111,6 +1152,8 @@ function buildSpine(mods = {}) {
   // o canal sacral não é oco no modelo (o sacro é um bloco): o LLP corre dentro dele por construção, então só o LLA testa o sacro
   const ligTargets = (u0, u1, which) => meshes.filter(m => {
     const k = m.userData.key;
+    // hérnia central (lift): o LLP passa por trás dela, como na hérnia subligamentar
+    if (m.userData.lift) { m.userData.ku = KI[m.userData.level]; return which === 'post' && m.userData.ku >= u0 - 1.5 && m.userData.ku <= u1 + 1.5; }
     if (!(which === 'ant' ? /^((C|T|L|S)\d+\.body|sacrum|disc\.)/ : /^((C|T|L|S)\d+\.body|disc\.)/).test(k) || !['bone', 'disc', 'discDeg', 'discInf'].includes(m.userData.kind)) return false;
     const n = k === 'sacrum' ? 'S1' : k.startsWith('disc.') ? k.slice(5) : k.split('.')[0];
     m.userData.ku = KI[n]; return KI[n] !== undefined && KI[n] >= u0 - 1.5 && KI[n] <= u1 + 1.5;
@@ -1128,7 +1171,8 @@ function buildSpine(mods = {}) {
       let need = 0;
       for (let j = 0; j < hits.length;) {
         const a = hits[j].distance; let b = a; j++;
-        while (j < hits.length && hits[j].distance - b < 0.6) b = hits[j++].distance;
+        // a hérnia (lift) é mais grossa que 0,6: a saída dela continua o mesmo bloco
+        while (j < hits.length && (hits[j].distance - b < 0.6 || hits[j].object.userData.lift)) b = hits[j++].distance;
         if (a < cur + 0.5) need = Math.max(need, b + 0.08 - cur);
       }
       return need;
@@ -2483,6 +2527,21 @@ const DZ = [
     mods: { disc: { 'L4-L5': { hern: { side: 1, size: 1 }, h: 0.85 } }, hotRoots: ['L5.L'], pinch: [{ at: 'L4-L5', f: 0.75, w: 0.4, what: 'dura' }] },
     cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 18 }, show: 'bone disc lig neuro', clip: 'ax:L4-L5', hot: ['hernia'],
     labels: [['hernia', 'Extrusão posterolateral'], ['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']],
+    // variantes no mesmo disco (app.js, dzCfg): posição e forma. f: compressão do saco dural (sem f, o saco fica livre); roots: raízes em destaque.
+    // posterolateral com extrusão é a doença acima, sem mudança
+    hv: {
+      zone: {
+        central: { name: 'Central', adj: 'central', f: 0.55, roots: ['L5', 'S1', 'S2', 'S3', 'S4', 'S5'], labels: [['cauda', 'Saco dural e cauda equina comprimidos'], ['nuc.L4-L5', 'Núcleo']], cap: 'Central: atrás do meio do disco, comprime o saco dural de frente e as raízes da cauda equina dos dois lados.' },
+        pl: { name: 'Posterolateral', adj: 'posterolateral', f: 0.75, roots: ['L5.L'], labels: [['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']], cap: 'Posterolateral: na zona subarticular (recesso lateral), comprime a raiz que desce, a L5 numa hérnia L4-L5.' },
+        foram: { name: 'Foraminal', adj: 'foraminal', roots: ['L4.L'], labels: [['drg.L4.L', 'Gânglio e raiz L4 comprimidos'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Foraminal: dentro do forame, entre as bordas medial e lateral do pedículo, comprime a raiz que sai, a L4, e o gânglio dela, com o saco dural livre.' },
+        extra: { name: 'Extraforaminal', adj: 'extraforaminal', roots: ['L4.L'], labels: [['root.L4.L', 'Raiz L4 comprimida fora do forame'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Extraforaminal: além da borda lateral do pedículo, fora do forame, comprime a raiz L4 já fora do canal.' }
+      },
+      morph: {
+        prot: { name: 'Protrusão', cap: 'Protrusão: a parte deslocada não é mais larga que a base no disco, uma saliência baixa e larga, em geral contida pelo anel (Fardon, Spine J 2014).' },
+        ext: { name: 'Extrusão', cap: 'Extrusão: em algum plano a parte deslocada é mais larga que a base, com colo estreito (Fardon, Spine J 2014).' },
+        seq: { name: 'Sequestro', cap: 'Sequestro: extrusão em que o fragmento perdeu a ligação com o disco e pode migrar para cima ou para baixo (Fardon, Spine J 2014).' }
+      }
+    },
     what: 'Deslocamento do núcleo pulposo por uma fissura do anel, além dos limites do disco. Protrusão (base larga), extrusão (cúpula maior que a base) ou sequestro (fragmento solto).',
     why: 'Cerca de 90% ocorrem em L4-L5 e L5-S1, na posição posterolateral, onde o LLP não cobre o anel. Comprime a raiz transeunte (L5 numa hérnia L4-L5) por efeito mecânico e por inflamação química do material do núcleo.',
     sx: 'Dor irradiada para a perna no trajeto da raiz (ciática), mais forte que a dor lombar; Formigamento; Fraqueza no grupo muscular da raiz. Teste de elevação da perna estendida (Lasègue) positivo entre 30° e 70°.',
@@ -3229,7 +3288,7 @@ Object.assign(INFO, {
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   const save = () => { try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
   store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
-  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null };
+  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
   let has3D = false, renderer, scene, camera, controls, model = null, V3, deg = Math.PI / 180;
@@ -3919,6 +3978,21 @@ Object.assign(INFO, {
   }
   // procedimentos reaproveitam o fluxo das doenças (lista, ficha, régua, rótulos); só os campos de texto mudam
   function items() { return S.mode === 'proc' ? PROC : DZ; }
+  // hérnia: posição e forma escolhidas no cartão (d.hv); o padrão (posterolateral, extrusão) é a própria doença.
+  // memo: a mesma escolha devolve o mesmo objeto, e alternar Normal e Com a doença não remonta o modelo
+  const hvMemo = new Map();
+  function dzCfg(d) {
+    const { zone: z, morph: m } = S.hv;
+    if (!d.hv || z === 'pl' && m === 'ext') return d;
+    if (!hvMemo.has(z + m)) {
+      const Z = d.hv.zone[z], M = d.hv.morph[m];
+      hvMemo.set(z + m, Object.assign({}, d, {
+        mods: { disc: { 'L4-L5': { ...d.mods.disc['L4-L5'], hern: { zone: z, morph: m } } }, hotRoots: Z.roots, pinch: Z.f ? [{ at: 'L4-L5', f: m === 'prot' ? (1 + Z.f) / 2 : Z.f, w: 0.4, off: m === 'seq' ? 0.45 : 0, what: 'dura' }] : [] },
+        labels: [['hernia', M.name + ' ' + Z.adj], ...Z.labels]
+      }));
+    }
+    return hvMemo.get(z + m);
+  }
   function cats() { return S.mode === 'proc' ? PROC_CATS : DZ_CATS; }
   function closeDz() { S.dz = null; rebuild({}); applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(); }
   function renderDz(moveFocus) {
@@ -3956,16 +4030,26 @@ Object.assign(INFO, {
     // procedimento não tem versão "normal" para comparar: sem a alternância
     // caixa curta e igual em todos: deixa claro que cada procedimento tem o seu paciente e a sua região
     if (P) h += `<dl class="quando"><dt>Indicado para</dt><dd>${esc(d.ind)}</dd><dt>Região da coluna</dt><dd>${esc(d.regiao)}</dd><dt>Não indicado quando</dt><dd>${esc(d.nao)}</dd></dl>`;
-    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div></div>`;
+    const cfg = dzCfg(d);
+    if (!P) h += `<div class="dzbar"><div class="seg" role="group" aria-label="Comparar no 3D"><button id="t-n" aria-pressed="${!S.dzOn}">Normal</button><button id="t-d" class="dz" aria-pressed="${S.dzOn}">Com a doença</button></div>`
+      + (d.hv && S.dzOn ? `<div class="hvar">` + [['zone', 'Posição'], ['morph', 'Forma']].map(([g, t]) => `<div class="hvt">${t}</div><div class="seg ${g}" role="group" aria-label="${t} da hérnia">`
+        + Object.entries(d.hv[g]).map(([k, o]) => `<button data-hv="${g}.${k}" aria-pressed="${S.hv[g] === k}">${o.name}</button>`).join('') + `</div>`).join('')
+        + `<p class="hvcap">${esc(d.hv.zone[S.hv.zone].cap + ' ' + d.hv.morph[S.hv.morph].cap)}</p></div>` : '') + `</div>`;
     (P ? [['Anatomia-alvo', d.alvo], ['Técnica e imagem', d.tec], ['O que se injeta ou faz', d.inj], ['Complicações', d.risco], ['Evidência', d.evid]]
       : [['O que é', d.what], ['Por que acontece', d.why], ['Sintomas', d.sx], ['Diagnóstico', d.dx], ['Tratamento', d.tx]]).forEach(([t, x]) => h += `<div class="sec"><h3>${t}</h3><p>${esc(x)}</p></div>`);
     h += `<aside class="pro"><div class="h">Para o especialista</div><p>${esc(d.pro)}</p></aside>`;
-    h += seeHtml(P || S.dzOn ? d.labels : neutralLabels(d));
+    h += seeHtml(P || S.dzOn ? cfg.labels : neutralLabels(cfg));
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     $('#back').onclick = () => { closeDz(); focusTitle(); };
     if (!P) {
-      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, d, { hot: [], labels: neutralLabels(d) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
-      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(d.mods); applyConfig(d, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+      $('#t-n').onclick = () => { if (!S.dzOn) return; S.dzOn = false; rebuild({}); applyConfig(Object.assign({}, cfg, { hot: [], labels: neutralLabels(cfg) }), false); renderDz(); $('#t-n').focus(); say('Mostrando a coluna normal.'); };
+      $('#t-d').onclick = () => { if (S.dzOn) return; S.dzOn = true; rebuild(cfg.mods); applyConfig(cfg, false); renderDz(); $('#t-d').focus(); say('Mostrando ' + d.name + '.'); };
+      // variante da hérnia: remonta o modelo e volta a câmera ao corte axial da doença
+      scrollEl.querySelectorAll('[data-hv]').forEach(b => b.onclick = () => {
+        const [g, k] = b.dataset.hv.split('.'); if (S.hv[g] === k) return;
+        S.hv[g] = k; const c = dzCfg(d); rebuild(c.mods); applyConfig(c); renderDz();
+        scrollEl.querySelector(`[data-hv="${g}.${k}"]`).focus(); say(c.labels[0][1] + '.');
+      });
     }
     bindSee();
     const lastDz = i === L.length - 1;
@@ -3977,7 +4061,7 @@ Object.assign(INFO, {
   // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
     const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
-    S.dz = id; S.dzOn = true;
+    S.dz = id; S.dzOn = true; S.hv = { zone: 'pl', morph: 'ext' };
     if (S.mode !== m) { S.mode = m; syncMode(); }
     if (!seen.includes(id)) { seen.push(id); save(); }
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);

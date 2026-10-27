@@ -1,17 +1,17 @@
 # Graph Report - aula-coluna-3d  (2026-10-27)
 
 ## Corpus Check
-- 21 files · ~80,917 words
+- 21 files · ~81,315 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 176 nodes · 319 edges · 13 communities (9 shown, 4 thin omitted)
+- 177 nodes · 321 edges · 13 communities (9 shown, 4 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6843379d`
+- Built from commit: `f39776fc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,7 +30,7 @@
 - .claude/CLAUDE.md
 
 ## God Nodes (most connected - your core abstractions)
-1. `renderDz()` - 18 edges
+1. `renderDz()` - 19 edges
 2. `buildSpine()` - 18 edges
 3. `applyConfig()` - 15 edges
 4. `renderStep()` - 12 edges
@@ -63,8 +63,8 @@ Cohesion: 0.20
 Nodes (22): Como o código funciona, BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic() (+14 more)
 
 ### Community 1 - "app.js"
-Cohesion: 0.15
-Nodes (25): aliasKey(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard(), describe() (+17 more)
+Cohesion: 0.11
+Nodes (34): aliasKey(), applyConfig(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard() (+26 more)
 
 ### Community 3 - "playwright"
 Cohesion: 0.11
@@ -83,8 +83,8 @@ Cohesion: 0.22
 Nodes (8): Ações, Começar, Continuar, Parar, Pendências da última rodada, Resultado, Retrospectiva: aula 3D da coluna (12/10/2026), Temas
 
 ### Community 7 - "app.js"
-Cohesion: 0.12
-Nodes (30): applyConfig(), bindQuiz(), cats(), chapterDone(), closeDz(), cutTargets(), edgeFade(), focusLevel() (+22 more)
+Cohesion: 0.16
+Nodes (22): bindQuiz(), cats(), chapterDone(), closeDz(), dzCfg(), edgeFade(), focusTitle(), goStep() (+14 more)
 
 ### Community 8 - "content.js"
 Cohesion: 0.22
@@ -102,17 +102,15 @@ Nodes (4): DZ, DZ_CATS, DZ_OTHERS, DZ_QUIZ
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Como o código funciona` connect `geo.js` to `app.js`, `Aula 3D da coluna vertebral`, `app.js`?**
-  _High betweenness centrality (0.147) - this node is a cross-community bridge._
+- **Why does `Como o código funciona` connect `geo.js` to `app.js`, `Aula 3D da coluna vertebral`?**
+  _High betweenness centrality (0.148) - this node is a cross-community bridge._
 - **What connects `three` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `app.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.14666666666666667 - nodes in this community are weakly interconnected._
-- **Why does `applyVisuals()` connect `app.js` to `geo.js`, `app.js`?**
+  _Cohesion score 0.11295681063122924 - nodes in this community are weakly interconnected._
+- **Why does `applyVisuals()` connect `app.js` to `geo.js`?**
   _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Should `playwright` be split into smaller, more focused modules?**
   _Cohesion score 0.1067193675889328 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.09486166007905138 - nodes in this community are weakly interconnected._
-- **Should `app.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.11875843454790823 - nodes in this community are weakly interconnected._

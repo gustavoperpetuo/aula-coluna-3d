@@ -1,4 +1,5 @@
-// Toda peça sólida precisa ser fechada: borda solta vira fenda na tela e anel oco na tampa do corte. Só cascas marcadas (shell) ficam de fora.
+// Toda peça sólida precisa ser fechada e com volume positivo: borda solta vira fenda na tela e anel oco na tampa do corte. Só cascas marcadas (shell) ficam de fora.
+// Inclui as variantes da hérnia (posição x forma), escolhidas pelos botões do cartão.
 // 1) Conta, por posição de vértice, quantos triângulos usam cada aresta; aresta com contagem ímpar é borda aberta.
 const { chromium } = require('playwright');
 const fs=require('fs');
@@ -13,8 +14,9 @@ const fs=require('fs');
  await p.goto('http://local.test/'); await p.waitForTimeout(2500);
  const bad=await p.evaluate(async()=>{
   const sp=__spine, out=new Set(), q=1e4;
-  for(const id of [null,...DZ.map(d=>d.id),...PROC.map(d=>d.id)]){
-   if(id){sp.openDz(id); await new Promise(r=>setTimeout(r,300));}
+  const HV=['central','pl','foram','extra'].flatMap(z=>['prot','ext','seq'].map(m=>'hernia.'+z+'.'+m));
+  for(const id of [null,...DZ.map(d=>d.id),...PROC.map(d=>d.id),...HV]){
+   if(id){const [d,z,m]=id.split('.'); sp.openDz(d); if(z){document.querySelector(`[data-hv="morph.${m}"]`).click(); document.querySelector(`[data-hv="zone.${z}"]`).click();} await new Promise(r=>setTimeout(r,300));}
    for(const m of sp.model.meshes){
     if(m.userData.shell) continue;
     const pos=m.geometry.attributes.position, idx=m.geometry.index, ids=new Map(), E=new Map(); let nid=0;
@@ -22,7 +24,9 @@ const fs=require('fs');
     const vid=i=>{const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i),cx=Math.floor(x*q),cy=Math.floor(y*q),cz=Math.floor(z*q);
      for(let a=-1;a<2;a++)for(let b2=-1;b2<2;b2++)for(let c=-1;c<2;c++){const L=ids.get((cx+a)+','+(cy+b2)+','+(cz+c)); if(L) for(const [px,py,pz,id] of L) if(Math.abs(px-x)+Math.abs(py-y)+Math.abs(pz-z)<1e-5) return id;}
      const k=cx+','+cy+','+cz; if(!ids.has(k)) ids.set(k,[]); const id=nid++; ids.get(k).push([x,y,z,id]); return id;};
-    const n=idx?idx.count:pos.count;
+    const n=idx?idx.count:pos.count; let vol=0; const A=new THREE.Vector3(),B=new THREE.Vector3(),C=new THREE.Vector3();
+    for(let t=0;t<n;t+=3){A.fromBufferAttribute(pos,idx?idx.getX(t):t); B.fromBufferAttribute(pos,idx?idx.getX(t+1):t+1); C.fromBufferAttribute(pos,idx?idx.getX(t+2):t+2); vol+=A.dot(B.cross(C));}
+    if(vol<=0) out.add((id||'normal')+' '+m.userData.key+' volume '+(vol/6).toFixed(4));
     for(let t=0;t<n;t+=3){const v=[0,1,2].map(j=>vid(idx?idx.getX(t+j):t+j)); if(v[0]===v[1]||v[1]===v[2]||v[0]===v[2]) continue;
      for(let j=0;j<3;j++){const a=v[j],c=v[(j+1)%3],k=a<c?a+'_'+c:c+'_'+a; E.set(k,(E.get(k)||0)+1);}}
     let open=0; E.forEach(c=>{if(c%2) open++;});
@@ -48,7 +52,7 @@ const fs=require('fs');
     if(near>=6) out.add('normal '+m.userData.key+' quase coladas '+near);}
   }
   return [...out];});
- console.log(bad.length?'FALHA: peça aberta ou superfícies quase coladas':'ok: peças sólidas fechadas e sem superfícies quase coladas', JSON.stringify(bad.slice(0,20)), errs);
+ console.log(bad.length?'FALHA: peça aberta, volume negativo ou superfícies quase coladas':'ok: peças sólidas fechadas, com volume positivo e sem superfícies quase coladas', JSON.stringify(bad.slice(0,20)), errs);
  await b.close();
  if(bad.length||errs.length) process.exit(1);
 })();

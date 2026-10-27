@@ -235,6 +235,12 @@ body.resizing { cursor: col-resize; user-select: none; }
 .back:hover { color: var(--ink); }
 .lvtag { font-size: 15px; color: var(--path); font-weight: 600; margin: -6px 0 12px; }
 .dzbar { margin: 0 0 16px; }
+/* variantes da hérnia: posição em 2 colunas e forma em 3, para caber em 390 px */
+.hvt { margin: 12px 0 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.hvar .seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; box-sizing: border-box; }
+.hvar .seg.zone { grid-template-columns: repeat(2, 1fr); }
+.hvar .seg button { padding: 6px 8px; }
+.hvcap { margin: 10px 0 0; font-size: 15px; color: var(--ink-2); }
 .sec { margin-top: 16px; }
 .sec h3 { margin: 0 0 2px; font-size: 16.5px; font-weight: 700; color: var(--ink); }
 .sec p { margin: 0; }

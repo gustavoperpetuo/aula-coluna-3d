@@ -737,13 +737,48 @@ function buildSpine(mods = {}) {
     anchors.set('disc.' + dn, kf.p.clone().add(v(0, 0, kf.D * 0.45).applyQuaternion(qd)));
     anchors.set('nuc.' + dn, nucC);
     anchors.set('ax.' + dn, kf.p.clone().add(v(0, 0, -kf.D * 0.62).applyQuaternion(qd)));
-    // hérnia
+    // hérnia. zone: 'central', 'pl' (posterolateral), 'foram' ou 'extra'; morph: 'prot', 'ext' ou 'seq'; side: 1 esquerda, -1 direita.
+    // sem zone, o formato antigo { side, size }: side 0 é a central, os outros a posterolateral, sempre extrusão
     if (herni) {
-      const s = herni.side || 0, sz = herni.size || 1;
-      const c = kf.p.clone().add(v(s * 0.3 * kf.cw, 0, kf.post - 0.32 * sz).applyQuaternion(qd));
-      add(ellip(c, (s ? 0.5 : 0.95) * sz, 0.42 + 0.15 * sz, 0.4 * sz, 18, qd), 'herniation', 'hernia', 'hernia', { level: dn });
-      add(rod(nucC, c, 0.2 * sz, { r2: 0.28 * sz }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
-      anchors.set('hernia', c);
+      const zn = herni.zone || (herni.side ? 'pl' : 'central'), mo = herni.morph || 'ext', sz = herni.size || 1;
+      const s = zn === 'central' ? 0 : herni.side || 1;
+      // a central nova levanta o LLP (subligamentar, ver ligTargets) em vez de atravessá-lo
+      const H = { level: dn }; if (herni.zone === 'central') H.lift = 1;
+      if (mo === 'ext' && zn !== 'foram' && zn !== 'extra') {
+        const c = kf.p.clone().add(v(s * 0.3 * kf.cw, 0, kf.post - 0.32 * sz).applyQuaternion(qd));
+        add(ellip(c, (s ? 0.5 : 0.95) * sz, 0.42 + 0.15 * sz, 0.4 * sz, 18, qd), 'herniation', 'hernia', 'hernia', H);
+        add(rod(nucC, c, 0.2 * sz, { r2: 0.28 * sz }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+        anchors.set('hernia', c);
+      } else {
+        // medidas do lado esquerdo do disco L4-L5, escaladas pelo disco: w ponto da parede de onde sai e a inclinação dela (graus),
+        // rt e rn meios eixos da protrusão ao longo da parede e para fora, ext cúpula [x, y, z, rx, ry, rz], seq fragmento de [x, y, z]
+        // a [x, y, z] com achatamento f. Junto da parede, nada passa de 0,34 em y: a altura posterior do disco é ~0,38 de cada lado
+        const Z = {
+          central: { w: [0, -1.25], a: 0, rt: 1.1, rn: 0.36, seq: [0, 0.15, -2, 0, -1.6, -2.05], f: 2.2 },
+          pl: { w: [0.85, -1.3], a: 0, rt: 0.75, rn: 0.36, seq: [0.85, 0.15, -2.06, 1, -1.6, -2.1], f: 1.6 },
+          foram: { w: [1.9, -1.15], a: 22, rt: 0.65, rn: 0.45, ext: [2.1, 0.12, -1.8, 0.42, 0.42, 0.34], seq: [2.3, 0.45, -1.95, 2.4, -0.35, -1.9], f: 1.4 },
+          extra: { w: [2.22, -0.92], a: 55, rt: 0.55, rn: 0.4, ext: [3.12, 0, -1.22, 0.42, 0.4, 0.36], seq: [3.2, 0.35, -1.3, 3.35, -0.45, -1.25], f: 1.3 }
+        }[zn];
+        const kx = kf.W / 4.9, kz = kf.D / 3.4, P = (x, y, z) => kf.p.clone().add(v(s * x * kx, y, z * kz).applyQuaternion(qd));
+        const a = Z.a * deg, nx = Math.sin(a), nz = -Math.cos(a), [wx, wz] = Z.w; // n: normal da parede, para fora
+        if (mo === 'prot') {
+          // centro fora da parede: o que fica dentro do disco também aparece no corte (a hérnia é desenhada por cima do anel)
+          const qp = qd.clone().multiply(new THREE.Quaternion().setFromAxisAngle(v(0, 1, 0), -s * a)), o = 0.55 * Z.rn;
+          add(ellip(P(wx + nx * o, 0, wz + nz * o), Z.rt * kx, 0.34, Z.rn * kz, 18, qp), 'herniation', 'hernia', 'hernia', H);
+          anchors.set('hernia', P(wx + nx * (o + Z.rn * 0.5), 0, wz + nz * (o + Z.rn * 0.5)));
+        } else if (mo === 'ext') {
+          const [x, y, z, rx, ry, rz] = Z.ext, c = P(x, y, z);
+          add(ellip(c, rx * kx, ry, rz * kz, 18, qd), 'herniation', 'hernia', 'hernia', H);
+          add(rod(nucC, c, 0.2, { r2: 0.28 }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+          anchors.set('hernia', c);
+        } else {
+          // sequestro: fragmento solto (malha à parte) e a fissura do anel, que para na parede
+          const [x0, y0, z0, x1, y1, z1] = Z.seq, A = P(x0, y0, z0), B = P(x1, y1, z1);
+          add(rod(A, B, 0.26, { f: Z.f, side: v(1, 0, 0).applyQuaternion(qd) }), 'herniation', 'hernia', 'hernia', H);
+          add(rod(nucC, P(wx - nx * 0.05, 0, wz - nz * 0.05), 0.16, { r2: 0.11 }), 'nucleus', 'hernia.tract', 'hernia', { level: dn });
+          anchors.set('hernia', A.clone().lerp(B, y0 / (y0 - y1)));
+        }
+      }
     }
     // osteófitos
     const os = (mods.osteo || {})[dn];
@@ -785,6 +820,8 @@ function buildSpine(mods = {}) {
   // o canal sacral não é oco no modelo (o sacro é um bloco): o LLP corre dentro dele por construção, então só o LLA testa o sacro
   const ligTargets = (u0, u1, which) => meshes.filter(m => {
     const k = m.userData.key;
+    // hérnia central (lift): o LLP passa por trás dela, como na hérnia subligamentar
+    if (m.userData.lift) { m.userData.ku = KI[m.userData.level]; return which === 'post' && m.userData.ku >= u0 - 1.5 && m.userData.ku <= u1 + 1.5; }
     if (!(which === 'ant' ? /^((C|T|L|S)\d+\.body|sacrum|disc\.)/ : /^((C|T|L|S)\d+\.body|disc\.)/).test(k) || !['bone', 'disc', 'discDeg', 'discInf'].includes(m.userData.kind)) return false;
     const n = k === 'sacrum' ? 'S1' : k.startsWith('disc.') ? k.slice(5) : k.split('.')[0];
     m.userData.ku = KI[n]; return KI[n] !== undefined && KI[n] >= u0 - 1.5 && KI[n] <= u1 + 1.5;
@@ -802,7 +839,8 @@ function buildSpine(mods = {}) {
       let need = 0;
       for (let j = 0; j < hits.length;) {
         const a = hits[j].distance; let b = a; j++;
-        while (j < hits.length && hits[j].distance - b < 0.6) b = hits[j++].distance;
+        // a hérnia (lift) é mais grossa que 0,6: a saída dela continua o mesmo bloco
+        while (j < hits.length && (hits[j].distance - b < 0.6 || hits[j].object.userData.lift)) b = hits[j++].distance;
         if (a < cur + 0.5) need = Math.max(need, b + 0.08 - cur);
       }
       return need;

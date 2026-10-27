@@ -1,4 +1,5 @@
-// LLA e LLP nunca podem ser atravessados por corpo vertebral (S1 incluído), sacro (só o LLA) ou disco, na coluna normal, em todas as doenças e procedimentos.
+// LLA e LLP nunca podem ser atravessados por corpo vertebral (S1 incluído), sacro (só o LLA) ou disco, na coluna normal, em todas as doenças e procedimentos
+// e nas variantes da hérnia (posição x forma).
 // Raios a cada 0,02 do eixo da coluna (C2 a S1), do centro para fora; falha se osso ou disco ocupar a espessura da faixa.
 const { chromium } = require('playwright');
 const fs=require('fs');
@@ -13,8 +14,9 @@ const fs=require('fs');
  await p.goto('http://local.test/'); await p.waitForTimeout(2500);
  const res=await p.evaluate(async()=>{
   const sp=__spine, w=ms=>new Promise(r=>setTimeout(r,ms)), out=[];
-  for(const id of [null,...DZ.map(d=>d.id),...PROC.map(d=>d.id)]){
-   if(id){sp.openDz(id); await w(300);}
+  const HV=['central','pl','foram','extra'].flatMap(z=>['prot','ext','seq'].map(m=>'hernia.'+z+'.'+m));
+  for(const id of [null,...DZ.map(d=>d.id),...PROC.map(d=>d.id),...HV]){
+   if(id){const [d,z,m]=id.split('.'); sp.openDz(d); if(z){document.querySelector(`[data-hv="morph.${m}"]`).click(); document.querySelector(`[data-hv="zone.${z}"]`).click();} await w(300);}
    const M=sp.model; M.root.updateMatrixWorld(true);
    const bodies=M.meshes.filter(m=>/^((C|T|L|S)\d+\.body|sacrum|disc\.)/.test(m.userData.key)&&['bone','disc','discDeg','discInf'].includes(m.userData.kind));
    const ligs=M.meshes.filter(m=>/^(ALL|PLL)\./.test(m.userData.key));

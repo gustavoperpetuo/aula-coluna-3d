@@ -18,6 +18,21 @@ const DZ = [
     mods: { disc: { 'L4-L5': { hern: { side: 1, size: 1 }, h: 0.85 } }, hotRoots: ['L5.L'], pinch: [{ at: 'L4-L5', f: 0.75, w: 0.4, what: 'dura' }] },
     cam: { t: 'ax.L4-L5', az: 0, el: -78, d: 18 }, show: 'bone disc lig neuro', clip: 'ax:L4-L5', hot: ['hernia'],
     labels: [['hernia', 'Extrusão posterolateral'], ['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']],
+    // variantes no mesmo disco (app.js, dzCfg): posição e forma. f: compressão do saco dural (sem f, o saco fica livre); roots: raízes em destaque.
+    // posterolateral com extrusão é a doença acima, sem mudança
+    hv: {
+      zone: {
+        central: { name: 'Central', adj: 'central', f: 0.55, roots: ['L5', 'S1', 'S2', 'S3', 'S4', 'S5'], labels: [['cauda', 'Saco dural e cauda equina comprimidos'], ['nuc.L4-L5', 'Núcleo']], cap: 'Central: atrás do meio do disco, comprime o saco dural de frente e as raízes da cauda equina dos dois lados.' },
+        pl: { name: 'Posterolateral', adj: 'posterolateral', f: 0.75, roots: ['L5.L'], labels: [['rootIn.L5.L', 'Raiz L5 comprimida'], ['cauda', 'Saco dural'], ['nuc.L4-L5', 'Núcleo']], cap: 'Posterolateral: na zona subarticular (recesso lateral), comprime a raiz que desce, a L5 numa hérnia L4-L5.' },
+        foram: { name: 'Foraminal', adj: 'foraminal', roots: ['L4.L'], labels: [['drg.L4.L', 'Gânglio e raiz L4 comprimidos'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Foraminal: dentro do forame, entre as bordas medial e lateral do pedículo, comprime a raiz que sai, a L4, e o gânglio dela, com o saco dural livre.' },
+        extra: { name: 'Extraforaminal', adj: 'extraforaminal', roots: ['L4.L'], labels: [['root.L4.L', 'Raiz L4 comprimida fora do forame'], ['cauda', 'Saco dural livre'], ['nuc.L4-L5', 'Núcleo']], cap: 'Extraforaminal: além da borda lateral do pedículo, fora do forame, comprime a raiz L4 já fora do canal.' }
+      },
+      morph: {
+        prot: { name: 'Protrusão', cap: 'Protrusão: a parte deslocada não é mais larga que a base no disco, uma saliência baixa e larga, em geral contida pelo anel (Fardon, Spine J 2014).' },
+        ext: { name: 'Extrusão', cap: 'Extrusão: em algum plano a parte deslocada é mais larga que a base, com colo estreito (Fardon, Spine J 2014).' },
+        seq: { name: 'Sequestro', cap: 'Sequestro: extrusão em que o fragmento perdeu a ligação com o disco e pode migrar para cima ou para baixo (Fardon, Spine J 2014).' }
+      }
+    },
     what: 'Deslocamento do núcleo pulposo por uma fissura do anel, além dos limites do disco. Protrusão (base larga), extrusão (cúpula maior que a base) ou sequestro (fragmento solto).',
     why: 'Cerca de 90% ocorrem em L4-L5 e L5-S1, na posição posterolateral, onde o LLP não cobre o anel. Comprime a raiz transeunte (L5 numa hérnia L4-L5) por efeito mecânico e por inflamação química do material do núcleo.',
     sx: 'Dor irradiada para a perna no trajeto da raiz (ciática), mais forte que a dor lombar; Formigamento; Fraqueza no grupo muscular da raiz. Teste de elevação da perna estendida (Lasègue) positivo entre 30° e 70°.',
