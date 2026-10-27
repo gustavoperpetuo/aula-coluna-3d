@@ -816,9 +816,11 @@
   let closeAsk = () => false;
   // tira-dúvidas: aparece com a sessão; o servidor confere o token e o limite diário (functions/api/pergunta.js)
   {
-    const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('button'), fab = $('#askfab'), win = $('#askwin');
+    const ask = $('#ask'), out = $('#askout'), inp = $('#askq'), btn = ask.querySelector('[type=submit]'), mic = $('#askmic'), fab = $('#askfab'), win = $('#askwin');
     const line = (t, cls) => { const p = document.createElement('p'); if (cls) p.className = cls; p.textContent = t; out.appendChild(p); out.scrollTop = out.scrollHeight; return p; };
-    const show = on => { win.hidden = !on; fab.hidden = on; fab.setAttribute('aria-expanded', on); (on ? inp : fab).focus(); };
+    const bearer = async () => { const { data } = await SB.auth.getSession(); return 'Bearer ' + (data.session ? data.session.access_token : ''); }; // getSession renova o token se precisar
+    let rec = null; const parar = () => rec && rec.state === 'recording' && rec.stop(); // fechar a janela também solta o microfone
+    const show = on => { if (!on) parar(); win.hidden = !on; fab.hidden = on; fab.setAttribute('aria-expanded', on); (on ? inp : fab).focus(); };
     closeAsk = () => !win.hidden && (show(false), true);
     if (SB) SB.auth.onAuthStateChange((ev, s) => { if (s && win.hidden) fab.hidden = false; });
     fab.onclick = () => show(true); $('#askx').onclick = () => show(false);
@@ -838,8 +840,7 @@
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
-        const { data } = await SB.auth.getSession(); // getSession renova o token se precisar
-        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (data.session ? data.session.access_token : '') }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: await bearer() }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
         // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
         ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
@@ -847,6 +848,44 @@
       } catch (err) { ans.textContent = 'Sem conexão com o servidor.'; }
       out.scrollTop = out.scrollHeight; btn.disabled = false;
     };
+    // voz (functions/api/transcrever.js): grava até 60 s e põe o texto no campo, sem enviar, para a pessoa revisar antes
+    if (window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      mic.hidden = false;
+      mic.onclick = async () => {
+        if (rec) return parar();
+        let stream;
+        mic.disabled = true; // enquanto o navegador pede a permissão, um segundo toque abriria outro microfone
+        try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (err) {
+          return line({ NotAllowedError: 'Permissão do microfone negada. Libere o microfone nas configurações do navegador.', NotFoundError: 'Nenhum microfone encontrado neste aparelho.' }[err.name] || 'Não foi possível usar o microfone.');
+        } finally { mic.disabled = false; }
+        const partes = [], t0 = Date.now(), dica = inp.placeholder;
+        const relogio = () => { const s = Math.floor((Date.now() - t0) / 1000); inp.placeholder = `Gravando… ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s >= 60) parar(); };
+        let tique;
+        rec = new MediaRecorder(stream);
+        rec.ondataavailable = e => partes.push(e.data);
+        rec.onstop = async () => {
+          clearInterval(tique); stream.getTracks().forEach(t => t.stop()); rec = null;
+          mic.setAttribute('aria-pressed', 'false'); mic.disabled = true; inp.placeholder = 'Transcrevendo…';
+          try {
+            const r = await fetch('/api/transcrever', { method: 'POST', headers: { 'content-type': 'audio/wav', authorization: await bearer() }, body: await wav(new Blob(partes)) });
+            const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
+            if (d.texto) inp.value = (inp.value.trim() + ' ' + d.texto).trim(); else line(d.erro || 'Não entendi o áudio. Tente de novo.');
+          } catch (err) { line(err instanceof TypeError ? 'Sem conexão com o servidor.' : 'Não consegui ler o áudio gravado. Tente de novo.'); }
+          inp.placeholder = dica; mic.disabled = false; inp.focus();
+        };
+        rec.start(); mic.setAttribute('aria-pressed', 'true'); relogio(); tique = setInterval(relogio, 250);
+      };
+    }
+    // WAV 16 kHz mono 16 bits: a página do modelo não lista os formatos aceitos, e WAV é o que os exemplos do Workers AI usam.
+    // decodeAudioData já reamostra para a taxa do contexto; os canais viram a média
+    async function wav(blob) {
+      const a = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(await blob.arrayBuffer());
+      const n = a.length, ch = Array.from({ length: a.numberOfChannels }, (_, c) => a.getChannelData(c)), v = new DataView(new ArrayBuffer(44 + n * 2));
+      let o = 0; const str = t => { for (const c of t) v.setUint8(o++, c.charCodeAt(0)); }, u32 = x => { v.setUint32(o, x, true); o += 4; }, u16 = x => { v.setUint16(o, x, true); o += 2; };
+      str('RIFF'); u32(36 + n * 2); str('WAVEfmt '); u32(16); u16(1); u16(1); u32(16000); u32(32000); u16(2); u16(16); str('data'); u32(n * 2);
+      for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch.reduce((s, d) => s + d[i], 0) / ch.length)) * 0x7fff, true);
+      return new Blob([v], { type: 'audio/wav' });
+    }
   }
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;

@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1793121817.23756,
-    "seen": 1793122758.302752,
-    "ast_hash": "776b954407c41578a8f57da24f6a5000",
+    "mtime": 1793140943.1982636,
+    "seen": 1793141774.0471003,
+    "ast_hash": "51d42e46b6a47ff49b431ef22fcc9ae0",
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793122996.3179612,
-    "seen": 1793123647.4604032,
-    "ast_hash": "a8f818cafd96dbbdc585af81b76bb560",
+    "mtime": 1793141049.2742698,
+    "seen": 1793141774.0471022,
+    "ast_hash": "b06a0702327750ed31a2cabd5cbe6db0",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793123040.3914373,
-    "seen": 1793123647.4604287,
-    "ast_hash": "437cdf43a50eccac354533c047818789",
+    "mtime": 1793141090.803787,
+    "seen": 1793141774.0471246,
+    "ast_hash": "dbb5acd08fe90fc8e454d79a3bde75e3",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793128803.3794494,
-    "seen": 1793129387.9467566,
-    "ast_hash": "63454670757db02e749a1239c86124a6",
+    "mtime": 1793141058.9044583,
+    "seen": 1793141774.0471306,
+    "ast_hash": "2f2970d196526a672869dee46119dde3",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793121675.1095517,
-    "seen": 1793122758.3027961,
-    "ast_hash": "b834cd2c66b8fdf6536c50b8dcc489ab",
+    "mtime": 1793141033.416424,
+    "seen": 1793141774.0471349,
+    "ast_hash": "5c4cc4bcbaaae2d014ef172b81276d37",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -195,6 +195,18 @@
     "mtime": 1793139197.7038388,
     "seen": 1793139778.4765496,
     "ast_hash": "ede8b04baaaf833689b21cfe8b97ce5c",
+    "semantic_hash": ""
+  },
+  "functions/api/transcrever.js": {
+    "mtime": 1793140930.606263,
+    "seen": 1793141774.0470974,
+    "ast_hash": "dff54c38c098f441c02c7ba41ee41582",
+    "semantic_hash": ""
+  },
+  "tests/transcrever.mjs": {
+    "mtime": 1793140937.3302631,
+    "seen": 1793141774.0471265,
+    "ast_hash": "be1b75033a6ca9e93d169ebec2b58d46",
     "semantic_hash": ""
   }
 }

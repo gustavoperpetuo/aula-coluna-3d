@@ -8,19 +8,20 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
 - `src/home.html`: hub das aulas, publicado na raiz do site.
 - `src/entrar.html` e `src/entrar.js`: página de login (`/entrar`), a única pública.
 - `src/auth.js`: cliente do Supabase, cookie da sessão, primeiro nome e botão Sair; incluído na aula, no hub e no login.
-- `functions/_middleware.js`: fecha o site; `functions/api/pergunta.js`: tira-dúvidas.
+- `functions/_middleware.js`: fecha o site; `functions/api/pergunta.js`: tira-dúvidas; `functions/api/transcrever.js`: voz do tira-dúvidas.
 - `src/geo.js`: geometria procedural da coluna (`buildSpine(mods)`); as doenças entram como modificações (`mods`).
 - `src/content.js`: capítulos, passos, testes, fichas das estruturas e notas por nível.
 - `src/disease.js`: as 18 doenças, com texto, fontes citadas e configuração da cena.
 - `src/app.js`: interface, câmera, cortes, rótulos, régua e testes.
 - `build.py`: junta tudo em `dist/coluna-vertebral.html`, um arquivo único que abre direto no navegador, e gera o hub em `dist/index.html` e o login em `dist/entrar.html`. Escreve doctype, `meta charset` e `meta viewport`; falha se encontrar travessão.
 - `tests/`: testes automáticos em Playwright.
-  - `smoke.js`: desktop, celular, falha do 3D e login simulado (nome e Sair na aula e no hub, soma do progresso com limpeza em outro aparelho e navegador compartilhado, token no tira-dúvidas).
+  - `smoke.js`: desktop, celular, falha do 3D e login simulado (nome e Sair na aula e no hub, soma do progresso com limpeza em outro aparelho e navegador compartilhado, token no tira-dúvidas, microfone com gravação simulada).
   - `regua.js`: régua e desfazer seleção.
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
   - `fechadas.js`: falha se alguma peça sólida tiver borda aberta, em todas as doenças, ou se duas partes da mesma peça correrem quase coladas na coluna normal; as duas coisas viram fenda na tela.
   - `maiusculas.js`: falha se algum texto exibido, na aula ou no hub, tiver minúscula depois de ponto ou de ponto e vírgula.
   - `pergunta.mjs`: função do tira-dúvidas sem rede (token, limite diário, validação, resposta e erro da API simulados).
+  - `transcrever.mjs`: função da voz sem rede, com o binding AI simulado (texto, áudio acima de 2 MB, sem binding, erro do modelo).
   - `middleware.mjs`: middleware sem rede, com tokens assinados por um par de chaves local (sem cookie, expirado, assinatura, emissor e audiência errados, válido, JWKS fora do ar).
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
 - `docs/`: retrospectiva do projeto.
@@ -65,6 +66,8 @@ Só entram e-mails destes domínios: renovamedical.com.br, medic.com.br, rellif.
 Progresso: depois do login, e a cada mudança com 1,5 s de atraso, a aula lê a linha da pessoa em `progresso`, soma com o `localStorage` e grava a soma. Marcas de visto são unidas, cada uma com a hora em que foi feita (`em`); em cada teste fica o resultado com mais acertos. O botão de limpar progresso grava a hora em `zeradoEm`, e na soma uma marca anterior ao último limpar de qualquer aparelho não volta. Se outra conta entrar no mesmo navegador, o progresso local da anterior não soma. Sem rede, tudo segue no navegador.
 
 Tira-dúvidas: botão "Dúvida?" para quem está logado. A função manda o token para `registrar_pergunta` no Supabase, que confere a pessoa e aplica o limite de 30 perguntas por dia (429 acima disso); a resposta traz quantas restam, mostradas no campo da pergunta. Único segredo na Cloudflare (Settings, Variables and Secrets): `ANTHROPIC_API_KEY`. O antigo `SENHA_DUVIDAS` pode ser apagado.
+
+Voz no tira-dúvidas: o botão do microfone grava até 60 s, o navegador converte para WAV 16 kHz mono e manda para `functions/api/transcrever.js`, que passa o áudio ao Whisper (`@cf/openai/whisper-large-v3-turbo`) do Workers AI pelo binding `AI` do projeto no Pages (produção e prévia). O texto entra no campo da pergunta, sem enviar. Custa cerca de 47 neurons por minuto de áudio, dentro da cota grátis de 10.000 neurons por dia da conta inteira (uns 210 minutos). Sem o binding, a função responde 503.
 
 Configuração que precisa existir no painel do Supabase:
 
