@@ -1,8 +1,8 @@
-// Fecha o site inteiro: sem sessão do Supabase só passam a página de login e os ícones dela.
+// Fecha o site inteiro: sem sessão do Supabase só passam a página de login, a imagem da coluna e os ícones dela.
 // O token de acesso chega no cookie sb (src/auth.js o mantém em dia, inclusive na renovação) ou no Authorization: Bearer.
 // Assinatura ES256 conferida com a JWKS pública do projeto (sem segredo na Cloudflare), mais validade, audiência e emissor.
 const SUPABASE = 'https://ugvqhjyeekyufxuyvozc.supabase.co', EMISSOR = SUPABASE + '/auth/v1';
-const ABERTO = new Set(['/entrar', '/entrar.html', '/privacidade', '/privacidade.html', '/icone-32.png', '/icone-180.png']);
+const ABERTO = new Set(['/entrar', '/entrar.html', '/privacidade', '/privacidade.html', '/icone-32.png', '/icone-180.png', '/coluna-lateral.webp']);
 
 let jwks = null, lidaEm = 0;
 async function chaves(forcar) {
