@@ -1,0 +1,101 @@
+<title>Administração | Atlas da Coluna</title>
+<meta name="robots" content="noindex">
+<style>
+/* Painel do administrador: mesmo sistema do login (src/entrar.html). Quem pode ver os dados decide public.painel_admin() no Supabase. */
+:root {
+  --surface: #FFFFFF;
+  --carbon: #171A20;
+  --graphite: #393C41;
+  --pewter: #5C5E62;
+  --line: #D0D1D2;
+  --f: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+body { margin: 0; background: var(--surface); color: var(--carbon); font-family: var(--f); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--carbon); outline-offset: 3px; }
+[hidden] { display: none !important; }
+header { height: 56px; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; }
+.logo { height: 22px; width: auto; display: block; }
+header a { font-size: 14px; font-weight: 500; color: var(--pewter); text-decoration: none; padding: 12px 16px; border-radius: 4px; transition: color .33s; }
+header a:hover { color: var(--carbon); }
+main { max-width: 1440px; box-sizing: border-box; margin: 0 auto; padding: 56px 48px 64px; }
+h1 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 500; }
+.lede { margin: 16px 0 0; font-size: 17px; line-height: 26px; color: var(--graphite); }
+.lede a { color: var(--carbon); text-underline-offset: 3px; }
+.resumo { margin: 40px 0 0; display: flex; flex-wrap: wrap; gap: 16px 56px; }
+.resumo dt { font-size: 14px; line-height: 20px; color: var(--pewter); }
+.resumo dd { margin: 4px 0 0; font-size: 28px; line-height: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tabela { margin-top: 48px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; }
+caption { position: sticky; left: 0; max-width: calc(100vw - 32px); text-align: left; padding-bottom: 12px; font-size: 17px; line-height: 26px; font-weight: 500; }
+th, td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
+thead th { font-weight: 500; color: var(--pewter); }
+tbody th { font-weight: 500; }
+tbody th span { display: block; font-weight: 400; color: var(--graphite); }
+td { color: var(--graphite); white-space: nowrap; }
+td.w { white-space: normal; } /* datas quebram linha para a tabela caber em 1440 px */
+@media (max-width: 700px) {
+  header { padding: 0 16px; }
+  .logo { height: 18px; }
+  header a { padding: 12px 8px; }
+  main { padding: 32px 16px 48px; }
+  h1 { font-size: 28px; line-height: 34px; }
+  .lede { font-size: 16px; line-height: 24px; }
+  .resumo { gap: 16px 32px; }
+  .resumo dd { font-size: 24px; line-height: 30px; }
+  .tabela { margin-top: 32px; }
+}
+</style>
+
+<header>
+  <svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 0 648 160" role="img" aria-label="Renova Medical" shape-rendering="geometricPrecision">
+<g fill="#00276f">
+<path d="M26.6 3H77.5C96 3 104 9.8 104 24.4C104 44.2 91.8 57.7 70.3 63.1L95.1 109.5H71.6L46.9 64.4L49.1 53.6C68.3 51.7 81.2 41 81.2 28.2C81.2 23.5 77.8 21.6 69.2 21.6H43.3L25.7 109.5H3.1Z"/>
+<path d="M124.7 3H201L197.2 21.4H142.4L137.1 46.8H189.8L186 64.8H133.3L128 90.4H183.6L179.5 109.5H102.2Z"/>
+<path d="M217.9 3H238.7L278.6 78.7L294.6 3H316L293.8 109.5H270.1L232.4 34.9L217 109.5H195.8Z"/>
+<path fill-rule="evenodd" d="M386.5 2.9C353.8 2.9 330.5 20.3 321.9 54.3C312.7 91.1 323.9 109.7 365.1 109.7C400.3 109.7 421.7 91.4 430 53.5C437.8 17.8 425.8 2.9 386.5 2.9ZM381.8 21.2C405.3 21.2 412.6 31 407.1 55.3C401.5 80.6 388.7 91.5 366.8 91.5C345.4 91.5 338.1 82.7 344.7 55.5C350.6 31.3 362.8 21.2 381.8 21.2Z"/>
+<path d="M446.6 3H471.3L487.5 82.2L537.7 3H563.7L492.6 109.5H468Z"/>
+<path d="M597.4 3H620.1L645 109.5H622L616.2 81.8H579.2L590.1 63.3H611.6L603.7 25.7L550.5 109.5H526.1Z"/>
+</g>
+<g fill="#a6a6a6">
+<path d="M166.1 133H170.7L173.4 150.9L186.2 133H191L185.7 156H181.6L185.5 138.8L173.1 156H170.1L167.3 138.6L163.4 156H159.7Z"/>
+<path d="M227.2 133H242.8L242 136.5H230.4L228.9 142.5H240.2L239.4 145.9H228.1L226.6 152.6H238.4L237.6 156H221.8Z"/>
+<path fill-rule="evenodd" d="M278.8 133H286.5C295.6 133 299.2 137.9 297.1 145.8C295.3 152.6 290.4 156 282.5 156H273.4ZM282 136.5L278.3 152.6H282.9C288.3 152.6 291.6 150 293 144.8C294.4 139.2 292.4 136.5 286.9 136.5Z"/>
+<path d="M335.6 133H339.6L334.2 156H330.2Z"/>
+<path d="M393.4 133.9L392.5 137.5C390.5 136.7 388.4 136.3 385.9 136.3C380 136.3 376.1 140.2 375.1 145.7C374.1 150.6 376.7 152.8 381.5 152.8C384 152.8 386.4 152.3 389 151.2L388.1 155.1C385.6 156 383.4 156.4 380.7 156.4C373.2 156.4 369.4 152.8 371.1 145C372.7 137.4 378.1 132.7 386.2 132.7C388.7 132.7 391.1 133.1 393.4 133.9Z"/>
+<path fill-rule="evenodd" d="M438.6 133H442.1L446.1 156H442L441 150H431.1L427 156H422.8ZM438.9 138L433.3 146.6H440.5Z"/>
+<path d="M486.3 133H490.3L485.7 152.5H496.7L495.9 156H480.9Z"/>
+</g>
+</svg>
+  <a href="/">Aulas</a>
+</header>
+<main>
+  <h1>Administração</h1>
+  <p class="lede" id="estado" aria-live="polite">Carregando…</p>
+  <dl class="resumo" id="resumo" hidden>
+    <div><dt>Pessoas que entraram</dt><dd id="r-pessoas"></dd></div>
+    <div><dt>Ativas nos últimos 7 dias</dt><dd id="r-ativas"></dd></div>
+    <div><dt>Perguntas hoje</dt><dd id="r-hoje"></dd></div>
+  </dl>
+  <div class="tabela" id="tabela" role="region" aria-labelledby="legenda" tabindex="0" hidden>
+    <table>
+      <caption id="legenda">Pessoas, do acesso mais recente ao mais antigo</caption>
+      <thead>
+        <tr>
+          <th scope="col">Pessoa</th>
+          <th scope="col">Empresa</th>
+          <th scope="col">Primeiro acesso</th>
+          <th scope="col">Último acesso</th>
+          <th scope="col">Anatomia vista</th>
+          <th scope="col">Doenças vistas</th>
+          <th scope="col">Procedimentos vistos</th>
+          <th scope="col">Teste final</th>
+          <th scope="col">Perguntas</th>
+          <th scope="col">Perguntas hoje</th>
+          <th scope="col">Voz</th>
+        </tr>
+      </thead>
+      <tbody id="linhas"></tbody>
+    </table>
+  </div>
+</main>

@@ -4,7 +4,8 @@ root = Path(__file__).parent
 src = root / 'src'
 head = (src / 'head.html').read_text(encoding='utf-8')
 geo = (src / 'geo.js').read_text(encoding='utf-8')
-js = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js', 'disease.js', 'proc.js', 'app.js'])
+dados = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js', 'disease.js', 'proc.js'])
+js = dados + (src / 'app.js').read_text(encoding='utf-8') + '\n'
 # doctype, charset e viewport: sem eles o navegador abre em modo de compatibilidade,
 # troca os acentos quando o servidor não manda charset e o celular recebe o layout de desktop
 doc = ('<!doctype html>\n<html lang="pt-BR">\n<meta charset="utf-8">\n'
@@ -33,6 +34,10 @@ assert '—' not in home and '–' not in home, 'travessão encontrado na home'
 entrar = doc + (src / 'entrar.html').read_text(encoding='utf-8') + auth + '<script>\n' + (src / 'entrar.js').read_text(encoding='utf-8') + '</script>\n'
 assert '—' not in entrar and '–' not in entrar, 'travessão encontrado no login'
 (root / 'dist' / 'entrar.html').write_text(entrar, encoding='utf-8')
+# painel do administrador (/admin): leva as listas da aula para os totais e o gabarito do teste final saírem delas; os dados vêm de public.painel_admin()
+admin = doc + (src / 'admin.html').read_text(encoding='utf-8') + auth + '<script>\n' + dados + (src / 'admin.js').read_text(encoding='utf-8') + '</script>\n'
+assert '—' not in admin and '–' not in admin, 'travessão encontrado no painel'
+(root / 'dist' / 'admin.html').write_text(admin, encoding='utf-8')
 # política de privacidade, pública (o Google exige a URL para publicar o app OAuth)
 (root / 'dist' / 'privacidade.html').write_text(doc + (src / 'privacidade.html').read_text(encoding='utf-8'), encoding='utf-8')
 for f in ('coluna-lateral.webp', 'coluna-deitada.webp', 'icone-32.png', 'icone-180.png'): (root / 'dist' / f).write_bytes((src / f).read_bytes())

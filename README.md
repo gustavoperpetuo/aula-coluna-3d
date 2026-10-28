@@ -7,15 +7,17 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
 - `src/head.html`: CSS e marcação da aula.
 - `src/home.html`: hub das aulas, publicado na raiz do site.
 - `src/entrar.html` e `src/entrar.js`: página de login (`/entrar`), a única pública.
+- `src/admin.html` e `src/admin.js`: painel do administrador (`/admin`), com quem entrou e o que cada pessoa viu; os dados vêm da RPC `painel_admin()` do Supabase, que recusa quem não está na tabela `admins`. O hub mostra o link Administração quando `eh_admin()` responde sim.
 - `src/auth.js`: cliente do Supabase, cookie da sessão, primeiro nome e botão Sair; incluído na aula, no hub e no login.
 - `functions/_middleware.js`: fecha o site; `functions/api/pergunta.js`: tira-dúvidas; `functions/api/transcrever.js`: voz do tira-dúvidas.
 - `src/geo.js`: geometria procedural da coluna (`buildSpine(mods)`); as doenças entram como modificações (`mods`).
 - `src/content.js`: capítulos, passos, testes, fichas das estruturas e notas por nível.
 - `src/disease.js`: as 18 doenças, com texto, fontes citadas e configuração da cena.
 - `src/app.js`: interface, câmera, cortes, rótulos, régua e testes.
-- `build.py`: junta tudo em `dist/coluna-vertebral.html`, um arquivo único que abre direto no navegador, e gera o hub em `dist/index.html` e o login em `dist/entrar.html`. Escreve doctype, `meta charset` e `meta viewport`; falha se encontrar travessão.
+- `build.py`: junta tudo em `dist/coluna-vertebral.html`, um arquivo único que abre direto no navegador, e gera o hub em `dist/index.html`, o login em `dist/entrar.html` e o painel em `dist/admin.html`. Escreve doctype, `meta charset` e `meta viewport`; falha se encontrar travessão.
 - `tests/`: testes automáticos em Playwright.
   - `smoke.js`: desktop, celular, falha do 3D e login simulado (nome e Sair na aula e no hub, soma do progresso com limpeza em outro aparelho e navegador compartilhado, token no tira-dúvidas, microfone com gravação simulada).
+  - `admin.js`: painel do administrador com as RPCs simuladas (linhas e totais X de N, aviso de acesso restrito, link no hub só para o administrador).
   - `regua.js`: régua e desfazer seleção.
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
   - `fechadas.js`: falha se alguma peça sólida tiver borda aberta, em todas as doenças, ou se duas partes da mesma peça correrem quase coladas na coluna normal; as duas coisas viram fenda na tela.

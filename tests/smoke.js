@@ -13,6 +13,7 @@ async function logado(p,{remoto,local}){
  const cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
  await p.route(/supabase\.co\/rest\/v1\/progresso/,r=>{const q=r.request(); if(q.method()==='POST') p.gravado.push(q.postDataJSON()); r.fulfill({status:q.method()==='GET'?200:201,contentType:'application/json',headers:cors,body:q.method()==='GET'?JSON.stringify([{dados:remoto}]):''});});
  await p.route(/supabase\.co\/auth\/v1\/logout/,r=>r.fulfill({status:204,headers:cors}));
+ await p.route(/supabase\.co\/rest\/v1\/rpc\/eh_admin/,r=>r.fulfill({contentType:'application/json',headers:cors,body:'false'})); // link do painel no hub: tests/admin.js
  await p.route('http://local.test/api/transcrever',r=>{const q=r.request(); p.voz.push({h:q.headers(),b:q.postDataBuffer()}); r.fulfill({contentType:'application/json',body:JSON.stringify({texto:'Onde fica o forame?'})});});
  await p.route('http://local.test/api/pergunta',r=>{p.perguntas.push(r.request().headers()); r.fulfill({contentType:'application/json',body:JSON.stringify({texto:'Certo.',restantes:29})});});
  await p.route('http://local.test/entrar',r=>r.fulfill({body:fs.readFileSync(__dirname+'/../dist/entrar.html','utf8'),contentType:'text/html'}));

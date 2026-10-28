@@ -6,15 +6,15 @@
     "semantic_hash": ""
   },
   "build.py": {
-    "mtime": 1793139202.3368304,
-    "seen": 1793139778.4764235,
-    "ast_hash": "68962451906491c5e5a98bb6eb8c57cb",
+    "mtime": 1793145426.1542833,
+    "seen": 1793145664.4585238,
+    "ast_hash": "12a75f0647522638428ec9c69b0b80b8",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1793140943.1982636,
-    "seen": 1793141774.0471003,
-    "ast_hash": "51d42e46b6a47ff49b431ef22fcc9ae0",
+    "mtime": 1793145526.4022892,
+    "seen": 1793145664.458535,
+    "ast_hash": "f0cd5bd260eb5d9928bc21c48cc2bea9",
     "semantic_hash": ""
   },
   "src/app.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793143508.089912,
-    "seen": 1793143632.6833713,
-    "ast_hash": "d78e799ebe7468a18ce36c3f801ea9f5",
+    "mtime": 1793145470.970286,
+    "seen": 1793145664.4585571,
+    "ast_hash": "c80d3b0004374e255a89972d145fdc06",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793141058.9044583,
-    "seen": 1793141774.0471306,
-    "ast_hash": "2f2970d196526a672869dee46119dde3",
+    "mtime": 1793145609.598294,
+    "seen": 1793145664.458562,
+    "ast_hash": "3ee5aaef4220d077987240cffcdb7758",
     "semantic_hash": ""
   },
   "docs/retro-aula-coluna-2026-10-12.md": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/home.html": {
-    "mtime": 1793139220.3950956,
-    "seen": 1793139778.4765463,
-    "ast_hash": "4a42f47c78470df7bde1f38c40cece01",
+    "mtime": 1793145465.6422856,
+    "seen": 1793145664.4585674,
+    "ast_hash": "8a571563f528972299ae987493115b19",
     "semantic_hash": ""
   },
   "src/coluna-lateral.webp": {
@@ -207,6 +207,24 @@
     "mtime": 1793143044.0175796,
     "seen": 1793143632.6833732,
     "ast_hash": "f21740d6723346fa54bca89ac7b583e6",
+    "semantic_hash": ""
+  },
+  "src/admin.js": {
+    "mtime": 1793145588.2088478,
+    "seen": 1793145664.4585366,
+    "ast_hash": "bc2c4cb651abcafc22d9da143b2adb50",
+    "semantic_hash": ""
+  },
+  "tests/admin.js": {
+    "mtime": 1793145602.0982935,
+    "seen": 1793145664.4585464,
+    "ast_hash": "56307f3654d8447f9acdbcefbd8c0818",
+    "semantic_hash": ""
+  },
+  "src/admin.html": {
+    "mtime": 1793145588.2083185,
+    "seen": 1793145664.458564,
+    "ast_hash": "8cfb2b017e246d96c388a025f4c2d351",
     "semantic_hash": ""
   }
 }

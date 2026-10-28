@@ -75,7 +75,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align:
 }
 </style>
 
-<div class="conta" id="conta" hidden><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
+<div class="conta" id="conta" hidden><a class="sair" id="admin" href="/admin" hidden>Administração</a><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
 <div class="wrap">
   <main>
     <header>
@@ -125,6 +125,8 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--ink-3); text-align:
   el.hidden = false;
   document.getElementById('go').textContent = 'Continuar de onde parei';
 })();
+// link do painel só para o administrador (public.eh_admin() no Supabase); SB vem de src/auth.js, incluído depois deste trecho
+addEventListener('DOMContentLoaded', () => { if (SB) SB.rpc('eh_admin').then(({ data }) => { document.getElementById('admin').hidden = data !== true; }); });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>
