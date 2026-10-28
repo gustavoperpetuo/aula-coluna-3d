@@ -121,7 +121,7 @@ Com o SwiftShader, as texturas da GPU contam como memória de CPU, então o RSS 
 
 ## Recomendação para a implementação
 
-- **Arquivos**: `src/rm/<caso>/<série>.nii.gz` e `<série>_mask.nii.gz`, copiados byte a byte para `dist/rm/`. No `build.py`, uma linha como as das imagens: `shutil.copytree(src / 'rm', root / 'dist' / 'rm', dirs_exist_ok=True)`.
+- **Arquivos**: `<série>.nii.gz` e `<série>_mask.nii.gz` por caso. Na implementação ficaram só em `dist/rm/` (ver Implementação).
 - **Dados do modo**: lista de casos, rótulos, nomes, chaves do 3D e graduações num `src/rm.js`, juntado ao HTML como o `content.js`.
 - **NiiVue**: carregar o script com integridade só ao entrar no modo Ressonância, para não somar 0,8 MB a toda aula.
 - **Celular**: abrir com T2 e máscara (2,4 MiB no caso 45). Baixar T1 e SPACE só quando pedidos. O `fetch` é da mesma origem e leva o cookie `sb`, que o middleware exige. Os arquivos não mudam, então podem ter cache longo.
@@ -136,6 +136,30 @@ Com o SwiftShader, as texturas da GPU contam como memória de CPU, então o RSS 
 5. Não foi testado no Cloudflare: o `.nii.gz` passando pelo middleware e o Content-Type ou Content-Encoding que o Pages manda. A NiiVue reconhece gzip pelos bytes iniciais, então os dois casos devem funcionar.
 6. Memória em celular fraco e WebGL2 em navegadores antigos: não medidos.
 7. No caso 45 a hérnia é graduada, mas discreta no corte mediano. Um especialista deve escolher o corte e o texto.
+
+## Implementação (fase 2)
+
+O modo Ressonância está na aula, ao lado de Anatomia, Doenças e Procedimentos.
+
+- **Arquivos**: só em `dist/rm/<caso>/` (237, 45 e 10), sem cópia em `src/`, para o git não guardar os casos duas vezes. O `build.py` não apaga nada em `dist/rm/`. O T1 do caso 45 usa a máscara do T2 (`45_t2_mask.nii.gz`), porque as duas séries têm a mesma grade; O arquivo `45_t1_mask` não foi copiado.
+- **Dados**: `src/rm.js` traz os casos, as séries, a graduação do SPIDER de cada disco, o centro em mm dos rótulos usados pelos passos e o texto dos 18 passos. O `build.py` junta o arquivo ao HTML da aula e ao do painel do administrador.
+- **NiiVue**: o `<script>` da 0.69.0 com integridade só entra na página ao abrir o modo. Para os testes, a mesma versão está nas dependências de desenvolvimento (`@niivue/niivue` 0.69.0); O hash do pacote npm confere com o do `<script>`.
+- **Cores**: a tabela de rótulos e a entrada transparente em -2 seguem iguais ao protótipo.
+- **Toque**: `doubleTouchTimeout: 0` e `longTouchTimeout: 2e9` desligam o reinício de contraste por toque duplo ou longo (Infinity viraria 0 no `setTimeout`). O visualizador continua prendendo a rolagem sob o dedo; No celular ele tem altura fixa (56% da tela) e a página rola pelo texto abaixo dele.
+- **3D**: o mesmo canvas, renderizador e cena do modo Anatomia. No modo Ressonância a seção do 3D vira um encarte de 200 x 214 px no canto do visualizador (CSS `.stage.rm .view`), e o `ResizeObserver` que já existia ajusta o renderizador. A estrutura clicada fica acesa com a mesma seleção (`S.sel`) do modo Anatomia, sem mover a câmera do encarte.
+- **T1 e T2 lado a lado**: não há dois quadros simultâneos. O passo troca para o T1 e os botões T1 e T2 alternam o mesmo corte; Dois quadros pediriam uma segunda instância da NiiVue.
+
+### Conferência da numeração das vértebras
+
+Em cada caso, no corte sagital mediano do T2, contei a partir do sacro: o osso logo abaixo do disco 201 tem a forma do sacro (segmentos sacrais e inclinação do promontório), e a vértebra 1 da máscara é a primeira acima do disco 201. Nos três casos a numeração confere com 1 = L5, 201 = L5-S1, e nenhum mapa de rótulos foi mudado.
+
+| Caso | Vértebras e discos na máscara | Resultado |
+|---|---|---|
+| 237 | 1 a 6 e 201 a 206 (L5 a T12, L5-S1 a T12-L1) | Confere. Disco 201 claro e alto, apoiado no sacro |
+| 45 | 1 a 7 e 201 a 207 (L5 a T11, L5-S1 a T11-T12), igual no T2 e no SPACE | Confere |
+| 10 | 1 a 7 e 201 a 207 (L5 a T11, L5-S1 a T11-T12) | Confere. Disco 201 escuro e baixo, apoiado no sacro |
+
+O recorte não mostra a coluna inteira nem as costelas, então uma vértebra de transição (sacralização de L5 ou lombarização de S1) não se descarta só com estas imagens. Um radiologista deve confirmar os níveis antes de a aula ir para os alunos.
 
 ## Onde ficou o material do spike (fora do repo)
 

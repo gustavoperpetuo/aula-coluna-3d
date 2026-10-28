@@ -11,6 +11,7 @@
     const s = a || {}, n = Object.keys(s).length, ok = Object.entries(s).filter(([i, o]) => DZ_QUIZ[i] && DZ_QUIZ[i][2] === o).length;
     return n ? `${ok} de ${DZ_QUIZ.length} certas` + (n < DZ_QUIZ.length ? `, faltam ${DZ_QUIZ.length - n}` : '') : 'Não fez';
   };
+  const RM_N = RM_CASES.reduce((n, c) => n + c.steps.length, 0); // passos de ressonância, como RM_STEPS em src/app.js
   const falha = html => { estado.innerHTML = html; };
   if (!SB) return falha('Não foi possível carregar os dados. Recarregue a página.');
   SB.rpc('painel_admin').then(({ data, error }) => {
@@ -24,8 +25,8 @@
       const p = r.progresso || {}, email = r.email || '';
       return `<tr><th scope="row">${esc(r.nome || email)}${r.nome ? `<span>${esc(email)}</span>` : ''}</th><td>${esc(email.split('@')[1])}</td>`
         + `<td class="w">${quando(r.primeiro_acesso)}</td><td class="w">${quando(r.ultimo_acesso)}</td>`
-        + `<td>${visto(p.seen, ALL_STEPS.length)}</td><td>${visto(p.dzSeen, DZ.length)}</td><td>${visto(p.procSeen, PROC.length)}</td>`
-        + `<td>${teste((p.quiz || {}).dz)}</td><td>${r.perguntas_total || 0}</td><td>${r.perguntas_hoje || 0}</td>`
+        + `<td>${visto(p.seen, ALL_STEPS.length)}</td><td>${visto(p.dzSeen, DZ.length)}</td><td>${visto(p.procSeen, PROC.length)}</td><td>${visto(p.rmSeen, RM_N)}</td>`
+        + `<td class="w">${teste((p.quiz || {}).dz)}</td><td>${r.perguntas_total || 0}</td><td>${r.perguntas_hoje || 0}</td>`
         + `<td>${((r.voz_segundos_total || 0) / 60).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} min</td></tr>`;
     }).join('');
     estado.textContent = L.length ? 'Quem entrou no Atlas da Coluna e o que cada pessoa já viu.' : 'Ninguém entrou ainda.';

@@ -10,13 +10,15 @@
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   // cópia na conta (tabela progresso): cada gravação, com atraso, lê a da conta, soma com a local e grava a soma (sync, mais abaixo);
   // nunca grava por cima sem ler, senão apagaria o progresso de outro aparelho
-  const LISTAS = ['seen', 'dzSeen', 'procSeen'];
+  const LISTAS = ['seen', 'dzSeen', 'procSeen', 'rmSeen'];
   let contaId = null, pushT = 0;
   const push = (ms = 1500) => { if (!contaId) return; clearTimeout(pushT); pushT = setTimeout(() => sync(contaId), ms); };
   const keep = () => { marca(); try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
   const save = () => { keep(); push(); };
-  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
-  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
+  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.rmSeen = store.rmSeen || []; store.quiz = store.quiz || {};
+  // passos de ressonância numa lista só (src/rm.js); a marca de visto é '<caso>.<passo>'
+  const RM_STEPS = RM_CASES.flatMap(c => c.steps.map((st, i) => ({ c, i, st, id: c.id + '.' + i })));
+  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), rmStep: Math.min(store.rmStep || 0, RM_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
   let has3D = false, renderer, scene, camera, controls, model = null, V3, deg = Math.PI / 180;
@@ -585,8 +587,14 @@
   setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
-    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : 'Grupos de doenças';
-    if (S.mode === 'anat') {
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : S.mode === 'rm' ? 'Casos reais (SPIDER)' : 'Grupos de doenças';
+    if (S.mode === 'rm') {
+      // o caso aberto se abre nos passos (a lista de passos só aparece na trilha do desktop)
+      const cur = RM_STEPS[S.rmStep];
+      chapEl.innerHTML = RM_CASES.map(c => `<button data-rk="${RM_STEPS.findIndex(r => r.c === c)}" aria-current="${cur.c === c}" class="${RM_STEPS.every(r => r.c !== c || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(c.name)}</button>`
+        + (cur.c === c ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.c === c ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('');
+      chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goRm(+b.dataset.rk, true));
+    } else if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goStep(ALL_STEPS.findIndex(s => s.ch === +b.dataset.ch), true));
     } else {
@@ -595,7 +603,7 @@
       chapEl.innerHTML = cats().map((c, i) => L.some(d => d.cat === i) ? `<button data-c="${i}" aria-current="${S.dz && L.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>` : '').join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => { if (S.dz) closeDz(); const t = scrollEl.querySelector(`[data-cat="${b.dataset.c}"]`); if (t) { t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); } });
     }
-    const cur = chapEl.querySelector('[aria-current="step"]');
+    const cur = chapEl.querySelector('[aria-current="step"], [aria-current="true"]');
     if (cur) { const l = cur.offsetLeft - chapEl.offsetLeft, r = l + cur.offsetWidth; if (l < chapEl.scrollLeft || r > chapEl.scrollLeft + chapEl.clientWidth) chapEl.scrollLeft = l - 24; }
     requestAnimationFrame(edgeFade);
   }
@@ -790,6 +798,180 @@
     $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(L[i + 1].id); };
     if (moveFocus) focusTitle();
   }
+
+  /* ---------- ressonância: casos reais do SPIDER (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
+  const rmView = $('#rmview'), rmCv = $('#rmgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
+  // seq: série pedida; loaded: '<caso>/<série>' na tela; goto: { c: caso, mm } para a mira; pick: estrutura clicada; res: rótulo clicado no passo de teste
+  const RM = { nv: null, ready: null, q: Promise.resolve(), loaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  const RM_V = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9'];
+  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino
+  function rmName(v) {
+    if (v >= 1 && v <= 9) return { nome: 'Vértebra ' + RM_V[v - 1], key: RM_V[v - 1], f: 1 };
+    if (v === 100) return { nome: 'Canal vertebral', key: 'dura' };
+    if (v > 200 && v < 210) { const n = v - 201, d = RM_V[n] + '-' + (n ? RM_V[n - 1] : 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
+    return null;
+  }
+  // shortcut: entrada -2 transparente na tabela de cores. A NiiVue 0.69.0 (shader das camadas, comentário 'issue1139') arredonda todo valor
+  // acima do mínimo para pelo menos 2/256 da tabela, e o fundo 0 pintava com a cor do rótulo 1. Tirar se a NiiVue corrigir; retestar ao trocar de versão
+  const RM_LUT = (() => {
+    const I = [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 201, 202, 203, 204, 205, 206, 207, 208, 209], L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
+    // discos azuis, corpos alternando quente e roxo, canal amarelo (as cores do protótipo do spike)
+    I.forEach(v => { const c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v > 200 ? [0, 200, 255, 255] : v % 2 ? [255, 120, 60, 255] : [200, 70, 200, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
+    return L;
+  })();
+  const RM_SEQ = [['t2', 'T2'], ['t1', 'T1'], ['space', 'T2 alta resolução']];
+  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue
+  const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
+  function rmInit() {
+    return RM.ready || (RM.ready = new Promise((ok, no) => {
+      const s = document.createElement('script'); s.src = RM_NIIVUE.src; s.integrity = RM_NIIVUE.sri; s.crossOrigin = 'anonymous';
+      s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
+    }).then(async () => {
+      // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout)
+      const nv = new niivue.Niivue({ backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9 });
+      await nv.attachToCanvas(rmCv);
+      nv.onLocationChange = rmPicked; RM.nv = nv; rmLayout(); return nv;
+    }).catch(e => { RM.ready = null; throw e; }));
+  }
+  // leva a tela ao estado pedido (caso, série, mira); em fila, para cliques rápidos nunca misturarem duas cargas
+  function rmShow() {
+    RM.q = RM.q.then(rmApply).catch(() => { RM.loaded = ''; rmMsg.textContent = 'As imagens não abriram. Confira a conexão e se o navegador tem WebGL2. O texto do passo continua no painel.'; });
+    return RM.q;
+  }
+  async function rmApply() {
+    if (S.mode !== 'rm') return;
+    const { c } = RM_STEPS[S.rmStep], seq = c.seqs[RM.seq] ? RM.seq : 't2', want = c.id + '/' + seq;
+    if (RM.loaded !== want) rmMsg.textContent = 'Carregando as imagens…';
+    const nv = await rmInit();
+    if (RM.loaded !== want) {
+      // troca de série no mesmo caso: a mira fica no mesmo ponto
+      const keep = !RM.goto && RM.loaded.split('/')[0] === c.id ? { c: c.id, mm: Array.from(nv.frac2mm(nv.scene.crosshairPos)).slice(0, 3) } : null;
+      const [img, mask] = c.seqs[seq], base = 'rm/' + c.id + '/';
+      RM.loaded = '';
+      await nv.loadVolumes([{ url: base + img + '.nii.gz' }, { url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }]);
+      nv.volumes[1].setColormapLabel(RM_LUT); nv.updateGLVolume();
+      RM.loaded = want; rmMsg.textContent = '';
+      if (keep) RM.goto = keep;
+    }
+    // a mira de outro caso espera a carga dele (uma carga anterior na fila não a consome)
+    if (RM.goto && RM.goto.c === c.id && RM.loaded === want) { nv.scene.crosshairPos = nv.mm2frac(RM.goto.mm); RM.goto = null; nv.drawScene(); }
+  }
+  // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez
+  function rmLayout() {
+    const one = mobileQ.matches;
+    rmView.classList.toggle('ax', one && RM.pane === 'ax');
+    // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
+    const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight));
+    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' ? 0 : 2, position: [0, t, 1, 1 - t] }] : [{ sliceType: 2, position: [0, t, 0.6, 1 - t] }, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+  }
+  mobileQ.addEventListener && mobileQ.addEventListener('change', rmLayout);
+  // estrutura clicada acesa no 3D, como a seleção do modo Anatomia; a câmera do encarte não se mexe
+  function rmSel(key) {
+    if (!model) return;
+    const lv = key && levelOf(key), ms = !key ? [] : lv ? model.meshes.filter(m => lvlAlias(m.userData.level) === lv && (KIND[m.userData.kind] || {}).L === 'bone') : model.reg.get(aliasKey(key)) || [];
+    S.layers = { bone: true, disc: true }; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; });
+    S.sel = ms.length ? new Set(ms) : null; S.selKey = key || null; applyVisuals();
+  }
+  function rmPicked(d) {
+    const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
+    RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
+    if (RM_STEPS[S.rmStep].st.test) RM.res = v;
+    rmPanel(true);
+  }
+  // graduação do SPIDER de um disco do caso, para a resposta do teste
+  function rmGrade(c, v) {
+    const r = v > 200 && c.g[v - 201]; if (!r) return '';
+    const t = ['Pfirrmann ' + r[RM_G.pf]]; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
+    [['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
+    return ' Graduação do SPIDER neste disco: ' + t.join(', ') + '.';
+  }
+  function rmPanel(announce) {
+    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { c, st } = RM_STEPS[S.rmStep]; if (!box) return;
+    box.hidden = !p;
+    if (p) {
+      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${has3D ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${has3D ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
+      if (has3D) $('#rmopen').onclick = rmOpen3D;
+    }
+    let msg = p ? 'Você clicou: ' + p.nome + '.' : '';
+    if (res) {
+      res.hidden = RM.res === null;
+      if (RM.res !== null) {
+        const ok = st.test.ok.includes(RM.res);
+        res.className = 'rmres ' + (ok ? 'ok' : 'no');
+        res.textContent = ok ? 'Certo. ' + p.nome + '.' + rmGrade(c, RM.res) : (p ? 'Não. ' + p.nome + ' não é a resposta. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') + st.test.hint;
+        msg = res.textContent;
+      }
+    }
+    if (announce && msg) say(msg);
+  }
+  // Abrir no 3D grande: modo Anatomia com a mesma estrutura selecionada e a câmera nela
+  function rmOpen3D() {
+    const p = RM.pick; setMode('anat'); if (!p || !has3D) return;
+    focusKey(p.key, p.nome);
+    if (!levelOf(p.key)) { const ms = model.reg.get(aliasKey(p.key)) || []; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; }); applyVisuals(); syncTools(); if (ms.length) frameMeshes(ms); }
+    if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  }
+  // nome sob o cursor (ou sob o dedo) com Nomes ligado
+  function rmTagAt(e) {
+    const nv = RM.nv;
+    if (!RM.names || !nv || nv.volumes.length < 2) { rmTag.hidden = true; return; }
+    const r = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
+    // valor da máscara como a NiiVue lê em onLocationChange (mm -> voxel da própria máscara); frac2vox falha no segundo volume
+    const m = nv.volumes[1], h = f[0] >= 0 && m.mm2vox(nv.frac2mm(f)), s = h && rmName(Math.round(m.getValue(h[0], h[1], h[2])));
+    rmTag.hidden = !s; if (!s) return;
+    rmTag.textContent = s.nome;
+    rmTag.style.transform = `translate(${Math.max(4, Math.min(x + 14, r.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, y - 30).toFixed(0)}px)`;
+  }
+  rmCv.addEventListener('pointermove', rmTagAt); rmCv.addEventListener('pointerdown', rmTagAt);
+  rmCv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; });
+  function rmBarRender() {
+    const { c } = RM_STEPS[S.rmStep], chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
+    rmBar.innerHTML = `<div class="group" role="group" aria-label="Sequência">${RM_SEQ.filter(([k]) => c.seqs[k]).map(([k, t]) => chip(k, t, RM.seq === k)).join('')}</div>`
+      + `<div class="group" role="group" aria-label="Sobre a imagem">${chip('mask', 'Contornos', RM.mask)}${chip('names', 'Nomes', RM.names)}</div>`
+      + `<div class="seg rmpane" role="group" aria-label="Plano">${[['sag', 'Sagital'], ['ax', 'Axial']].map(([k, t]) => `<button type="button" data-pane="${k}" aria-pressed="${RM.pane === k}">${t}</button>`).join('')}</div>`;
+    rmBar.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
+      const k = b.dataset.rm;
+      if (k === 'mask') { RM.mask = !RM.mask; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0); }
+      else if (k === 'names') { RM.names = !RM.names; if (!RM.names) rmTag.hidden = true; }
+      else { RM.seq = k; rmShow(); }
+      rmBarRender(); rmBar.querySelector(`[data-rm="${k}"]`).focus();
+    });
+    rmBar.querySelectorAll('[data-pane]').forEach(b => b.onclick = () => { RM.pane = b.dataset.pane; rmLayout(); rmBarRender(); rmBar.querySelector(`[data-pane="${RM.pane}"]`).focus(); });
+  }
+  // contexto do tira-dúvidas neste modo: título e texto do passo e a estrutura clicada
+  function rmCtx() {
+    const { c, st } = RM_STEPS[S.rmStep];
+    return `Ressonância, ${c.name}. Passo: ${st.t}. ${st.p.join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
+  }
+  function renderRm(moveFocus) {
+    const R = RM_STEPS[S.rmStep], { c, i, st } = R, ci = RM_CASES.indexOf(c);
+    if (!store.rmSeen.includes(R.id)) store.rmSeen.push(R.id);
+    store.rmStep = S.rmStep; save(); progress(); renderChapters(); rmBarRender();
+    let h = `<div class="eyebrow">Caso ${ci + 1}, passo ${i + 1} de ${c.steps.length}</div><h2>${esc(st.t)}</h2>` + st.p.map(x => `<p>${esc(x)}</p>`).join('');
+    if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
+    h += `<div class="rmpick" id="rmpick" hidden></div>`;
+    if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
+    h += `<p class="rmcred">Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).</p>`;
+    scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
+    // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
+    if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
+    rmPanel();
+    const last = S.rmStep === RM_STEPS.length - 1;
+    setNav(`<button class="btn" id="prev" ${S.rmStep === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next" ${last ? 'disabled' : ''}>Próximo</button>`);
+    $('#prev').onclick = () => goRm(S.rmStep - 1);
+    $('#next').onclick = () => goRm(S.rmStep + 1);
+    if (moveFocus) focusTitle();
+    say(`${c.name}. ${st.t}.`);
+  }
+  // passo novo: série e mira do passo; caso novo apaga a estrutura clicada
+  function rmStep() { const { c, st } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { c: c.id, mm: c.at[st.at] }; RM.res = null; rmShow(); }
+  function goRm(k, moveFocus) {
+    if (k < 0 || k >= RM_STEPS.length) return;
+    if (RM_STEPS[k].c !== RM_STEPS[S.rmStep].c) { RM.pick = null; rmSel(null); }
+    S.rmStep = k;
+    if (S.mode !== 'rm') return setMode('rm', moveFocus);
+    rmStep(); renderRm(moveFocus);
+  }
   // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
     const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
@@ -799,19 +981,26 @@
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);
     say(d.name + '.');
   }
-  function syncMode() { ['anat', 'dz', 'proc'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k)); }
+  function syncMode() {
+    ['anat', 'dz', 'proc', 'rm'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k));
+    // ressonância: o visualizador ocupa o lugar do 3D, que vira encarte (CSS de .stage.rm)
+    const rm = S.mode === 'rm'; $('.stage').classList.toggle('rm', rm); rmView.hidden = !rm; if (!rm) rmTag.hidden = true;
+  }
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
+    else if (m === 'rm') { applyConfig(RM_CFG); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
     else { applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(moveFocus); }
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');
   $('#m-dz').onclick = () => S.mode !== 'dz' && setMode('dz');
   $('#m-proc').onclick = () => S.mode !== 'proc' && setMode('proc');
+  $('#m-rm').onclick = () => S.mode !== 'rm' && setMode('rm');
+  function rerender() { if (S.mode === 'anat') renderStep(); else if (S.mode === 'rm') renderRm(); else renderDz(); }
   function progress() {
-    const a = store.seen.length, d = store.dzSeen.length, tot = ALL_STEPS.length + DZ.length;
-    $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
-    $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
+    const a = store.seen.length, d = store.dzSeen.length, r = store.rmSeen.length, tot = ALL_STEPS.length + DZ.length + RM_STEPS.length;
+    $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}, ressonância ${r} de ${RM_STEPS.length}`;
+    $('#progbar').style.transform = `scaleX(${((a + d + r) / tot).toFixed(3)})`;
   }
   let closeAsk = () => false;
   // tira-dúvidas: aparece com a sessão; o servidor confere o token e o limite diário (functions/api/pergunta.js)
@@ -840,7 +1029,7 @@
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
-        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: await bearer() }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: await bearer() }, body: JSON.stringify({ pergunta, contexto: S.mode === 'rm' ? rmCtx() : scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
         // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
         ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
@@ -908,7 +1097,7 @@
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
     LISTAS.forEach(k => { store[k] = []; }); store.em = {}; store.zeradoEm = Date.now(); save(); push(0); // a conta fica sabendo já; zeradoEm impede que outro aparelho traga as marcas de volta
-    if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
+    rerender(); // renderDz e renderRm já chamam progress() e renderChapters()
   };
 
   /* ---------- progresso na conta (sem sessão ou sem rede, tudo segue no localStorage; nome e Sair ficam em src/auth.js) ---------- */
@@ -938,13 +1127,13 @@
     try {
       const { data, error } = await SB.from('progresso').select('dados').maybeSingle();
       if (error) return; // sem rede ou erro: tenta de novo na próxima gravação ou renovação do token
-      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.quiz]), antes = visto();
+      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.rmSeen, store.quiz]), antes = visto();
       // outra pessoa entrou neste navegador: o progresso local era da anterior e não soma nesta conta
       if (store.conta && store.conta !== id) { LISTAS.forEach(k => { store[k] = []; }); store.quiz = {}; store.em = {}; store.zeradoEm = 0; }
       if (data && data.dados) merge(data.dados);
       store.conta = contaId = id; keep();
       await SB.from('progresso').upsert({ user_id: id, dados: store, atualizado: new Date().toISOString() });
-      if (visto() !== antes) { if (S.mode === 'anat') renderStep(); else renderDz(); }
+      if (visto() !== antes) rerender();
     } catch (e) { } finally { lendo = false; }
   }
   // fora do callback: o supabase-js pede para não chamar o cliente dentro dele
@@ -1031,5 +1220,5 @@
   }
   if (store.tools) setTools(true);
   if (location.hash === '#doencas') setMode('dz'); else renderStep();
-  window.__spine = { S, get model() { return model; }, get plane() { return plane; }, get renderer() { return renderer; }, KIND, slabOut, goStep, openDz, setMode, camera, controls, setFull };
+  window.__spine = { S, RM, RM_STEPS, goRm, get model() { return model; }, get plane() { return plane; }, get renderer() { return renderer; }, KIND, slabOut, goStep, openDz, setMode, camera, controls, setFull };
 })();

@@ -13,10 +13,12 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
 - `src/geo.js`: geometria procedural da coluna (`buildSpine(mods)`); as doenças entram como modificações (`mods`).
 - `src/content.js`: capítulos, passos, testes, fichas das estruturas e notas por nível.
 - `src/disease.js`: as 18 doenças, com texto, fontes citadas e configuração da cena.
+- `src/rm.js`: modo Ressonância, com 3 casos reais de RM lombar do SPIDER (CC BY 4.0), a graduação de cada disco e os 18 passos.
+- `dist/rm/<caso>/`: as séries e máscaras dos casos em NIfTI (`.nii.gz`), só em `dist/` (não há cópia em `src/`); O `build.py` não mexe nelas. Ficam fechadas pelo middleware como o resto do site. Origem, conversão e conferência dos níveis em `docs/ressonancia.md`.
 - `src/app.js`: interface, câmera, cortes, rótulos, régua e testes.
 - `build.py`: junta tudo em `dist/coluna-vertebral.html`, um arquivo único que abre direto no navegador, e gera o hub em `dist/index.html`, o login em `dist/entrar.html` e o painel em `dist/admin.html`. Escreve doctype, `meta charset` e `meta viewport`; falha se encontrar travessão.
 - `tests/`: testes automáticos em Playwright.
-  - `smoke.js`: desktop, celular, falha do 3D e login simulado (nome e Sair na aula e no hub, soma do progresso com limpeza em outro aparelho e navegador compartilhado, token no tira-dúvidas, microfone com gravação simulada).
+  - `smoke.js`: desktop, celular, falha do 3D, modo Ressonância (lista de casos, imagem na tela, clique num disco com o nome e o 3D aceso, teste certo e errado, toque e quadro único em 390 px) e login simulado (nome e Sair na aula e no hub, soma do progresso com limpeza em outro aparelho e navegador compartilhado, token no tira-dúvidas, microfone com gravação simulada).
   - `admin.js`: painel do administrador com as RPCs simuladas (linhas e totais X de N, aviso de acesso restrito, link no hub só para o administrador).
   - `regua.js`: régua e desfazer seleção.
   - `ligamentos.js`: falha se corpo vertebral, sacro ou disco atravessar o LLA ou o LLP, na coluna normal e em todas as doenças.
@@ -26,7 +28,7 @@ Aula interativa de anatomia e doenças da coluna, do básico ao nível de especi
   - `transcrever.mjs`: função da voz sem rede, com o binding AI simulado (texto, áudio acima de 2 MB, sem binding, erro do modelo).
   - `middleware.mjs`: middleware sem rede, com tokens assinados por um par de chaves local (sem cookie, expirado, assinatura, emissor e audiência errados, válido, JWKS fora do ar).
   - `cortes.js`: confere que nenhuma lesão some ao trocar de corte.
-- `docs/`: retrospectiva do projeto.
+- `docs/`: retrospectiva do projeto e relatório da ressonância.
 
 ## Publicação
 
@@ -35,7 +37,7 @@ Site no Cloudflare Pages, ligado ao GitHub: hub em https://aula-coluna-3d.pages.
 ## Uso
 
     python3 build.py          # gera dist/coluna-vertebral.html e dist/index.html
-    npm install               # three 0.128.0, supabase-js 2.117.3 e playwright 1.56.1, só para os testes
+    npm install               # three 0.128.0, supabase-js 2.117.3, niivue 0.69.0 e playwright 1.56.1, só para os testes
     npm test
 
 O Playwright fica fixo em 1.56.1 porque usa o Chromium 1194, já instalado nas sessões do Claude Code na nuvem. Numa máquina sem esse Chromium, rodar antes `npx playwright install chromium`. O `cortes.js` é lento; para mudanças pequenas bastam `node tests/smoke.js` e `node tests/regua.js`.
@@ -50,6 +52,7 @@ Abra `dist/coluna-vertebral.html` no navegador. O arquivo carrega o Three.js e o
 - Chaves de rótulo: chave de nível (C1 a L5, `sacrum`, `coccyx`) seleciona a vértebra inteira, igual à régua; chave de parte (`disc.L4-L5`, `C7.sp`) seleciona só a parte; `cam:<nível>` só leva a câmera, para conceitos como curvaturas e ápices.
 - Layout no desktop (acima de 900 px): trilha à esquerda com Anatomia/Doenças e capítulos (`placeNav()` os devolve ao topo e ao painel no celular), recolhível pelo botão « com estado salvo; camadas e cortes sempre abertos no topo do 3D; divisória arrastável entre 3D e texto. Preferências ficam em `localStorage`, chave `coluna3d.v1`.
 - O título da aula leva ao hub.
+- Ressonância (`src/rm.js`, `RM_CASES`): a NiiVue 0.69.0 entra por `<script>` com integridade só ao abrir o modo; O 3D vira um encarte no canto do visualizador, com o mesmo canvas e a mesma cena. Passos vistos em `rmSeen` (`<caso>.<passo>`), somados e limpos como as outras listas.
 - Procedimentos (`src/proc.js`, `PROC`) usam o fluxo das doenças com outros campos de texto. Peças por `mods` em `buildSpine`: `needles` (`{ to, from }` ou `{ to, via, len }`, calibre `g`; ponto é âncora como `'L1.ped.L'` ou `[quadro, x, y, z]` no referencial de uma vértebra ou disco), `contrast`, `mbranch`, `rf`, `cement`, `cage`, `screws` (hastes automáticas) e `facetectomy`.
 
 ## Regras de conteúdo

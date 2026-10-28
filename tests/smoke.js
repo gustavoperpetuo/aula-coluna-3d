@@ -19,13 +19,24 @@ async function logado(p,{remoto,local}){
  await p.route('http://local.test/entrar',r=>r.fulfill({body:fs.readFileSync(__dirname+'/../dist/entrar.html','utf8'),contentType:'text/html'}));
  await p.route('http://local.test/hub',r=>r.fulfill({body:fs.readFileSync(__dirname+'/../dist/index.html','utf8'),contentType:'text/html'}));
 }
+// ressonância: posição na tela (px CSS) de um ponto em mm, no quadro pedido (0 axial, 2 sagital).
+// shortcut: busca em grade com canvasPos2frac (frac2canvasPosWithTile devolve null perto da borda de baixo); só para o teste
+const rmXY=(p,mm,st)=>p.evaluate(([mm,st])=>{const nv=__spine.RM.nv,f=nv.mm2frac(mm),s=nv.screenSlices.find(t=>t.axCorSag===st),[l,tp,w,h]=s.leftTopWidthHeight,ax=st===2?[1,2]:[0,1];
+ let best=null,bd=1e9; for(let y=tp;y<tp+h;y+=2)for(let x=l;x<l+w;x+=2){const g=nv.canvasPos2frac([x,y]); if(g[0]<0)continue; const d=Math.hypot(g[ax[0]]-f[ax[0]],g[ax[1]]-f[ax[1]]); if(d<bd){bd=d;best=[x,y];}}
+ const r=nv.canvas.getBoundingClientRect(),k=nv.uiData.dpr||devicePixelRatio; return best&&{x:r.left+best[0]/k,y:r.top+best[1]/k};},[mm,st]);
+// pixels da imagem: lidos logo depois de desenhar, antes de o navegador compor o quadro (o WebGL não guarda o buffer)
+const rmPixels=p=>p.evaluate(()=>{const nv=__spine.RM.nv,gl=nv.gl; nv.drawScene(); const w=gl.drawingBufferWidth,h=gl.drawingBufferHeight,px=new Uint8Array(w*h*4); gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px); let n=0; for(let i=0;i<px.length;i+=16)if(px[i]+px[i+1]+px[i+2]>120)n++; return n/(px.length/16);});
+const rmPronto=(p,want)=>p.waitForFunction(w=>__spine.RM.loaded===w,want,{timeout:60000});
 async function page(b,W,H,block,conta){
  const p=await b.newPage({viewport:{width:W,height:H},hasTouch:W<500,isMobile:W<500});
  const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|fonts/.test(m.text()))errs.push(m.text())});
  if(block) await p.route(/jsdelivr/,r=>r.abort()); else {
  await p.route(/three\.min\.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/build/three.min.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
  await p.route(/jsdelivr.*OrbitControls.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/examples/js/controls/OrbitControls.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
- await p.route(/jsdelivr.*supabase-js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/@supabase/supabase-js/dist/umd/supabase.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));}
+ await p.route(/jsdelivr.*supabase-js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/@supabase/supabase-js/dist/umd/supabase.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
+ // NiiVue: o mesmo arquivo do jsDelivr, do pacote npm fixo em 0.69.0 (a integridade do <script> confere o hash); casos de dist/rm/
+ await p.route(/jsdelivr.*niivue\.umd\.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/@niivue/niivue/dist/niivue.umd.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
+ await p.route(/local\.test\/rm\//,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../dist'+new URL(r.request().url()).pathname),contentType:'application/octet-stream'}));}
  await p.route(/fonts\./,r=>r.abort());
  const html=fs.readFileSync(__dirname+'/../dist/coluna-vertebral.html','utf8');
  await p.route('http://local.test/',r=>r.fulfill({body:html,contentType:'text/html'}));
@@ -54,6 +65,38 @@ async function page(b,W,H,block,conta){
  // sem getUserMedia (aqui, origem sem HTTPS) o microfone não aparece
  if(!await p.evaluate(()=>document.querySelector('#askmic').hidden)) bad.push('microfone aparece sem getUserMedia');
  await p.close();
+ // ressonância no desktop: botão do modo, casos e passos, imagem na tela, clique num disco (nome, painel e 3D), teste certo e errado
+ p=await page(b,1440,900);
+ // partes dentro da trilha: grade 2 por 2 em 232 px, uma por linha em 196 px. A largura do texto só se mede com a Source Sans 3,
+ // que o teste não baixa; com ela, Procedimentos cabe na meia linha de 232 px (medido à parte)
+ const cabeModos=cols=>p.evaluate(cols=>{const bs=[...document.querySelectorAll('.modes button')].map(e=>e.getBoundingClientRect()),s=document.querySelector('.modes').getBoundingClientRect(); return bs.every(r=>r.left>=s.left&&r.right<=s.right+0.5)&&new Set(bs.map(r=>r.top)).size===4/cols;},cols);
+ if(!await cabeModos(2)) bad.push('as 4 partes não cabem na trilha em 1440');
+ await p.click('#m-rm'); await rmPronto(p,'237/t2');
+ const r0=await p.evaluate(()=>({on:document.querySelector('#m-rm').getAttribute('aria-pressed'),casos:[...document.querySelectorAll('#chap > button')].map(e=>e.textContent),passos:[...document.querySelectorAll('#chap .rmsteps button')].filter(e=>e.offsetParent).length,h:document.querySelector('#railh').textContent,ey:document.querySelector('.eyebrow').textContent,cred:document.querySelector('.rmcred').textContent,lib:document.querySelectorAll('script[src*="niivue@0.69.0"][integrity^="sha384-"]').length,inset:(r=>[Math.round(r.width),Math.round(r.height)])(document.querySelector('#view').getBoundingClientRect())}));
+ console.log('rm',JSON.stringify(r0));
+ if(r0.on!=='true'||r0.casos.join('|')!=='Caso 1, coluna lombar sem alterações|Caso 2, hérnia L5-S1|Caso 3, degeneração em vários níveis'||r0.passos!==6||r0.h!=='Casos reais (SPIDER)'||r0.ey!=='Caso 1, passo 1 de 6') bad.push('ressonância, lista: '+JSON.stringify(r0));
+ if(r0.lib!==1||r0.inset.join()!=='200,214'||!/SPIDER, CC BY 4\.0/.test(r0.cred)) bad.push('ressonância, NiiVue, encarte ou crédito: '+JSON.stringify(r0));
+ const px=await rmPixels(p); if(!(px>0.05)) bad.push('ressonância sem imagem: '+px);
+ await p.click('#next'); await p.waitForTimeout(200);
+ if(await p.evaluate(()=>document.querySelector('.eyebrow').textContent+'|'+document.querySelector('#chap .rmsteps [aria-current="step"]').textContent)!=='Caso 1, passo 2 de 6|2Corpos vertebrais e discos') bad.push('ressonância: Próximo não andou');
+ await p.click('#chap > button:nth-of-type(2)'); await rmPronto(p,'45/t2');
+ if(!await p.evaluate(()=>document.querySelector('.eyebrow').textContent==='Caso 2, passo 1 de 6'&&!!document.querySelector('[data-rm="space"]'))) bad.push('ressonância: caso 2 não abriu com o T2 alta resolução');
+ // clique no disco L4-L5 do caso 1: rótulo 202, caixa Você clicou e o disco aceso no 3D
+ const iTest=await p.evaluate(()=>__spine.RM_STEPS.findIndex(r=>r.c.id==='237'&&r.st.test));
+ await p.evaluate(i=>__spine.goRm(i),iTest); await rmPronto(p,'237/t2'); await p.waitForTimeout(300);
+ const clica=async(lbl)=>{const mm=await p.evaluate(l=>RM_CASES[0].at[l],lbl),xy=await rmXY(p,mm,2); await p.mouse.click(xy.x,xy.y); await p.waitForTimeout(300);
+  return p.evaluate(()=>({v:__spine.RM.res,key:__spine.RM.pick&&__spine.RM.pick.key,box:document.querySelector('#rmpick').innerText,res:document.querySelector('#rmres').className+'|'+document.querySelector('#rmres').innerText,sel:__spine.S.sel?[...new Set([...__spine.S.sel].map(m=>m.userData.key))].join():''}));};
+ const k1=await clica(202), k2=await clica(201);
+ console.log('rm cliques',JSON.stringify([k1,k2]));
+ if(k1.v!==202||k1.key!=='disc.L4-L5'||!/^Você clicou: Disco L4-L5\. Ele aparece aceso no 3D\./.test(k1.box)||k1.sel!=='disc.L4-L5'||!/^rmres ok\|Certo\. Disco L4-L5\./.test(k1.res)) bad.push('ressonância, clique certo: '+JSON.stringify(k1));
+ if(k2.v!==201||k2.sel!=='disc.L5-S1'||!/^rmres no\|Não\. Disco L5-S1 não é a resposta\./.test(k2.res)) bad.push('ressonância, clique errado: '+JSON.stringify(k2));
+ // Abrir no 3D grande: Anatomia com o mesmo disco selecionado
+ await p.click('#rmopen'); await p.waitForTimeout(300);
+ const big=await p.evaluate(()=>({m:__spine.S.mode,k:__spine.S.selKey,card:!document.querySelector('#info').hidden,inset:document.querySelector('#view').getBoundingClientRect().width>400}));
+ if(big.m!=='anat'||big.k!=='disc.L5-S1'||!big.card||!big.inset) bad.push('Abrir no 3D grande: '+JSON.stringify(big));
+ await p.setViewportSize({width:1000,height:800}); await p.waitForTimeout(200); if(!await cabeModos(1)) bad.push('as 4 partes não cabem na trilha em 1000');
+ console.log('rm errs',p.errs); if(p.errs.length) bad.push('erros na ressonância (desktop)');
+ await p.close();
  // mobile
  p=await page(b,390,844);
  await shot(p,'m0');
@@ -61,7 +104,17 @@ async function page(b,W,H,block,conta){
  await p.evaluate(()=>{__spine.setFull(false); __spine.openDz('sten')}); await shot(p,'m2');
  await p.evaluate(()=>{window.scrollTo(0,0); __spine.openDz('tfesi')}); await shot(p,'m3');
  // a barra Anatomia/Doenças/Procedimentos tem de caber na largura do celular, sem rolagem lateral
- const fits=await p.evaluate(()=>document.querySelector('#m-proc').getBoundingClientRect().right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth); if(!fits) bad.push('barra de partes não cabe em 390 px');
+ const fits=await p.evaluate(()=>['#m-proc','#m-rm'].every(s=>document.querySelector(s).getBoundingClientRect().right<=innerWidth)&&document.documentElement.scrollWidth<=innerWidth); if(!fits) bad.push('barra de partes não cabe em 390 px');
+ // ressonância no celular: um quadro por vez, toque num disco (o dedo fica 80 ms, como um toque de verdade) e nada de rolagem lateral
+ await p.evaluate(()=>window.scrollTo(0,0)); await p.click('#m-rm'); await rmPronto(p,'237/t2');
+ const cdp=await p.context().newCDPSession(p), tap=async xy=>{await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:xy.x,y:xy.y}]}); await p.waitForTimeout(80); await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(600);};
+ await tap(await rmXY(p,await p.evaluate(()=>RM_CASES[0].at[202]),2));
+ const m390=await p.evaluate(()=>({k:__spine.RM.pick&&__spine.RM.pick.key,tiles:__spine.RM.nv.screenSlices.length,lat:document.documentElement.scrollWidth<=innerWidth,inset:getComputedStyle(document.querySelector('#view')).display,ver:!!document.querySelector('#rm3d').offsetParent,altura:Math.round(document.querySelector('.rmcv').getBoundingClientRect().height)}));
+ await p.click('[data-pane="ax"]'); await p.waitForTimeout(300);
+ const a390=await p.evaluate(()=>({t:__spine.RM.nv.screenSlices.map(s=>s.axCorSag).join(),lat:document.documentElement.scrollWidth<=innerWidth}));
+ console.log('rm 390',JSON.stringify(m390),JSON.stringify(a390));
+ if(m390.k!=='disc.L4-L5'||m390.tiles!==1||!m390.lat||m390.inset!=='none'||!m390.ver||m390.altura>0.7*844) bad.push('ressonância em 390: '+JSON.stringify(m390));
+ if(a390.t!=='0'||!a390.lat) bad.push('ressonância em 390, axial: '+JSON.stringify(a390));
  const tgt=await p.evaluate(()=>[...document.querySelectorAll('button,select,summary')].filter(e=>e.offsetParent).map(e=>{const r=e.getBoundingClientRect();return [r.width,r.height,(e.id||e.className)+':'+e.textContent.trim().slice(0,12)]}).filter(([w,h])=>h<36||w<36).slice(0,20));
  console.log('small targets',JSON.stringify(tgt)); console.log('mob errs',p.errs); if(p.errs.length) bad.push('erros no celular');
  await p.close();
@@ -72,15 +125,15 @@ async function page(b,W,H,block,conta){
  // com login: nome e Sair cabem em 390 px, o progresso da conta soma ao local e volta para a conta, o tira-dúvidas manda o token.
  // Outro aparelho limpou o progresso em T: as marcas locais anteriores a T (9 e sten) não voltam, a posterior (5) fica
  const T=Date.now()-60000, emR=Object.fromEntries(['seen:0','seen:1','seen:2','seen:3','dzSeen:hernia'].map(k=>[k,T+500]));
- p=await page(b,390,844,false,{remoto:{seen:[0,1,2,3],dzSeen:['hernia'],quiz:{dz:{0:0}},zeradoEm:T,em:emR},local:{conta:'u1',seen:[9,5],dzSeen:['sten'],em:{'seen:9':T-1000,'seen:5':T+1000,'dzSeen:sten':T-1000}}});
+ p=await page(b,390,844,false,{remoto:{seen:[0,1,2,3],dzSeen:['hernia'],rmSeen:['45.1'],quiz:{dz:{0:0}},zeradoEm:T,em:{...emR,'rmSeen:45.1':T+500}},local:{conta:'u1',seen:[9,5],dzSeen:['sten'],rmSeen:['10.2','10.3'],em:{'seen:9':T-1000,'seen:5':T+1000,'dzSeen:sten':T-1000,'rmSeen:10.2':T-1000,'rmSeen:10.3':T+1000}}});
  await p.waitForTimeout(1200);
- const visto=()=>p.evaluate(()=>{const l=JSON.parse(localStorage.getItem('coluna3d.v1'));return {seen:l.seen.sort((a,b)=>a-b).join(),dz:l.dzSeen.join(),quiz:JSON.stringify(l.quiz),z:l.zeradoEm,txt:document.querySelector('#progtxt').textContent}});
+ const visto=()=>p.evaluate(()=>{const l=JSON.parse(localStorage.getItem('coluna3d.v1'));return {seen:l.seen.sort((a,b)=>a-b).join(),dz:l.dzSeen.join(),rm:(l.rmSeen||[]).sort().join(),quiz:JSON.stringify(l.quiz),z:l.zeradoEm,txt:document.querySelector('#progtxt').textContent}});
  const conta=await p.evaluate(()=>{const q=document.querySelector('#quem'),s=document.querySelector('#sair').getBoundingClientRect();return {nome:q.textContent,email:q.title,cabe:s.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth,linha:s.top<document.querySelector('#m-anat').getBoundingClientRect().top,fab:!document.querySelector('#askfab').hidden}}), va=await visto();
  console.log('conta',JSON.stringify(conta),JSON.stringify(va),'gravado',JSON.stringify(p.gravado.at(-1)));
  if(conta.nome!=='Gustavo'||conta.email!==SESSAO.user.email) bad.push('nome no topo: '+conta.nome);
  if(!conta.cabe||!conta.linha) bad.push('conta não cabe na linha do título em 390 px');
- if(va.seen!=='0,1,2,3,5'||va.dz!=='hernia'||va.quiz!==JSON.stringify({dz:{0:0}})||va.z!==T||!/anatomia 5 de/.test(va.txt)) bad.push('soma com limpar de outro aparelho: '+JSON.stringify(va));
- const g=p.gravado.at(-1); if(!g||g.user_id!=='u1'||g.dados.seen.length!==5||g.dados.zeradoEm!==T) bad.push('progresso não voltou para a conta');
+ if(va.seen!=='0,1,2,3,5'||va.dz!=='hernia'||va.rm!=='10.3,45.1'||va.quiz!==JSON.stringify({dz:{0:0}})||va.z!==T||!/anatomia 5 de/.test(va.txt)||!/ressonância 2 de \d+$/.test(va.txt)) bad.push('soma com limpar de outro aparelho: '+JSON.stringify(va));
+ const g=p.gravado.at(-1); if(!g||g.user_id!=='u1'||g.dados.seen.length!==5||g.dados.rmSeen.sort().join()!=='10.3,45.1'||g.dados.zeradoEm!==T) bad.push('progresso não voltou para a conta');
  if(!conta.fab) bad.push('tira-dúvidas sem botão com login');
  await p.evaluate(()=>{document.querySelector('#askfab').click(); document.querySelector('#askq').value='O que é?'; document.querySelector('#ask').requestSubmit();}); await p.waitForTimeout(600);
  const pq=p.perguntas[0]||{}, ph=await p.evaluate(()=>document.querySelector('#askq').placeholder);

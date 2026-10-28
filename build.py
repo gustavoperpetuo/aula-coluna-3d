@@ -4,7 +4,7 @@ root = Path(__file__).parent
 src = root / 'src'
 head = (src / 'head.html').read_text(encoding='utf-8')
 geo = (src / 'geo.js').read_text(encoding='utf-8')
-dados = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js', 'disease.js', 'proc.js'])
+dados = ''.join((src / f).read_text(encoding='utf-8') + '\n' for f in ['content.js', 'disease.js', 'proc.js', 'rm.js'])
 js = dados + (src / 'app.js').read_text(encoding='utf-8') + '\n'
 # doctype, charset e viewport: sem eles o navegador abre em modo de compatibilidade,
 # troca os acentos quando o servidor não manda charset e o celular recebe o layout de desktop

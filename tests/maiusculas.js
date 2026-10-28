@@ -11,6 +11,8 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
  await p.route(/three\.min\.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/build/three.min.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
  await p.route(/jsdelivr.*OrbitControls.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/three/examples/js/controls/OrbitControls.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
  await p.route(/jsdelivr.*supabase-js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/@supabase/supabase-js/dist/umd/supabase.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
+ await p.route(/jsdelivr.*niivue\.umd\.js/,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../node_modules/@niivue/niivue/dist/niivue.umd.js'),contentType:'text/javascript',headers:{'access-control-allow-origin':'*'}}));
+ await p.route(/local\.test\/rm\//,r=>r.fulfill({body:fs.readFileSync(__dirname+'/../dist'+new URL(r.request().url()).pathname),contentType:'application/octet-stream'}));
  await p.route(/fonts\./,r=>r.abort());
  const html=fs.readFileSync(__dirname+'/../dist/coluna-vertebral.html','utf8');
  await p.route('http://local.test/',r=>r.fulfill({body:html,contentType:'text/html'}));
@@ -18,7 +20,7 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
  const texts=await p.evaluate(async()=>{
   const w=ms=>new Promise(r=>setTimeout(r,ms)); const out=[];
   const walk=(v,k)=>{if(typeof v==='string')out.push([k,v]);else if(Array.isArray(v))v.forEach((x,i)=>walk(x,k+'['+i+']'));else if(v&&typeof v==='object'&&!v.isVector3)for(const [kk,x] of Object.entries(v))walk(x,k+'.'+kk);};
-  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ,PROC_CATS,PROC},'dados');
+  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ,PROC_CATS,PROC,RM_CASES},'dados');
   const dom=where=>{out.push([where,document.body.innerText]);document.querySelectorAll('[title],[aria-label],[alt],[placeholder]').forEach(e=>['title','aria-label','alt','placeholder'].forEach(a=>e.hasAttribute(a)&&out.push([where+' @'+a,e.getAttribute(a)])));};
   const ruler=async where=>{for(const bt of document.querySelectorAll('#ruler button')){if(bt.hidden)continue;bt.click();await w(30);dom(where+' régua '+bt.dataset.lv);}};
   for(let i=0;i<ALL_STEPS.length;i++){__spine.goStep(i);await w(30);dom('passo '+i);}
@@ -27,6 +29,8 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
   __spine.setMode('dz');await w(30);dom('lista de doenças');
   for(const d of PROC){__spine.openDz(d.id);await w(30);dom('procedimento '+d.id);}
   __spine.setMode('proc');await w(30);dom('lista de procedimentos');
+  // ressonância: cada passo, e a resposta do teste (certa e errada) como aparece depois do clique
+  for(let k=0;k<__spine.RM_STEPS.length;k++){__spine.goRm(k);await w(30);dom('ressonância '+k);const st=__spine.RM_STEPS[k].st;if(st.test){await __spine.RM.q;for(const v of [st.test.ok[0],100,0]){__spine.RM.nv.onLocationChange({values:[{value:0},{value:v}]});await w(30);dom('ressonância '+k+' clique '+v);}}}
   return out;});
  const bad=[...new Set(texts.flatMap(([k,v])=>hits(v,k)))];
  const home=fs.readFileSync(__dirname+'/../dist/index.html','utf8').replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g,'');

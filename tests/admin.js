@@ -3,22 +3,22 @@ const { chromium } = require('playwright');
 const fs=require('fs'), vm=require('vm');
 // totais e gabarito do teste final tirados das listas da aula, rodadas aqui fora da página
 const ctx={}; vm.createContext(ctx);
-vm.runInContext(['content.js','disease.js','proc.js'].map(f=>fs.readFileSync(__dirname+'/../src/'+f,'utf8')).join('\n')+';this.T={a:ALL_STEPS.length,d:DZ.length,p:PROC.length,q:DZ_QUIZ}',ctx);
-const {a:NA,d:ND,p:NP,q:Q}=ctx.T;
+vm.runInContext(['content.js','disease.js','proc.js','rm.js'].map(f=>fs.readFileSync(__dirname+'/../src/'+f,'utf8')).join('\n')+';this.T={a:ALL_STEPS.length,d:DZ.length,p:PROC.length,r:RM_CASES.reduce((n,c)=>n+c.steps.length,0),q:DZ_QUIZ}',ctx);
+const {a:NA,d:ND,p:NP,r:NR,q:Q}=ctx.T;
 const SESSAO={access_token:'a.b.c',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'r',user:{id:'u1',aud:'authenticated',email:'gustavo@renovamedical.com.br',user_metadata:{full_name:'Gustavo Perpetuo'}}};
 const H=36e5, iso=ms=>new Date(Date.now()-ms).toISOString();
 const PESSOAS=[
  {email:'fernanda.lima@renovamedical.com.br',nome:'Fernanda Lima',primeiro_acesso:iso(20*24*H),ultimo_acesso:iso(2*H),progresso_em:iso(H),perguntas_total:14,perguntas_hoje:3,voz_segundos_total:95,
-  progresso:{seen:[0,1,2,3,4,5,6,7,8,9,10,11],dzSeen:['ddd','hernia','sten'],procSeen:['tfesi'],quiz:{q0:{0:0,1:0,2:0},dz:Object.fromEntries(Q.map((q,i)=>[i,q[2]]))},step:11,zeradoEm:0,railOff:false,pw:430,conta:'u2'}},
+  progresso:{seen:[0,1,2,3,4,5,6,7,8,9,10,11],dzSeen:['ddd','hernia','sten'],procSeen:['tfesi'],rmSeen:['237.0','237.1','45.3'],quiz:{q0:{0:0,1:0,2:0},dz:Object.fromEntries(Q.map((q,i)=>[i,q[2]]))},step:11,zeradoEm:0,railOff:false,pw:430,conta:'u2'}},
  {email:'ricardo.souza@allivia.com.br',nome:'Ricardo Souza',primeiro_acesso:iso(30*24*H),ultimo_acesso:iso(10*24*H),progresso_em:iso(3*24*H),perguntas_total:2,perguntas_hoje:1,voz_segundos_total:0,
   progresso:{seen:[0,1,2],quiz:{dz:{0:Q[0][2],1:(Q[1][2]+1)%Q[1][1].length,2:Q[2][2]}},step:2,conta:'u3'}},
  {email:'paula.mendes@renovamedical.com.br',nome:'Paula Mendes',primeiro_acesso:'2026-10-01T15:30:00Z',ultimo_acesso:iso(12*24*H),progresso_em:null,perguntas_total:0,perguntas_hoje:0,voz_segundos_total:0,progresso:null},
 ];
 // o que a página tem de mostrar em cada linha, da coluna Anatomia vista em diante (teste final no formato de bindQuiz() em src/app.js)
 const ESPERADO=[
- [`12 de ${NA}`,`3 de ${ND}`,`1 de ${NP}`,`${Q.length} de ${Q.length} certas`,'14','3','1,6 min'],
- [`3 de ${NA}`,`0 de ${ND}`,`0 de ${NP}`,`2 de ${Q.length} certas, faltam ${Q.length-3}`,'2','1','0,0 min'],
- [`0 de ${NA}`,`0 de ${ND}`,`0 de ${NP}`,'Não fez','0','0','0,0 min'],
+ [`12 de ${NA}`,`3 de ${ND}`,`1 de ${NP}`,`3 de ${NR}`,`${Q.length} de ${Q.length} certas`,'14','3','1,6 min'],
+ [`3 de ${NA}`,`0 de ${ND}`,`0 de ${NP}`,`0 de ${NR}`,`2 de ${Q.length} certas, faltam ${Q.length-3}`,'2','1','0,0 min'],
+ [`0 de ${NA}`,`0 de ${ND}`,`0 de ${NP}`,`0 de ${NR}`,'Não fez','0','0','0,0 min'],
 ];
 const RX=/[.;]\s+[a-zà-öø-ÿ]/g; // a mesma regra de tests/maiusculas.js
 async function abre(b,W,url,{painel,admin}){
@@ -50,7 +50,7 @@ async function abre(b,W,url,{painel,admin}){
   L.forEach((c,i)=>{const e=PESSOAS[i]; if(c[0]!==e.nome+'\n'+e.email||c[1]!==e.email.split('@')[1]||JSON.stringify(c.slice(4))!==JSON.stringify(ESPERADO[i])||!/^\d\d\/\d\d\/\d{4}, \d\d:\d\d$/.test(c[3])) bad.push(W+': linha '+i+' '+JSON.stringify(c));});
   if(L[2]&&L[2][2]!=='01/10/2026, 12:30') bad.push(W+': primeiro acesso fora do horário de Brasília: '+L[2][2]);
   if(v.resumo.join()!=='3,2,4') bad.push(W+': resumo '+v.resumo);
-  if(v.th!=='11|3|true') bad.push(W+': semântica da tabela '+v.th);
+  if(v.th!=='12|3|true') bad.push(W+': semântica da tabela '+v.th);
   if(!v.lateral) bad.push(W+': rolagem lateral na página');
   if(W>500&&!v.cabe) bad.push('tabela não cabe em 1440 px'); // no celular ela rola dentro da caixa
   if(W<500&&v.margem!=='16px') bad.push('margem no celular '+v.margem);

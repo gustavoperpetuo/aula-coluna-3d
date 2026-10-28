@@ -103,8 +103,9 @@ body.resizing { cursor: col-resize; user-select: none; }
   .stage { grid-template-columns: var(--rail, 232px) minmax(0, 1fr) 0 var(--pw, 430px); grid-template-areas: "rail view split panel"; }
   .rail { grid-area: rail; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); box-sizing: border-box; }
   /* três partes não cabem numa linha da trilha: a que sobra desce para a linha de baixo, sem cortar o texto */
-  .rail .seg { display: flex; flex-wrap: wrap; }
-  .rail .seg button { flex: 1 1 auto; min-height: 38px; padding: 0 6px; white-space: nowrap; }
+  /* quatro partes: grade 2 por 2, para os rótulos caberem nos 232 px da trilha */
+  .rail .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rail .modes button { min-height: 38px; padding: 0 2px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hint { max-width: calc(100% - 92px); }
   .rail-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 0 0 0 12px; }
   .railx { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; }
@@ -121,11 +122,43 @@ body.resizing { cursor: col-resize; user-select: none; }
   .rail .chap button b { min-width: 14px; }
   .rail .chap button:hover:not([aria-current="step"]) { background: var(--paper); }
   .rail .chap button.done:not([aria-current="step"])::after { margin-left: auto; }
+  /* ressonância: o caso aberto mostra os passos, o atual na cor de destaque */
+  .rail .chap .rmsteps { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px 12px; }
+  .rail .chap .rmsteps button { min-height: 36px; padding: 6px 10px; font-size: 14.5px; }
+  .rail .chap .rmsteps button[aria-current="step"] { background: none; border-color: transparent; color: var(--accent); font-weight: 700; }
+  .rail .chap .rmsteps button[aria-current="step"] b { color: var(--accent); }
+  /* o 3D vira um encarte no canto do visualizador: o mesmo canvas e a mesma cena, só redimensionados */
+  .stage.rm .view { box-sizing: border-box; align-self: end; justify-self: end; width: 200px; height: 214px; margin: 0 16px 16px 0; z-index: 4; background: #fff; border: 1px solid var(--line); border-radius: 8px; pointer-events: none; }
+  .stage.rm .view > :not(#gl):not(.incap) { display: none; }
+  .stage.rm .incap { display: block; position: absolute; left: 8px; top: 6px; z-index: 2; font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
   .ttog { display: none; }
   .tools { display: grid; grid-template-columns: minmax(0, max-content); justify-content: center; top: 12px; left: 12px; right: 68px; gap: 6px; pointer-events: none; }
   .tools .group { justify-content: center; pointer-events: auto; box-shadow: 0 1px 4px rgba(23,26,32,.08); }
 }
-@media (min-width: 900.02px) and (max-width: 1200px) { .stage { --rail: 196px; } }
+/* trilha de 196 px: Procedimentos não cabe em meia linha, as partes ficam uma por linha */
+@media (min-width: 900.02px) and (max-width: 1200px) { .stage { --rail: 196px; } .rail .modes { grid-template-columns: 1fr; } }
+
+/* ressonância: visualizador escuro no lugar do 3D */
+.rmview { grid-area: view; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #0C0D10; }
+.rmbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px; }
+.rmbar .chip { min-width: 44px; justify-content: center; }
+.rmcv { position: relative; flex: 1 1 auto; min-height: 0; }
+#rmgl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.pcap { position: absolute; top: 2px; z-index: 1; font-size: 14px; font-weight: 600; color: #D9DCE1; pointer-events: none; }
+#cap-sag { left: 12px; }
+#cap-ax { left: calc(60% + 12px); }
+.rmtag { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 1; padding: 5px 8px; border-radius: 5px; background: rgba(255,255,255,.94); color: var(--ink); }
+.rmmsg { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; text-align: center; color: #D9DCE1; pointer-events: none; }
+.rmmsg:empty { display: none; }
+.rmpane, .rm3d, .incap, .chap .rmsteps { display: none; }
+.chap button[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.rmpick { margin: 18px 0 0; padding: 12px 14px; border-radius: 8px; background: var(--accent-soft); }
+.rmpick p { margin: 0; }
+.rmpick .btn.link { min-height: 36px; padding: 4px 0 0; }
+.rmres { margin: 14px 0 0; padding: 10px 12px; border: 1px solid; border-radius: 8px; }
+.rmres.ok { border-color: var(--accent); background: var(--accent-soft); }
+.rmres.no { border-color: var(--path); background: var(--path-soft); }
+.scroll .rmcred { margin: 24px 0 0; font-size: 13.5px; color: var(--ink-3); }
 
 /* régua de níveis */
 .ruler { z-index: 3; position: absolute; right: 12px; top: 12px; bottom: 12px; width: 44px; display: flex; flex-direction: column; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; overflow-y: auto; scrollbar-width: none; }
@@ -296,6 +329,17 @@ body.resizing { cursor: col-resize; user-select: none; }
   .view.full .ttog { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .view.full .info { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); z-index: 21; }
   .view.full .gesture { display: block; }
+  /* partes da aula: grade 2 por 2 na largura do celular, como na trilha */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; width: 100%; box-sizing: border-box; }
+  /* ressonância: um quadro por vez com altura fixa; a página rola pelo texto, porque o toque no visualizador não rola a página */
+  .stage.rm .view:not(.full) { display: none; }
+  .rmview { order: 1; }
+  .rmbar { padding: 10px 12px; }
+  .rmcv { flex: none; height: 56svh; min-height: 300px; }
+  .rmpane { display: inline-flex; }
+  #cap-ax { left: 12px; }
+  .rmview.ax #cap-sag, .rmview:not(.ax) #cap-ax { display: none; }
+  .rm3d { display: inline-block; margin-top: 12px; }
 }
 .gesture { display: none; position: absolute; z-index: 3; left: 12px; right: 130px; top: calc(12px + env(safe-area-inset-top, 0px)); font-size: 14px; line-height: 1.35; color: var(--ink-2); background: rgba(255,255,255,.92); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
@@ -305,10 +349,11 @@ body.resizing { cursor: col-resize; user-select: none; }
   <header class="top">
     <div class="brand"><h1><a href="/" title="Todas as aulas">Coluna vertebral</a></h1></div>
     <div class="conta" id="conta" hidden><span class="quem" id="quem"></span><button type="button" class="sair" id="sair">Sair</button></div>
-    <div class="seg" role="group" aria-label="Parte da aula">
+    <div class="seg modes" role="group" aria-label="Parte da aula">
       <button id="m-anat" aria-pressed="true">Anatomia</button>
       <button id="m-dz" aria-pressed="false">Doenças</button>
       <button id="m-proc" aria-pressed="false">Procedimentos</button>
+      <button id="m-rm" aria-pressed="false">Ressonância</button>
     </div>
     <div class="prog"><span id="progtxt"></span><span class="bar" aria-hidden="true"><i id="progbar"></i></span><button type="button" class="progreset" id="progreset" title="Limpar progresso" aria-label="Limpar progresso">↺</button></div>
   </header>
@@ -322,7 +367,12 @@ body.resizing { cursor: col-resize; user-select: none; }
     <button class="askfab" id="askfab" type="button" hidden aria-expanded="false" aria-controls="askwin">Dúvida?</button>
     <section class="askwin" id="askwin" role="dialog" aria-label="Tira-dúvidas" hidden><button class="askgrip" id="askgrip" type="button" aria-label="Redimensionar a janela. Use as setas"></button><div class="askhd"><b>Tira-dúvidas</b><span>pergunte o que quiser</span><button class="askx" id="askx" type="button" aria-label="Fechar">✕</button></div><div class="askout" id="askout" aria-live="polite"></div><form class="askrow" id="ask"><input id="askq" type="text" maxlength="1000" placeholder="Sua dúvida" aria-label="Sua dúvida" autocomplete="off"><button class="askmic" id="askmic" type="button" aria-label="Gravar pergunta por voz" aria-pressed="false" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Perguntar</button></form></section>
     <div class="split" id="split" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="panel" aria-label="Largura do texto" aria-valuemin="320" title="Arraste para mudar a largura do texto; Clique duplo volta ao padrão"></div>
+    <section class="rmview" id="rmview" aria-label="Ressonância magnética" hidden>
+      <div class="rmbar" id="rmbar"></div>
+      <div class="rmcv"><canvas id="rmgl" role="img" aria-label="Ressonância lombar, cortes sagital e axial. Clique numa estrutura para ver o nome no painel."></canvas><span class="pcap" id="cap-sag" aria-hidden="true">Sagital</span><span class="pcap" id="cap-ax" aria-hidden="true">Axial (linha vermelha)</span><div class="rmtag" id="rmtag" hidden></div><div class="rmmsg" id="rmmsg"></div></div>
+    </section>
     <section class="view" id="view" aria-label="Modelo 3D da coluna">
+      <div class="incap" aria-hidden="true">Mesma estrutura no 3D</div>
       <canvas id="gl" role="img" aria-label="Modelo 3D da coluna vertebral. Use os links Localizar no 3D do painel para destacar estruturas."></canvas>
       <div id="labels" aria-hidden="true"><svg id="lines"></svg></div>
       <div class="gesture">Um dedo gira, pinça aproxima, dois dedos movem</div>
@@ -3319,6 +3369,112 @@ Object.assign(INFO, {
   schwannoma: ['Schwannoma', 'Tumor benigno da bainha de uma raiz, dentro da dura e fora da medula, que cresce devagar e empurra as raízes vizinhas.']
 });
 
+/* ================= Ressonância: 3 casos reais do SPIDER ================= */
+// Imagens: van der Graaf JW et al., Lumbar spine segmentation in MR images: a dataset and a public benchmark, Sci Data 11, 264 (2024);
+// doi:10.5281/zenodo.10159290; CC BY 4.0. Recorte, reamostragem e conversão para NIfTI em docs/ressonancia.md; arquivos em dist/rm/<caso>/.
+// Máscara, de baixo para cima: 1 a 9 vértebras (1 = L5, conferido na imagem nos 3 casos, contando a partir do sacro), 100 canal, 201 em diante discos (201 = L5-S1).
+// g: radiological_gradings.csv do SPIDER, um disco por linha de baixo para cima (IVD label 1 = rótulo 201):
+//    [Modic, placa superior, placa inferior, listese, hérnia, estreitamento, abaulamento, Pfirrmann]
+// at: centro de cada rótulo em mm (RAS), da máscara do T2; o passo põe a mira nesse ponto (o axial passa por ele).
+const RM_NIIVUE = { src: 'https://cdn.jsdelivr.net/npm/@niivue/niivue@0.69.0/dist/niivue.umd.js', sri: 'sha384-Oyof6MyzZMH1tvMLLYFRQLWZtk9Y/WbiL3wkdXzwaCS82xRXXy9U+kRrkDDAVq6E' };
+const RM_G = { modic: 0, hern: 4, narrow: 5, bulge: 6, pf: 7 };
+// discos (rótulos) em que a coluna da graduação é maior que zero
+const rmDiscs = (g, col) => g.map((r, i) => r[RM_G[col]] > 0 ? 201 + i : 0).filter(Boolean);
+const RM_CASES = (() => {
+  const c1g = [[0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 1]];
+  const c2g = [[0, 1, 1, 0, 1, 1, 0, 3], [0, 0, 0, 0, 0, 0, 1, 3], [0, 0, 0, 0, 0, 0, 0, 3], [0, 0, 0, 0, 0, 0, 1, 3], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
+  const c3g = [[2, 1, 1, 0, 0, 1, 1, 3], [2, 1, 1, 0, 1, 1, 0, 5], [2, 1, 1, 0, 1, 1, 0, 5], [2, 1, 1, 0, 0, 1, 1, 3], [2, 1, 1, 0, 0, 1, 1, 4], [2, 1, 1, 0, 0, 1, 1, 5], [2, 1, 1, 0, 0, 1, 0, 3]];
+  return [
+    {
+      id: '237', name: 'Caso 1, coluna lombar sem alterações', g: c1g,
+      seqs: { t2: ['237_t2', '237_t2_mask'], t1: ['237_t1', '237_t1_mask'] },
+      at: { 1: [1.9, -52.4, -31.0], 2: [1.0, -46.1, 2.4], 100: [0.8, -72.2, 43.6], 201: [2.5, -54.1, -50.6], 202: [1.6, -39.6, -16.2], 203: [0.3, -37.1, 20.2] },
+      steps: [
+        { t: 'Como ler o sagital T2', at: 203, p: [
+          'Este é um corte sagital: a coluna lombar vista de lado, com a cabeça para cima e a frente do corpo à direita da imagem. A linha vermelha horizontal marca a altura do corte mostrado no quadro Axial.',
+          'No T2, o que tem muita água fica claro: o líquor em volta das raízes e o núcleo do disco saudável. Osso cortical, ligamentos e anel fibroso ficam escuros. A gordura também fica clara nas sequências T2 rápidas usadas na coluna.',
+          'No T1 a água fica escura: líquor e disco perdem o brilho, e a gordura fica clara, inclusive a da medula óssea dos corpos vertebrais. Por isso o T2 mostra bem o líquor e o disco, e o T1 mostra bem a medula óssea.',
+          'Clique em qualquer ponto da imagem. O nome da estrutura aparece no painel e ela acende no modelo 3D.'] },
+        { t: 'Corpos vertebrais e discos', at: 202, p: [
+          'Os corpos vertebrais são os blocos na frente do canal, e entre eles ficam os discos. A contagem começa de baixo: o primeiro disco acima do sacro é L5-S1, e a vértebra logo acima dele é L5.',
+          'O SPIDER não segmenta o sacro, por isso ele fica sem cor. Uma vértebra de transição só se descarta vendo a coluna inteira, que este recorte não mostra.',
+          'Disco saudável no T2: núcleo claro e homogêneo, anel escuro em volta e altura preservada. É o grau 1 da escala de Pfirrmann, que vai de 1 a 5 (Pfirrmann et al., Spine 2001).',
+          'Neste caso o radiologista do SPIDER graduou 6 discos, de L5-S1 a T12-L1, todos em Pfirrmann 1, sem hérnia, abaulamento, estreitamento, alteração de placa terminal, Modic ou listese.'] },
+        { t: 'Canal, cauda equina e cone medular', at: 100, p: [
+          'Atrás dos corpos vertebrais fica o canal vertebral, claro no T2 por causa do líquor. Na máscara, o rótulo do canal cobre todo o conteúdo do saco dural.',
+          'Dentro do líquor, as raízes da cauda equina aparecem como fios escuros que descem em direção aos forames. Acima delas a medula termina no cone medular, que no adulto costuma ficar perto de L1-L2. Procure a ponta da medula no alto do recorte.',
+          'Clique no canal: no 3D acende o saco dural, que envolve a cauda equina.'] },
+        { t: 'T1 e T2 no mesmo corte', seq: 't1', at: 202, p: [
+          'O visualizador passou para o T1 do mesmo exame, no mesmo nível. Alterne T1 e T2 nos botões do topo para comparar o mesmo corte.',
+          'No T1 o líquor fica escuro e perde o contraste com as raízes. A medula óssea dos corpos vertebrais, rica em gordura, fica clara. O disco fica cinza nas duas sequências, mas só no T2 o núcleo hidratado se destaca.',
+          'A gordura epidural e a do subcutâneo ficam claras no T1, o que ajuda a ver o contorno do saco dural e a gordura em volta das raízes nos forames.'] },
+        { t: 'Leitura axial em L4-L5', at: 202, p: [
+          'A linha vermelha está no disco L4-L5, e o quadro Axial mostra esse nível. No axial a frente do corpo fica em cima e o canal embaixo, com as articulações facetárias dos dois lados.',
+          'Este axial é reconstruído a partir dos cortes sagitais. Neste exame eles têm 4,4 mm de espessura, então a imagem sai em degraus e serve para orientação: disco, saco dural e facetas.',
+          'O corte é perpendicular ao eixo do aparelho, e não inclinado ao longo do disco como o axial adquirido no exame. Clique acima ou abaixo no sagital para mover a linha e percorrer o nível.'] },
+        { t: 'Teste: o disco L4-L5', at: 203, test: { ok: [202], hint: 'Conte os discos de baixo para cima a partir do sacro: L5-S1 é o primeiro e L4-L5 é o segundo.' }, p: [
+          'Clique no disco L4-L5, no sagital ou no axial. A resposta aparece logo abaixo.'] }
+      ]
+    },
+    {
+      id: '45', name: 'Caso 2, hérnia L5-S1', g: c2g,
+      seqs: { t2: ['45_t2', '45_t2_mask'], t1: ['45_t1', '45_t2_mask'], space: ['45_t2_SPACE', '45_t2_SPACE_mask'] },
+      at: { 1: [25.6, 0.2, -74.6], 2: [25.6, -0.2, -38.7], 100: [24.0, -33.6, 30.5], 201: [25.9, 3.6, -93.4], 202: [25.6, 9.9, -57.8], 203: [25.9, 5.6, -18.7] },
+      steps: [
+        { t: 'O mesmo roteiro em outro paciente', at: 203, p: [
+          'Mesmo corte sagital T2, em aparelho de 1,5 T. Este exame tem também um T2 de alta resolução (sequência SPACE), com cortes de 0,9 mm em vez de 3,3 mm, o que permite um axial nítido.',
+          'Graduação do SPIDER, de baixo para cima: L5-S1 com hérnia, estreitamento, alteração das placas terminais superior e inferior e Pfirrmann 3. L4-L5 e L2-L3 com abaulamento e Pfirrmann 3. L3-L4 em Pfirrmann 3. L1-L2, T12-L1 e T11-T12 em Pfirrmann 2. Nenhum nível com Modic ou listese.'] },
+        { t: 'Discos em Pfirrmann 2 e 3', at: 203, p: [
+          'Compare o brilho dos discos. Em Pfirrmann 2 o disco ainda é claro e o núcleo se distingue do anel, às vezes com uma faixa escura horizontal. Em Pfirrmann 3 o disco fica cinza, a separação entre núcleo e anel não é nítida e a altura é normal ou pouco reduzida (Pfirrmann et al., Spine 2001).',
+          'Aqui os discos de L5-S1 a L2-L3 foram graduados em Pfirrmann 3, e os de L1-L2 para cima em Pfirrmann 2.',
+          'Abaulamento é o disco que passa da borda dos corpos vertebrais de forma difusa. Neste caso ele foi graduado em L4-L5 e L2-L3.'] },
+        { t: 'Hérnia em L5-S1', at: 201, p: [
+          'A linha vermelha está no disco L5-S1, o último acima do sacro. Neste nível o radiologista graduou hérnia, estreitamento, alteração das placas terminais superior e inferior e Pfirrmann 3.',
+          'No corte do meio a hérnia é discreta. Clique no quadro Axial à direita ou à esquerda do saco dural: o sagital passa para esse lado e mostra o disco fora da linha média.',
+          'Abaixo do disco fica o sacro, sem cor porque o SPIDER não o segmenta.'] },
+        { t: 'Axial em L5-S1 no T2 de alta resolução', seq: 'space', at: 201, p: [
+          'O visualizador passou para o T2 de alta resolução. Com cortes de 0,9 mm o axial reconstruído fica nítido: disco, saco dural, facetas e musculatura.',
+          'O axial é perpendicular ao eixo do aparelho. Em L5-S1 o disco é inclinado, então o corte pega parte da placa terminal de L5 e não o disco inteiro de uma vez. Clique acima ou abaixo no sagital para percorrer o disco.',
+          'Esta série tem cerca de 10 MB e pode demorar a abrir no celular.'] },
+        { t: 'T1 no mesmo caso', seq: 't1', at: 201, p: [
+          'O radiologista graduou Modic 0 em todos os níveis deste caso, inclusive em L5-S1, onde marcou alteração das placas terminais.',
+          'Modic é a mudança de sinal da medula óssea junto à placa terminal, que se lê comparando T1 e T2 (Modic et al., Radiology 1988). O caso 3 mostra um exemplo.',
+          'Alterne T1 e T2: no T1 o disco e o líquor ficam escuros e quase se confundem, e no T2 o líquor volta a contrastar com o disco.'] },
+        { t: 'Teste: o disco com hérnia', at: 203, test: { ok: rmDiscs(c2g, 'hern'), hint: 'Só um nível deste caso foi graduado com hérnia, o mesmo com estreitamento e alteração das placas terminais.' }, p: [
+          'Clique no disco com hérnia, no sagital ou no axial. A resposta aparece logo abaixo.'] }
+      ]
+    },
+    {
+      id: '10', name: 'Caso 3, degeneração em vários níveis', g: c3g,
+      seqs: { t2: ['10_t2', '10_t2_mask'], t1: ['10_t1', '10_t1_mask'] },
+      at: { 1: [-18.0, -32.1, 1.8], 2: [-18.7, -26.9, 32.4], 100: [-19.6, -65.2, 89.5], 201: [-17.0, -31.2, -18.1], 202: [-19.6, -18.1, 14.6], 203: [-16.8, -19.8, 48.6] },
+      steps: [
+        { t: 'Degeneração em vários níveis', at: 203, p: [
+          'Exame em aparelho de 3 T, com 7 discos graduados, de L5-S1 a T11-T12. Todos têm estreitamento, alteração das placas terminais e Modic tipo 2.',
+          'L4-L5 e L3-L4 têm hérnia graduada. Os outros níveis, exceto T11-T12, têm abaulamento.',
+          'Compare com o caso 1: aqui os discos perderam o brilho no T2 e parte da altura.'] },
+        { t: 'Pfirrmann nível a nível', at: 202, p: [
+          'Graduação neste caso: Pfirrmann 5 em L4-L5, L3-L4 e T12-L1, Pfirrmann 4 em L1-L2 e Pfirrmann 3 em L5-S1, L2-L3 e T11-T12.',
+          'Pfirrmann 4: disco cinza escuro, sem separação entre núcleo e anel, altura normal a moderadamente reduzida. Pfirrmann 5: disco preto e espaço discal colapsado (Pfirrmann et al., Spine 2001).',
+          'Clique nos discos e compare a cor e a altura de cada nível com a graduação.'] },
+        { t: 'Modic tipo 2', seq: 't1', at: 202, p: [
+          'Modic é a mudança de sinal da medula óssea do corpo vertebral junto à placa terminal (Modic et al., Radiology 1988). Tipo 1: escuro no T1 e claro no T2, por edema. Tipo 2: claro no T1 e claro ou igual no T2, por gordura. Tipo 3: escuro nos dois, por esclerose.',
+          'O visualizador está no T1. Neste caso o radiologista graduou Modic 2 nos 7 níveis: procure faixas claras nos corpos vertebrais, junto às placas acima e abaixo dos discos.',
+          'Alterne para o T2: no tipo 2 as mesmas faixas ficam claras ou iguais ao resto do osso. No tipo 1 elas seriam escuras no T1.'] },
+        { t: 'Estreitamento e hérnia', at: 203, p: [
+          'Os 7 discos foram graduados com estreitamento: o espaço entre os corpos vertebrais ficou mais baixo. Compare a altura deles com a dos discos do caso 1.',
+          'L4-L5 e L3-L4 têm hérnia graduada. No sagital, procure o disco que avança para trás, em direção ao saco dural.',
+          'Clique no quadro Axial à direita e à esquerda do canal para trocar o corte sagital e ver o disco fora da linha média.'] },
+        { t: 'Axial em L4-L5', at: 202, p: [
+          'A linha vermelha está em L4-L5, nível graduado com hérnia, estreitamento, alteração das placas terminais, Modic 2 e Pfirrmann 5.',
+          'Neste exame os cortes sagitais têm 4,4 mm, então o axial sai em degraus e serve para orientação. Compare o contorno de trás do disco e o espaço do saco dural com o caso 1 no mesmo nível.'] },
+        { t: 'Teste: um disco com Modic', at: 100, test: { ok: rmDiscs(c3g, 'modic'), hint: 'Modic é graduado por disco, nas placas terminais acima e abaixo dele.' }, p: [
+          'Clique num disco com Modic, no sagital ou no axial. A resposta aparece logo abaixo.'] }
+      ]
+    }
+  ];
+})();
+
 /* ================= Aplicação ================= */
 (function () {
   const $ = s => document.querySelector(s);
@@ -3331,13 +3487,15 @@ Object.assign(INFO, {
   const store = (() => { try { return JSON.parse(localStorage.getItem('coluna3d.v1') || '{}'); } catch (e) { return {}; } })();
   // cópia na conta (tabela progresso): cada gravação, com atraso, lê a da conta, soma com a local e grava a soma (sync, mais abaixo);
   // nunca grava por cima sem ler, senão apagaria o progresso de outro aparelho
-  const LISTAS = ['seen', 'dzSeen', 'procSeen'];
+  const LISTAS = ['seen', 'dzSeen', 'procSeen', 'rmSeen'];
   let contaId = null, pushT = 0;
   const push = (ms = 1500) => { if (!contaId) return; clearTimeout(pushT); pushT = setTimeout(() => sync(contaId), ms); };
   const keep = () => { marca(); try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
   const save = () => { keep(); push(); };
-  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.quiz = store.quiz || {};
-  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
+  store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.rmSeen = store.rmSeen || []; store.quiz = store.quiz || {};
+  // passos de ressonância numa lista só (src/rm.js); a marca de visto é '<caso>.<passo>'
+  const RM_STEPS = RM_CASES.flatMap(c => c.steps.map((st, i) => ({ c, i, st, id: c.id + '.' + i })));
+  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), rmStep: Math.min(store.rmStep || 0, RM_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
   let has3D = false, renderer, scene, camera, controls, model = null, V3, deg = Math.PI / 180;
@@ -3906,8 +4064,14 @@ Object.assign(INFO, {
   setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
-    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : 'Grupos de doenças';
-    if (S.mode === 'anat') {
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : S.mode === 'rm' ? 'Casos reais (SPIDER)' : 'Grupos de doenças';
+    if (S.mode === 'rm') {
+      // o caso aberto se abre nos passos (a lista de passos só aparece na trilha do desktop)
+      const cur = RM_STEPS[S.rmStep];
+      chapEl.innerHTML = RM_CASES.map(c => `<button data-rk="${RM_STEPS.findIndex(r => r.c === c)}" aria-current="${cur.c === c}" class="${RM_STEPS.every(r => r.c !== c || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(c.name)}</button>`
+        + (cur.c === c ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.c === c ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('');
+      chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goRm(+b.dataset.rk, true));
+    } else if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goStep(ALL_STEPS.findIndex(s => s.ch === +b.dataset.ch), true));
     } else {
@@ -3916,7 +4080,7 @@ Object.assign(INFO, {
       chapEl.innerHTML = cats().map((c, i) => L.some(d => d.cat === i) ? `<button data-c="${i}" aria-current="${S.dz && L.find(d => d.id === S.dz).cat === i ? 'step' : 'false'}">${c}</button>` : '').join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => { if (S.dz) closeDz(); const t = scrollEl.querySelector(`[data-cat="${b.dataset.c}"]`); if (t) { t.scrollIntoView({ block: 'start' }); t.focus({ preventScroll: true }); } });
     }
-    const cur = chapEl.querySelector('[aria-current="step"]');
+    const cur = chapEl.querySelector('[aria-current="step"], [aria-current="true"]');
     if (cur) { const l = cur.offsetLeft - chapEl.offsetLeft, r = l + cur.offsetWidth; if (l < chapEl.scrollLeft || r > chapEl.scrollLeft + chapEl.clientWidth) chapEl.scrollLeft = l - 24; }
     requestAnimationFrame(edgeFade);
   }
@@ -4111,6 +4275,180 @@ Object.assign(INFO, {
     $('#next').onclick = () => { if (lastDz) { closeDz(); const q = scrollEl.querySelector('.quiz[data-id="dz"]'); if (q) { q.scrollIntoView({ block: 'start' }); const f = q.querySelector('button:not(:disabled)'); if (f) f.focus({ preventScroll: true }); } } else openDz(L[i + 1].id); };
     if (moveFocus) focusTitle();
   }
+
+  /* ---------- ressonância: casos reais do SPIDER (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
+  const rmView = $('#rmview'), rmCv = $('#rmgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
+  // seq: série pedida; loaded: '<caso>/<série>' na tela; goto: { c: caso, mm } para a mira; pick: estrutura clicada; res: rótulo clicado no passo de teste
+  const RM = { nv: null, ready: null, q: Promise.resolve(), loaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  const RM_V = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9'];
+  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino
+  function rmName(v) {
+    if (v >= 1 && v <= 9) return { nome: 'Vértebra ' + RM_V[v - 1], key: RM_V[v - 1], f: 1 };
+    if (v === 100) return { nome: 'Canal vertebral', key: 'dura' };
+    if (v > 200 && v < 210) { const n = v - 201, d = RM_V[n] + '-' + (n ? RM_V[n - 1] : 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
+    return null;
+  }
+  // shortcut: entrada -2 transparente na tabela de cores. A NiiVue 0.69.0 (shader das camadas, comentário 'issue1139') arredonda todo valor
+  // acima do mínimo para pelo menos 2/256 da tabela, e o fundo 0 pintava com a cor do rótulo 1. Tirar se a NiiVue corrigir; retestar ao trocar de versão
+  const RM_LUT = (() => {
+    const I = [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 201, 202, 203, 204, 205, 206, 207, 208, 209], L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
+    // discos azuis, corpos alternando quente e roxo, canal amarelo (as cores do protótipo do spike)
+    I.forEach(v => { const c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v > 200 ? [0, 200, 255, 255] : v % 2 ? [255, 120, 60, 255] : [200, 70, 200, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
+    return L;
+  })();
+  const RM_SEQ = [['t2', 'T2'], ['t1', 'T1'], ['space', 'T2 alta resolução']];
+  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue
+  const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
+  function rmInit() {
+    return RM.ready || (RM.ready = new Promise((ok, no) => {
+      const s = document.createElement('script'); s.src = RM_NIIVUE.src; s.integrity = RM_NIIVUE.sri; s.crossOrigin = 'anonymous';
+      s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
+    }).then(async () => {
+      // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout)
+      const nv = new niivue.Niivue({ backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9 });
+      await nv.attachToCanvas(rmCv);
+      nv.onLocationChange = rmPicked; RM.nv = nv; rmLayout(); return nv;
+    }).catch(e => { RM.ready = null; throw e; }));
+  }
+  // leva a tela ao estado pedido (caso, série, mira); em fila, para cliques rápidos nunca misturarem duas cargas
+  function rmShow() {
+    RM.q = RM.q.then(rmApply).catch(() => { RM.loaded = ''; rmMsg.textContent = 'As imagens não abriram. Confira a conexão e se o navegador tem WebGL2. O texto do passo continua no painel.'; });
+    return RM.q;
+  }
+  async function rmApply() {
+    if (S.mode !== 'rm') return;
+    const { c } = RM_STEPS[S.rmStep], seq = c.seqs[RM.seq] ? RM.seq : 't2', want = c.id + '/' + seq;
+    if (RM.loaded !== want) rmMsg.textContent = 'Carregando as imagens…';
+    const nv = await rmInit();
+    if (RM.loaded !== want) {
+      // troca de série no mesmo caso: a mira fica no mesmo ponto
+      const keep = !RM.goto && RM.loaded.split('/')[0] === c.id ? { c: c.id, mm: Array.from(nv.frac2mm(nv.scene.crosshairPos)).slice(0, 3) } : null;
+      const [img, mask] = c.seqs[seq], base = 'rm/' + c.id + '/';
+      RM.loaded = '';
+      await nv.loadVolumes([{ url: base + img + '.nii.gz' }, { url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }]);
+      nv.volumes[1].setColormapLabel(RM_LUT); nv.updateGLVolume();
+      RM.loaded = want; rmMsg.textContent = '';
+      if (keep) RM.goto = keep;
+    }
+    // a mira de outro caso espera a carga dele (uma carga anterior na fila não a consome)
+    if (RM.goto && RM.goto.c === c.id && RM.loaded === want) { nv.scene.crosshairPos = nv.mm2frac(RM.goto.mm); RM.goto = null; nv.drawScene(); }
+  }
+  // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez
+  function rmLayout() {
+    const one = mobileQ.matches;
+    rmView.classList.toggle('ax', one && RM.pane === 'ax');
+    // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
+    const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight));
+    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' ? 0 : 2, position: [0, t, 1, 1 - t] }] : [{ sliceType: 2, position: [0, t, 0.6, 1 - t] }, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+  }
+  mobileQ.addEventListener && mobileQ.addEventListener('change', rmLayout);
+  // estrutura clicada acesa no 3D, como a seleção do modo Anatomia; a câmera do encarte não se mexe
+  function rmSel(key) {
+    if (!model) return;
+    const lv = key && levelOf(key), ms = !key ? [] : lv ? model.meshes.filter(m => lvlAlias(m.userData.level) === lv && (KIND[m.userData.kind] || {}).L === 'bone') : model.reg.get(aliasKey(key)) || [];
+    S.layers = { bone: true, disc: true }; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; });
+    S.sel = ms.length ? new Set(ms) : null; S.selKey = key || null; applyVisuals();
+  }
+  function rmPicked(d) {
+    const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
+    RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
+    if (RM_STEPS[S.rmStep].st.test) RM.res = v;
+    rmPanel(true);
+  }
+  // graduação do SPIDER de um disco do caso, para a resposta do teste
+  function rmGrade(c, v) {
+    const r = v > 200 && c.g[v - 201]; if (!r) return '';
+    const t = ['Pfirrmann ' + r[RM_G.pf]]; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
+    [['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
+    return ' Graduação do SPIDER neste disco: ' + t.join(', ') + '.';
+  }
+  function rmPanel(announce) {
+    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { c, st } = RM_STEPS[S.rmStep]; if (!box) return;
+    box.hidden = !p;
+    if (p) {
+      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${has3D ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${has3D ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
+      if (has3D) $('#rmopen').onclick = rmOpen3D;
+    }
+    let msg = p ? 'Você clicou: ' + p.nome + '.' : '';
+    if (res) {
+      res.hidden = RM.res === null;
+      if (RM.res !== null) {
+        const ok = st.test.ok.includes(RM.res);
+        res.className = 'rmres ' + (ok ? 'ok' : 'no');
+        res.textContent = ok ? 'Certo. ' + p.nome + '.' + rmGrade(c, RM.res) : (p ? 'Não. ' + p.nome + ' não é a resposta. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') + st.test.hint;
+        msg = res.textContent;
+      }
+    }
+    if (announce && msg) say(msg);
+  }
+  // Abrir no 3D grande: modo Anatomia com a mesma estrutura selecionada e a câmera nela
+  function rmOpen3D() {
+    const p = RM.pick; setMode('anat'); if (!p || !has3D) return;
+    focusKey(p.key, p.nome);
+    if (!levelOf(p.key)) { const ms = model.reg.get(aliasKey(p.key)) || []; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; }); applyVisuals(); syncTools(); if (ms.length) frameMeshes(ms); }
+    if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  }
+  // nome sob o cursor (ou sob o dedo) com Nomes ligado
+  function rmTagAt(e) {
+    const nv = RM.nv;
+    if (!RM.names || !nv || nv.volumes.length < 2) { rmTag.hidden = true; return; }
+    const r = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
+    // valor da máscara como a NiiVue lê em onLocationChange (mm -> voxel da própria máscara); frac2vox falha no segundo volume
+    const m = nv.volumes[1], h = f[0] >= 0 && m.mm2vox(nv.frac2mm(f)), s = h && rmName(Math.round(m.getValue(h[0], h[1], h[2])));
+    rmTag.hidden = !s; if (!s) return;
+    rmTag.textContent = s.nome;
+    rmTag.style.transform = `translate(${Math.max(4, Math.min(x + 14, r.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, y - 30).toFixed(0)}px)`;
+  }
+  rmCv.addEventListener('pointermove', rmTagAt); rmCv.addEventListener('pointerdown', rmTagAt);
+  rmCv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; });
+  function rmBarRender() {
+    const { c } = RM_STEPS[S.rmStep], chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
+    rmBar.innerHTML = `<div class="group" role="group" aria-label="Sequência">${RM_SEQ.filter(([k]) => c.seqs[k]).map(([k, t]) => chip(k, t, RM.seq === k)).join('')}</div>`
+      + `<div class="group" role="group" aria-label="Sobre a imagem">${chip('mask', 'Contornos', RM.mask)}${chip('names', 'Nomes', RM.names)}</div>`
+      + `<div class="seg rmpane" role="group" aria-label="Plano">${[['sag', 'Sagital'], ['ax', 'Axial']].map(([k, t]) => `<button type="button" data-pane="${k}" aria-pressed="${RM.pane === k}">${t}</button>`).join('')}</div>`;
+    rmBar.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
+      const k = b.dataset.rm;
+      if (k === 'mask') { RM.mask = !RM.mask; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0); }
+      else if (k === 'names') { RM.names = !RM.names; if (!RM.names) rmTag.hidden = true; }
+      else { RM.seq = k; rmShow(); }
+      rmBarRender(); rmBar.querySelector(`[data-rm="${k}"]`).focus();
+    });
+    rmBar.querySelectorAll('[data-pane]').forEach(b => b.onclick = () => { RM.pane = b.dataset.pane; rmLayout(); rmBarRender(); rmBar.querySelector(`[data-pane="${RM.pane}"]`).focus(); });
+  }
+  // contexto do tira-dúvidas neste modo: título e texto do passo e a estrutura clicada
+  function rmCtx() {
+    const { c, st } = RM_STEPS[S.rmStep];
+    return `Ressonância, ${c.name}. Passo: ${st.t}. ${st.p.join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
+  }
+  function renderRm(moveFocus) {
+    const R = RM_STEPS[S.rmStep], { c, i, st } = R, ci = RM_CASES.indexOf(c);
+    if (!store.rmSeen.includes(R.id)) store.rmSeen.push(R.id);
+    store.rmStep = S.rmStep; save(); progress(); renderChapters(); rmBarRender();
+    let h = `<div class="eyebrow">Caso ${ci + 1}, passo ${i + 1} de ${c.steps.length}</div><h2>${esc(st.t)}</h2>` + st.p.map(x => `<p>${esc(x)}</p>`).join('');
+    if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
+    h += `<div class="rmpick" id="rmpick" hidden></div>`;
+    if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
+    h += `<p class="rmcred">Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).</p>`;
+    scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
+    // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
+    if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
+    rmPanel();
+    const last = S.rmStep === RM_STEPS.length - 1;
+    setNav(`<button class="btn" id="prev" ${S.rmStep === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next" ${last ? 'disabled' : ''}>Próximo</button>`);
+    $('#prev').onclick = () => goRm(S.rmStep - 1);
+    $('#next').onclick = () => goRm(S.rmStep + 1);
+    if (moveFocus) focusTitle();
+    say(`${c.name}. ${st.t}.`);
+  }
+  // passo novo: série e mira do passo; caso novo apaga a estrutura clicada
+  function rmStep() { const { c, st } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { c: c.id, mm: c.at[st.at] }; RM.res = null; rmShow(); }
+  function goRm(k, moveFocus) {
+    if (k < 0 || k >= RM_STEPS.length) return;
+    if (RM_STEPS[k].c !== RM_STEPS[S.rmStep].c) { RM.pick = null; rmSel(null); }
+    S.rmStep = k;
+    if (S.mode !== 'rm') return setMode('rm', moveFocus);
+    rmStep(); renderRm(moveFocus);
+  }
   // abre doença ou procedimento (ids não se repetem entre DZ e PROC)
   function openDz(id, moveFocus) {
     const m = PROC.some(x => x.id === id) ? 'proc' : 'dz', d = (m === 'proc' ? PROC : DZ).find(x => x.id === id), seen = m === 'proc' ? store.procSeen : store.dzSeen;
@@ -4120,19 +4458,26 @@ Object.assign(INFO, {
     rebuild(d.mods); applyConfig(d); renderDz(moveFocus);
     say(d.name + '.');
   }
-  function syncMode() { ['anat', 'dz', 'proc'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k)); }
+  function syncMode() {
+    ['anat', 'dz', 'proc', 'rm'].forEach(k => $('#m-' + k).setAttribute('aria-pressed', S.mode === k));
+    // ressonância: o visualizador ocupa o lugar do 3D, que vira encarte (CSS de .stage.rm)
+    const rm = S.mode === 'rm'; $('.stage').classList.toggle('rm', rm); rmView.hidden = !rm; if (!rm) rmTag.hidden = true;
+  }
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
+    else if (m === 'rm') { applyConfig(RM_CFG); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
     else { applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(moveFocus); }
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');
   $('#m-dz').onclick = () => S.mode !== 'dz' && setMode('dz');
   $('#m-proc').onclick = () => S.mode !== 'proc' && setMode('proc');
+  $('#m-rm').onclick = () => S.mode !== 'rm' && setMode('rm');
+  function rerender() { if (S.mode === 'anat') renderStep(); else if (S.mode === 'rm') renderRm(); else renderDz(); }
   function progress() {
-    const a = store.seen.length, d = store.dzSeen.length, tot = ALL_STEPS.length + DZ.length;
-    $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}`;
-    $('#progbar').style.transform = `scaleX(${((a + d) / tot).toFixed(3)})`;
+    const a = store.seen.length, d = store.dzSeen.length, r = store.rmSeen.length, tot = ALL_STEPS.length + DZ.length + RM_STEPS.length;
+    $('#progtxt').textContent = `Visto: anatomia ${a} de ${ALL_STEPS.length}, doenças ${d} de ${DZ.length}, ressonância ${r} de ${RM_STEPS.length}`;
+    $('#progbar').style.transform = `scaleX(${((a + d + r) / tot).toFixed(3)})`;
   }
   let closeAsk = () => false;
   // tira-dúvidas: aparece com a sessão; o servidor confere o token e o limite diário (functions/api/pergunta.js)
@@ -4161,7 +4506,7 @@ Object.assign(INFO, {
       e.preventDefault(); const pergunta = inp.value.trim(); if (!pergunta || btn.disabled) return;
       btn.disabled = true; inp.value = ''; line(pergunta, 'q'); const ans = line('Pensando…');
       try {
-        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: await bearer() }, body: JSON.stringify({ pergunta, contexto: scrollEl.innerText }) });
+        const r = await fetch('/api/pergunta', { method: 'POST', headers: { 'content-type': 'application/json', authorization: await bearer() }, body: JSON.stringify({ pergunta, contexto: S.mode === 'rm' ? rmCtx() : scrollEl.innerText }) });
         const d = await r.json().catch(() => ({ erro: 'Resposta inválida (' + r.status + ').' }));
         // só **negrito** e tópicos com "- " viram formatação; o resto passa escapado
         ans.innerHTML = esc(d.texto || d.erro || 'Sem resposta.').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^- /gm, '• ');
@@ -4229,7 +4574,7 @@ Object.assign(INFO, {
   $('#progreset').onclick = () => {
     if (!confirm('Limpar o progresso? As marcas de visto e concluído somem; o resultado do teste final continua.')) return;
     LISTAS.forEach(k => { store[k] = []; }); store.em = {}; store.zeradoEm = Date.now(); save(); push(0); // a conta fica sabendo já; zeradoEm impede que outro aparelho traga as marcas de volta
-    if (S.mode === 'anat') renderStep(); else renderDz(); // renderDz já chama progress() e renderChapters()
+    rerender(); // renderDz e renderRm já chamam progress() e renderChapters()
   };
 
   /* ---------- progresso na conta (sem sessão ou sem rede, tudo segue no localStorage; nome e Sair ficam em src/auth.js) ---------- */
@@ -4259,13 +4604,13 @@ Object.assign(INFO, {
     try {
       const { data, error } = await SB.from('progresso').select('dados').maybeSingle();
       if (error) return; // sem rede ou erro: tenta de novo na próxima gravação ou renovação do token
-      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.quiz]), antes = visto();
+      const visto = () => JSON.stringify([store.seen, store.dzSeen, store.procSeen, store.rmSeen, store.quiz]), antes = visto();
       // outra pessoa entrou neste navegador: o progresso local era da anterior e não soma nesta conta
       if (store.conta && store.conta !== id) { LISTAS.forEach(k => { store[k] = []; }); store.quiz = {}; store.em = {}; store.zeradoEm = 0; }
       if (data && data.dados) merge(data.dados);
       store.conta = contaId = id; keep();
       await SB.from('progresso').upsert({ user_id: id, dados: store, atualizado: new Date().toISOString() });
-      if (visto() !== antes) { if (S.mode === 'anat') renderStep(); else renderDz(); }
+      if (visto() !== antes) rerender();
     } catch (e) { } finally { lendo = false; }
   }
   // fora do callback: o supabase-js pede para não chamar o cliente dentro dele
@@ -4352,7 +4697,7 @@ Object.assign(INFO, {
   }
   if (store.tools) setTools(true);
   if (location.hash === '#doencas') setMode('dz'); else renderStep();
-  window.__spine = { S, get model() { return model; }, get plane() { return plane; }, get renderer() { return renderer; }, KIND, slabOut, goStep, openDz, setMode, camera, controls, setFull };
+  window.__spine = { S, RM, RM_STEPS, goRm, get model() { return model; }, get plane() { return plane; }, get renderer() { return renderer; }, KIND, slabOut, goStep, openDz, setMode, camera, controls, setFull };
 })();
 
 </script>
