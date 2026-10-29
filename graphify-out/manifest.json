@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793281670.7528834,
-    "seen": 1793281867.1872144,
-    "ast_hash": "35e10bfef29aa3b7b60a955dd77e6a36",
+    "mtime": 1793299812.7787364,
+    "seen": 1793300469.8435204,
+    "ast_hash": "86607eebdee6a67333d191e7eb915d42",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793152962.7450705,
-    "seen": 1793153125.1935823,
-    "ast_hash": "ee8d7e283f23f28a3683bccacb3774b3",
+    "mtime": 1793299741.2904525,
+    "seen": 1793300469.8435504,
+    "ast_hash": "7fba926e7ce865b0fe9892e8bf4a6d7c",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793152962.7445457,
-    "seen": 1793153125.1935947,
-    "ast_hash": "04eb8d0db2f1de0b8936e3e6cea04f78",
+    "mtime": 1793299730.5066338,
+    "seen": 1793300469.8435647,
+    "ast_hash": "ae7ac8827468970c6f1b9977e4c29438",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -228,15 +228,21 @@
     "semantic_hash": ""
   },
   "src/rm.js": {
-    "mtime": 1793151354.2377791,
-    "seen": 1793152485.3144293,
-    "ast_hash": "d93e1c1316d5b310aaac6204ca3b70d2",
+    "mtime": 1793299812.7793248,
+    "seen": 1793300469.843534,
+    "ast_hash": "688c3af3470f8c86a54a765d5de25c78",
     "semantic_hash": ""
   },
   "docs/ressonancia.md": {
-    "mtime": 1793152465.8999627,
-    "seen": 1793152485.3144524,
-    "ast_hash": "c6534aa986f8d6e384bdc902c5b5e988",
+    "mtime": 1793300452.8406067,
+    "seen": 1793300469.8435597,
+    "ast_hash": "41a7c164049273136ac34b8767530d28",
+    "semantic_hash": ""
+  },
+  "docs/estilo-ressonancia.md": {
+    "mtime": 1793299468.525742,
+    "seen": 1793300469.843558,
+    "ast_hash": "137ec471648442112e50abb6b1eed64e",
     "semantic_hash": ""
   }
 }

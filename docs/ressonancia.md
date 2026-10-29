@@ -142,11 +142,12 @@ Com o SwiftShader, as texturas da GPU contam como memória de CPU, então o RSS 
 O modo Ressonância está na aula, ao lado de Anatomia, Doenças e Procedimentos.
 
 - **Arquivos**: só em `dist/rm/<caso>/` (237, 45 e 10), sem cópia em `src/`, para o git não guardar os casos duas vezes. O `build.py` não apaga nada em `dist/rm/`. O T1 do caso 45 usa a máscara do T2 (`45_t2_mask.nii.gz`), porque as duas séries têm a mesma grade; O arquivo `45_t1_mask` não foi copiado.
-- **Dados**: `src/rm.js` traz os casos, as séries, a graduação do SPIDER de cada disco, o centro em mm dos rótulos usados pelos passos e o texto dos 18 passos. O `build.py` junta o arquivo ao HTML da aula e ao do painel do administrador.
+- **Dados**: `src/rm.js` traz os casos, as séries, a graduação do SPIDER de cada disco, o centro em mm dos rótulos usados pelos passos e o texto dos 21 passos (8, 7 e 6), escrito pelas regras de `docs/estilo-ressonancia.md`. A marca de visto continua sendo `<caso>.<índice do passo>`. O `build.py` junta o arquivo ao HTML da aula e ao do painel do administrador.
 - **NiiVue**: o `<script>` da 0.69.0 com integridade só entra na página ao abrir o modo. Para os testes, a mesma versão está nas dependências de desenvolvimento (`@niivue/niivue` 0.69.0); O hash do pacote npm confere com o do `<script>`.
 - **Cores**: a tabela de rótulos e a entrada transparente em -2 seguem iguais ao protótipo.
 - **Toque**: `doubleTouchTimeout: 0` e `longTouchTimeout: 2e9` desligam o reinício de contraste por toque duplo ou longo (Infinity viraria 0 no `setTimeout`). O visualizador continua prendendo a rolagem sob o dedo; No celular ele tem altura fixa (56% da tela) e a página rola pelo texto abaixo dele.
 - **3D**: o mesmo canvas, renderizador e cena do modo Anatomia. No modo Ressonância a seção do 3D vira um encarte de 200 x 214 px no canto do visualizador (CSS `.stage.rm .view`), e o `ResizeObserver` que já existia ajusta o renderizador. A estrutura clicada fica acesa com a mesma seleção (`S.sel`) do modo Anatomia, sem mover a câmera do encarte.
+- **Axial**: a imagem usa interpolação linear e a máscara, vizinho mais próximo (a 0.69.0 tem um ajuste só para as duas camadas, então `updateInterpolation` é trocado para a camada 1). O axial é aproximado para cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do caso; Nos outros recortes, que já têm 56 a 79 mm de largura, quase nada muda. Com 3,3 a 4,4 mm entre cortes, o axial continua borrado, e o texto ensina o axial no SPACE.
 - **T1 e T2 lado a lado**: não há dois quadros simultâneos. O passo troca para o T1 e os botões T1 e T2 alternam o mesmo corte; Dois quadros pediriam uma segunda instância da NiiVue.
 
 ### Conferência da numeração das vértebras

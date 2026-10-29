@@ -828,8 +828,21 @@
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
       // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout)
-      const nv = new niivue.Niivue({ backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9 });
+      const nv = new niivue.Niivue({ backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false });
       await nv.attachToCanvas(rmCv);
+      // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
+      const interp = nv.updateInterpolation.bind(nv);
+      nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
+      // axial aproximado, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do caso (o centro do recorte fica atrás demais no SPACE).
+      // O zoom da NiiVue vale para todos os quadros, então só o axial troca na hora de desenhar
+      const draw2D = nv.draw2D.bind(nv);
+      nv.draw2D = (ltwh, axCorSag, mm, wh) => {
+        if (axCorSag !== 0) return draw2D(ltwh, axCorSag, mm, wh);
+        const { at } = RM_STEPS[S.rmStep].c, c = [0, 1].map(i => (at[100][i] + at[202][i]) / 2);
+        const sc = nv.scene, keep = sc.pan2Dxyzmm, z = Math.max(1, nv.screenFieldOfViewExtendedMM(0).fovMM[0] / 70);
+        sc.pan2Dxyzmm = [c[0] * (1 - z), c[1] * (1 - z), 0, z]; // o centro do quadro, ((mn+mx)/2 - pan)/zoom, fica em c
+        try { return draw2D(ltwh, axCorSag, mm, wh); } finally { sc.pan2Dxyzmm = keep; }
+      };
       nv.onLocationChange = rmPicked; RM.nv = nv; rmLayout(); return nv;
     }).catch(e => { RM.ready = null; throw e; }));
   }
@@ -941,19 +954,34 @@
   // contexto do tira-dúvidas neste modo: título e texto do passo e a estrutura clicada
   function rmCtx() {
     const { c, st } = RM_STEPS[S.rmStep];
-    return `Ressonância, ${c.name}. Passo: ${st.t}. ${st.p.join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
+    return `Ressonância, ${c.name}. Passo: ${st.t}. ${st.p.map(x => x.replace(/^- /, '').replace(/\*\*/g, '')).join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
   }
+  // parágrafos do passo (docs/estilo-ressonancia.md): '- ' vira item, itens seguidos numa lista só, **x** negrito; escapa antes da marcação
+  function rmHtml(ps) {
+    let h = '', ul = false;
+    for (const x of ps) {
+      const li = x.startsWith('- '), t = esc(li ? x.slice(2) : x).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      if (li !== ul) { h += li ? '<ul class="rml">' : '</ul>'; ul = li; }
+      h += li ? `<li>${t}</li>` : `<p>${t}</p>`;
+    }
+    return h + (ul ? '</ul>' : '');
+  }
+  // link de volta: ['dz', id da doença] ou ['anat', título do passo de Anatomia]
+  const rmVer = ([m, k]) => m === 'dz' ? { txt: 'Rever em Doenças: ' + DZ.find(d => d.id === k).name, go: () => openDz(k, true) }
+    : { txt: 'Rever em Anatomia: ' + k, go: () => goStep(ALL_STEPS.findIndex(s => s.title === k), true) };
   function renderRm(moveFocus) {
     const R = RM_STEPS[S.rmStep], { c, i, st } = R, ci = RM_CASES.indexOf(c);
     if (!store.rmSeen.includes(R.id)) store.rmSeen.push(R.id);
     store.rmStep = S.rmStep; save(); progress(); renderChapters(); rmBarRender();
-    let h = `<div class="eyebrow">Caso ${ci + 1}, passo ${i + 1} de ${c.steps.length}</div><h2>${esc(st.t)}</h2>` + st.p.map(x => `<p>${esc(x)}</p>`).join('');
+    let h = `<div class="eyebrow">Caso ${ci + 1}, passo ${i + 1} de ${c.steps.length}</div><h2>${esc(st.t)}</h2>` + rmHtml(st.p);
+    if (st.ver) h += `<button class="btn link rmver" id="rmver" type="button">${esc(rmVer(st.ver).txt)}</button>`;
     if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
     h += `<div class="rmpick" id="rmpick" hidden></div>`;
     if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
     h += `<p class="rmcred">Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).</p>`;
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
+    if (st.ver) $('#rmver').onclick = rmVer(st.ver).go;
     if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
     rmPanel();
     const last = S.rmStep === RM_STEPS.length - 1;

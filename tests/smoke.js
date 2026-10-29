@@ -74,13 +74,20 @@ async function page(b,W,H,block,conta){
  await p.click('#m-rm'); await rmPronto(p,'237/t2');
  const r0=await p.evaluate(()=>({on:document.querySelector('#m-rm').getAttribute('aria-pressed'),casos:[...document.querySelectorAll('#chap > button')].map(e=>e.textContent),passos:[...document.querySelectorAll('#chap .rmsteps button')].filter(e=>e.offsetParent).length,h:document.querySelector('#railh').textContent,ey:document.querySelector('.eyebrow').textContent,cred:document.querySelector('.rmcred').textContent,lib:document.querySelectorAll('script[src*="niivue@0.69.0"][integrity^="sha384-"]').length,inset:(r=>[Math.round(r.width),Math.round(r.height)])(document.querySelector('#view').getBoundingClientRect())}));
  console.log('rm',JSON.stringify(r0));
- if(r0.on!=='true'||r0.casos.join('|')!=='Caso 1, coluna lombar sem alterações|Caso 2, hérnia L5-S1|Caso 3, degeneração em vários níveis'||r0.passos!==6||r0.h!=='Casos reais (SPIDER)'||r0.ey!=='Caso 1, passo 1 de 6') bad.push('ressonância, lista: '+JSON.stringify(r0));
+ if(r0.on!=='true'||r0.casos.join('|')!=='Caso 1, coluna lombar sem alterações|Caso 2, hérnia L5-S1|Caso 3, degeneração em vários níveis'||r0.passos!==8||r0.h!=='Casos reais (SPIDER)'||r0.ey!=='Caso 1, passo 1 de 8') bad.push('ressonância, lista: '+JSON.stringify(r0));
  if(r0.lib!==1||r0.inset.join()!=='200,214'||!/SPIDER, CC BY 4\.0/.test(r0.cred)) bad.push('ressonância, NiiVue, encarte ou crédito: '+JSON.stringify(r0));
  const px=await rmPixels(p); if(!(px>0.05)) bad.push('ressonância sem imagem: '+px);
  await p.click('#next'); await p.waitForTimeout(200);
- if(await p.evaluate(()=>document.querySelector('.eyebrow').textContent+'|'+document.querySelector('#chap .rmsteps [aria-current="step"]').textContent)!=='Caso 1, passo 2 de 6|2Corpos vertebrais e discos') bad.push('ressonância: Próximo não andou');
+ if(await p.evaluate(()=>document.querySelector('.eyebrow').textContent+'|'+document.querySelector('#chap .rmsteps [aria-current="step"]').textContent)!=='Caso 1, passo 2 de 8|2Orientação no sagital') bad.push('ressonância: Próximo não andou');
  await p.click('#chap > button:nth-of-type(2)'); await rmPronto(p,'45/t2');
- if(!await p.evaluate(()=>document.querySelector('.eyebrow').textContent==='Caso 2, passo 1 de 6'&&!!document.querySelector('[data-rm="space"]'))) bad.push('ressonância: caso 2 não abriu com o T2 alta resolução');
+ if(!await p.evaluate(()=>document.querySelector('.eyebrow').textContent==='Caso 2, passo 1 de 7'&&!!document.querySelector('[data-rm="space"]'))) bad.push('ressonância: caso 2 não abriu com o T2 alta resolução');
+ // texto do passo: '- ' vira lista e **x** negrito, sem marcação crua na tela; todo link de volta acha a doença ou o passo de Anatomia
+ const fmt=await p.evaluate(()=>({li:document.querySelectorAll('.scroll ul.rml li').length,b:document.querySelectorAll('.scroll ul.rml li strong').length,cru:/\*\*|^- /m.test(document.querySelector('.scroll').innerText),ver:document.querySelector('#rmver')&&document.querySelector('#rmver').textContent,
+  quebrado:__spine.RM_STEPS.filter(r=>r.st.ver&&!(r.st.ver[0]==='dz'?DZ.some(d=>d.id===r.st.ver[1]):ALL_STEPS.some(s=>s.title===r.st.ver[1]))).map(r=>r.id)}));
+ if(fmt.li<5||fmt.b!==fmt.li||fmt.cru||fmt.ver!=='Rever em Doenças: Discopatia degenerativa'||fmt.quebrado.length) bad.push('ressonância, formato do texto: '+JSON.stringify(fmt));
+ await p.click('#rmver'); await p.waitForTimeout(200);
+ if(!await p.evaluate(()=>__spine.S.mode==='dz'&&__spine.S.dz==='ddd')) bad.push('ressonância: link de volta não abriu a doença');
+ await p.click('#m-rm'); await rmPronto(p,'45/t2');
  // clique no disco L4-L5 do caso 1: rótulo 202, caixa Você clicou e o disco aceso no 3D
  const iTest=await p.evaluate(()=>__spine.RM_STEPS.findIndex(r=>r.c.id==='237'&&r.st.test));
  await p.evaluate(i=>__spine.goRm(i),iTest); await rmPronto(p,'237/t2'); await p.waitForTimeout(300);
