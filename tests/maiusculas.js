@@ -20,7 +20,7 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
  const texts=await p.evaluate(async()=>{
   const w=ms=>new Promise(r=>setTimeout(r,ms)); const out=[];
   const walk=(v,k)=>{if(typeof v==='string')out.push([k,v]);else if(Array.isArray(v))v.forEach((x,i)=>walk(x,k+'['+i+']'));else if(v&&typeof v==='object'&&!v.isVector3)for(const [kk,x] of Object.entries(v))walk(x,k+'.'+kk);};
-  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ,PROC_CATS,PROC,RM_CASES},'dados');
+  walk({CHAPTERS,STEPS,QUIZ,ALL_STEPS,INFO,ROOTFN,LEVEL_NOTES,DZ_CATS,DZ,DZ_OTHERS,DZ_QUIZ,PROC_CATS,PROC,RM_GROUPS,RM_CRED,RM_TRACKS},'dados');
   const dom=where=>{out.push([where,document.body.innerText]);document.querySelectorAll('[title],[aria-label],[alt],[placeholder]').forEach(e=>['title','aria-label','alt','placeholder'].forEach(a=>e.hasAttribute(a)&&out.push([where+' @'+a,e.getAttribute(a)])));};
   const ruler=async where=>{for(const bt of document.querySelectorAll('#ruler button')){if(bt.hidden)continue;bt.click();await w(30);dom(where+' régua '+bt.dataset.lv);}};
   for(let i=0;i<ALL_STEPS.length;i++){__spine.goStep(i);await w(30);dom('passo '+i);}
@@ -29,8 +29,11 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
   __spine.setMode('dz');await w(30);dom('lista de doenças');
   for(const d of PROC){__spine.openDz(d.id);await w(30);dom('procedimento '+d.id);}
   __spine.setMode('proc');await w(30);dom('lista de procedimentos');
-  // ressonância: cada passo, e a resposta do teste (certa e errada) como aparece depois do clique
-  for(let k=0;k<__spine.RM_STEPS.length;k++){__spine.goRm(k);await w(30);dom('ressonância '+k);const st=__spine.RM_STEPS[k].st;if(st.test){await __spine.RM.q;for(const v of [st.test.ok[0],100,0]){__spine.RM.nv.onLocationChange({values:[{value:0},{value:v}]});await w(30);dom('ressonância '+k+' clique '+v);}}}
+  // ressonância: cada passo, e a resposta do teste (certa, errada e fora) como aparece depois do clique.
+  // SPIDER: valor da máscara sob a mira; RSNA: ponto clicado no axial (certo, outro ponto marcado e longe de todos)
+  for(let k=0;k<__spine.RM_STEPS.length;k++){__spine.goRm(k);await w(30);dom('ressonância '+k);const R=__spine.RM_STEPS[k],st=R.st;if(st.test){await __spine.RM.q;
+   if(R.ex.ax){const a=__spine.RM.nvAx,outro=Object.keys(R.ex.at).find(id=>!st.test.ok.includes(id)&&!id.startsWith('meio'));for(const mm of [R.ex.at[st.test.ok[0]],R.ex.at[outro],[90,90,0]]){a.onLocationChange({mm});await w(30);dom('ressonância '+k+' clique '+mm);}}
+   else for(const v of [st.test.ok[0],100,0]){__spine.RM.nv.onLocationChange({values:[{value:0},{value:v}]});await w(30);dom('ressonância '+k+' clique '+v);}}}
   return out;});
  const bad=[...new Set(texts.flatMap(([k,v])=>hits(v,k)))];
  const home=fs.readFileSync(__dirname+'/../dist/index.html','utf8').replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g,'');

@@ -99,7 +99,9 @@ body.resizing { cursor: col-resize; user-select: none; }
   /* três partes não cabem numa linha da trilha: a que sobra desce para a linha de baixo, sem cortar o texto */
   /* quatro partes: grade 2 por 2, para os rótulos caberem nos 232 px da trilha */
   .rail .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rail .modes button { min-height: 38px; padding: 0 2px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 13 px e sem folga lateral: Procedimentos cabe inteiro na meia linha mesmo sem a Source Sans 3 (na fonte do sistema ele era cortado) */
+  .rail .modes { padding: 2px; }
+  .rail .modes button { min-height: 38px; padding: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hint { max-width: calc(100% - 92px); }
   .rail-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-3); padding: 0 0 0 12px; }
   .railx { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; }
@@ -117,6 +119,8 @@ body.resizing { cursor: col-resize; user-select: none; }
   .rail .chap button:hover:not([aria-current="step"]) { background: var(--paper); }
   .rail .chap button.done:not([aria-current="step"])::after { margin-left: auto; }
   /* ressonância: o caso aberto mostra os passos, o atual na cor de destaque */
+  .rail .chap .rmgrp { display: block; margin: 12px 0 2px; padding: 0 12px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink-3); }
+  .rail .chap .rmgrp:first-child { margin-top: 0; }
   .rail .chap .rmsteps { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px 12px; }
   .rail .chap .rmsteps button { min-height: 36px; padding: 6px 10px; font-size: 14.5px; }
   .rail .chap .rmsteps button[aria-current="step"] { background: none; border-color: transparent; color: var(--accent); font-weight: 700; }
@@ -144,7 +148,11 @@ body.resizing { cursor: col-resize; user-select: none; }
 .rmtag { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 1; padding: 5px 8px; border-radius: 5px; background: rgba(255,255,255,.94); color: var(--ink); }
 .rmmsg { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; text-align: center; color: #D9DCE1; pointer-events: none; }
 .rmmsg:empty { display: none; }
-.rmpane, .rm3d, .incap, .chap .rmsteps { display: none; }
+/* RSNA: o axial adquirido fica num segundo canvas, no lugar do quadro axial */
+.rmax { display: none; position: absolute; left: 60%; top: 0; width: 40%; height: 62%; }
+.rmview.rsna .rmax { display: block; }
+#rmaxgl { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.rmpane, .rm3d, .incap, .chap .rmsteps, .chap .rmgrp { display: none; }
 .chap button[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .rmpick { margin: 18px 0 0; padding: 12px 14px; border-radius: 8px; background: var(--accent-soft); }
 .rmpick p { margin: 0; }
@@ -336,6 +344,8 @@ body.resizing { cursor: col-resize; user-select: none; }
   .rmcv { flex: none; height: 56svh; min-height: 300px; }
   .rmpane { display: inline-flex; }
   #cap-ax { left: 12px; }
+  .rmax { left: 0; width: 100%; height: 100%; }
+  .rmview.rsna:not(.ax) .rmax { visibility: hidden; }
   .rmview.ax #cap-sag, .rmview:not(.ax) #cap-ax { display: none; }
   .rm3d { display: inline-block; margin-top: 12px; }
 }
@@ -367,7 +377,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="split" id="split" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="panel" aria-label="Largura do texto" aria-valuemin="320" title="Arraste para mudar a largura do texto; Clique duplo volta ao padrão"></div>
     <section class="rmview" id="rmview" aria-label="Ressonância magnética" hidden>
       <div class="rmbar" id="rmbar"></div>
-      <div class="rmcv"><canvas id="rmgl" role="img" aria-label="Ressonância lombar, cortes sagital e axial. Clique numa estrutura para ver o nome no painel."></canvas><span class="pcap" id="cap-sag" aria-hidden="true">Sagital</span><span class="pcap" id="cap-ax" aria-hidden="true">Axial (linha vermelha)</span><div class="rmtag" id="rmtag" hidden></div><div class="rmmsg" id="rmmsg"></div></div>
+      <div class="rmcv"><canvas id="rmgl" role="img" aria-label="Ressonância lombar, cortes sagital e axial. Clique numa estrutura para ver o nome no painel."></canvas><div class="rmax" id="rmax"><canvas id="rmaxgl" role="img" aria-label="Ressonância lombar, corte axial feito pelo aparelho. Clique perto de um ponto marcado para ver o nome no painel."></canvas></div><span class="pcap" id="cap-sag" aria-hidden="true">Sagital</span><span class="pcap" id="cap-ax" aria-hidden="true">Axial (linha vermelha)</span><div class="rmtag" id="rmtag" hidden></div><div class="rmmsg" id="rmmsg"></div></div>
     </section>
     <section class="view" id="view" aria-label="Modelo 3D da coluna">
       <div class="incap" aria-hidden="true">Mesma estrutura no 3D</div>

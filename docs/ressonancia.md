@@ -462,6 +462,24 @@ As capturas estão em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1
 
 Comparação: o axial nativo mostra recessos, facetas e raízes com nitidez. O axial reconstruído do SPACE (0,9 mm) sai mais borrado e com campo lateral menor. Os scripts ficam em `rsna/scripts/` (`listzip.py`, `fetch.py`, `headscan.py`, `geom.py`, `pick.py`, `prevlist.py`, `montage.py`, `axzoom.py`, `dcm2nii.py`, `jobs.py`, `lmkmd.py`) e em `scripts/` (`shoot_rsna.js`, `orthocheck.js`). Os pontos em JSON estão em `rsna/landmarks.json`.
 
+## Implementação (fase 3): trilhas
+
+Feito em 29/10/2026. O modo deixou de ser três casos em sequência e virou duas partes na trilha da esquerda:
+
+- **Como ler a ressonância**: a trilha Exame normal, com os passos do antigo Caso 1. Os sagitais usam o SPIDER 5 (Pfirrmann 2 em tudo, abaulamento nos 3 discos de baixo) e os dois passos de axial usam o RSNA 491250714. O caso 237 saiu do `src/rm.js`, e a pasta `dist/rm/237/` foi apagada.
+- **Doenças na ressonância**: uma trilha por doença, com o nome igual ao de Doenças e o link de volta para ela. Discopatia degenerativa (45 e 81), Discopatia degenerativa: Modic (10 e 50; Doenças não tem item de Modic, que é ensinado em Discopatia degenerativa), Hérnia de disco lombar (45 e 142, com o axial do SPACE), Estenose do canal lombar (RSNA 1435972903, canal e recesso esquerdo, e RSNA 3489738948, recesso direito; Doenças não tem item de recesso lateral), Espondilolistese degenerativa (200 e 142) e Nódulo de Schmorl (136; o link volta para a Cifose de Scheuermann, onde o 3D marca o nódulo).
+
+Dados (`src/rm.js`): `RM_EXAMS` traz os exames (pasta, séries, graduação `g` do SPIDER, pontos `at` e, na RSNA, a graduação `gr` dos pontos que não são normais ou leves); `RM_TRACKS` traz as trilhas, cada passo com o exame (`ex`), a série, o ponto da mira e o texto. A marca de visto é `<trilha>.<k>`, por exemplo `base.t1t2` ou `hernia.axial`, e não muda se a ordem dos passos mudar. `RM_IDS` lista as marcas válidas: ao abrir a aula e ao somar com a conta, as marcas antigas (`237.0`, `45.3` etc.) somem, e o painel do administrador só conta as válidas. O passo aberto também é guardado pelo id.
+
+Visualizador:
+
+- **RSNA em dois canvas.** O sagital fica na instância principal da NiiVue, e o axial adquirido numa segunda instância, num canvas por cima do lugar do quadro axial (`#rmax`). Clicar num quadro leva a mira do outro ao mesmo ponto em mm, por código, sem o `syncWith`. A conversão usa `mm2frac(mm, 0, true)`, com o sform, que é exata também no bloco de 12° do 3489738948, sem ligar o `isSliceMM`. Fora do bloco axial, a mira fica no corte da borda.
+- **Pontos dos radiologistas.** Sem máscara, o clique na RSNA vale para o ponto marcado mais perto, a até 6 mm no plano do quadro clicado e a até um corte dele. A caixa Você clicou mostra o nome do ponto ou "Fora do ponto marcado". Contornos e Nomes somem nos exames da RSNA.
+- **Convenção radiológica** ligada nas duas instâncias: no axial a esquerda do paciente fica à direita da tela.
+- **Contornos no axial montado** com 1/4 da opacidade do sagital (0,1 em vez de 0,4), pelo `overlayAlphaShader` da NiiVue, trocado na hora de desenhar cada quadro.
+- **Zoom do axial.** Medido na 0.69.0: o centro do quadro é `((mn+mx)/2 - pan)/zoom`, com o campo em voxels. A conta anterior, `c * (1 - zoom)`, só acertava com o campo já centrado em `c`; No SPACE do 45 o centro ficava 10,7 mm atrás do ponto pedido. Agora o centro cai no ponto pedido: no SPIDER, o meio entre o disco L4-L5 e o canal, com 70 mm de largura; Na RSNA, o canal em L4-L5, com 90 mm.
+- **Crédito** muda com o exame (SPIDER ou RSNA).
+
 ## Onde ficou o material do spike (fora do repo)
 
 Pasta de rascunho da sessão `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/`:

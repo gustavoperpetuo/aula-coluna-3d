@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793299812.7787364,
-    "seen": 1793300469.8435204,
-    "ast_hash": "86607eebdee6a67333d191e7eb915d42",
+    "mtime": 1793303025.0091555,
+    "seen": 1793304284.4295294,
+    "ast_hash": "7514bed4f7688ee9d7196c0e1c080ef8",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793299741.2904525,
-    "seen": 1793300469.8435504,
-    "ast_hash": "7fba926e7ce865b0fe9892e8bf4a6d7c",
+    "mtime": 1793303406.3431194,
+    "seen": 1793304284.4295523,
+    "ast_hash": "65f8ea3e0a8d1afd4d1448d33fc33383",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793299730.5066338,
-    "seen": 1793300469.8435647,
-    "ast_hash": "ae7ac8827468970c6f1b9977e4c29438",
+    "mtime": 1793302931.4110284,
+    "seen": 1793304284.4295628,
+    "ast_hash": "584350140ffbfdcd4729ad836933a97b",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "tests/maiusculas.js": {
-    "mtime": 1793151909.6042583,
-    "seen": 1793152485.314441,
-    "ast_hash": "d8ffee23980aa1614671c55c34435320",
+    "mtime": 1793303200.395569,
+    "seen": 1793304284.429547,
+    "ast_hash": "390ece440ba1c8b40ec3c9807bae83fa",
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
@@ -210,15 +210,15 @@
     "semantic_hash": ""
   },
   "src/admin.js": {
-    "mtime": 1793151959.1378326,
-    "seen": 1793152485.314414,
-    "ast_hash": "bb3078527ac4ae5003866154a7579e84",
+    "mtime": 1793302931.4100478,
+    "seen": 1793304284.429527,
+    "ast_hash": "cf936e7d48efbc151099521b29233fe6",
     "semantic_hash": ""
   },
   "tests/admin.js": {
-    "mtime": 1793151903.278711,
-    "seen": 1793152485.314433,
-    "ast_hash": "0b5bc9e157776cdc1dad468ece3a9c7f",
+    "mtime": 1793303200.3943095,
+    "seen": 1793304284.4295406,
+    "ast_hash": "32422b00340fc7c4281727605de4e012",
     "semantic_hash": ""
   },
   "src/admin.html": {
@@ -228,15 +228,15 @@
     "semantic_hash": ""
   },
   "src/rm.js": {
-    "mtime": 1793299812.7793248,
-    "seen": 1793300469.843534,
-    "ast_hash": "688c3af3470f8c86a54a765d5de25c78",
+    "mtime": 1793304935.4409723,
+    "seen": 1793305564.4241383,
+    "ast_hash": "d608701f061b9808614712134c349837",
     "semantic_hash": ""
   },
   "docs/ressonancia.md": {
-    "mtime": 1793300452.8406067,
-    "seen": 1793300469.8435597,
-    "ast_hash": "41a7c164049273136ac34b8767530d28",
+    "mtime": 1793304262.1731203,
+    "seen": 1793304284.429559,
+    "ast_hash": "08e46517727fb153f60f06b7d23f1fa4",
     "semantic_hash": ""
   },
   "docs/estilo-ressonancia.md": {

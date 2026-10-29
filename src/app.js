@@ -16,9 +16,12 @@
   const keep = () => { marca(); try { localStorage.setItem('coluna3d.v1', JSON.stringify(store)); } catch (e) { } };
   const save = () => { keep(); push(); };
   store.seen = store.seen || []; store.dzSeen = store.dzSeen || []; store.procSeen = store.procSeen || []; store.rmSeen = store.rmSeen || []; store.quiz = store.quiz || {};
-  // passos de ressonância numa lista só (src/rm.js); a marca de visto é '<caso>.<passo>'
-  const RM_STEPS = RM_CASES.flatMap(c => c.steps.map((st, i) => ({ c, i, st, id: c.id + '.' + i })));
-  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), rmStep: Math.min(store.rmStep || 0, RM_STEPS.length - 1), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
+  // passos de ressonância numa lista só (src/rm.js); a marca de visto é '<trilha>.<k>' (RM_IDS), que não muda quando a ordem muda
+  const RM_STEPS = RM_TRACKS.flatMap(t => t.steps.map((st, i) => ({ t, i, st, id: t.id + '.' + st.k, ex: RM_EXAMS[st.ex] })));
+  // marcas antigas de ressonância ('<caso>.<índice>', do 237 e dos casos numerados) somem ao abrir e na soma com a conta, e a contagem nunca passa de N
+  const vale = (k, v) => k !== 'rmSeen' || RM_IDS.includes(v);
+  store.rmSeen = store.rmSeen.filter(v => vale('rmSeen', v));
+  const S = { mode: 'anat', step: Math.min(store.step || 0, ALL_STEPS.length - 1), rmStep: Math.max(0, RM_STEPS.findIndex(r => r.id === store.rmStep)), dz: null, dzOn: true, layers: {}, ghost: false, focus: null, hot: new Set(), tint: false, clip: null, labelsOn: true, sel: null, hide: [], focusIdx: [], axLevel: 'L4-L5', cfg: null, hv: { zone: 'pl', morph: 'ext' } };
 
   /* ---------- 3D: tudo aqui pode falhar sem derrubar a aula ---------- */
   let has3D = false, renderer, scene, camera, controls, model = null, V3, deg = Math.PI / 180;
@@ -587,12 +590,12 @@
   setRail(!store.railOff);
   mobileQ.addEventListener && mobileQ.addEventListener('change', placeNav);
   function renderChapters() {
-    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : S.mode === 'rm' ? 'Casos reais (SPIDER)' : 'Grupos de doenças';
+    railH.textContent = S.mode === 'anat' ? 'Capítulos' : S.mode === 'proc' ? 'Grupos de procedimentos' : S.mode === 'rm' ? 'Trilhas' : 'Grupos de doenças';
     if (S.mode === 'rm') {
-      // o caso aberto se abre nos passos (a lista de passos só aparece na trilha do desktop)
+      // as duas partes (RM_GROUPS) com as trilhas; a trilha aberta se abre nos passos (os nomes das partes e a lista de passos só aparecem na trilha do desktop)
       const cur = RM_STEPS[S.rmStep];
-      chapEl.innerHTML = RM_CASES.map(c => `<button data-rk="${RM_STEPS.findIndex(r => r.c === c)}" aria-current="${cur.c === c}" class="${RM_STEPS.every(r => r.c !== c || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(c.name)}</button>`
-        + (cur.c === c ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.c === c ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('');
+      chapEl.innerHTML = RM_GROUPS.map((g, gi) => `<p class="rmgrp">${esc(g)}</p>` + RM_TRACKS.filter(t => t.g === gi).map(t => `<button data-rk="${RM_STEPS.findIndex(r => r.t === t)}" aria-current="${cur.t === t}" class="${RM_STEPS.every(r => r.t !== t || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(t.name)}</button>`
+        + (cur.t === t ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.t === t ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('')).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goRm(+b.dataset.rk, true));
     } else if (S.mode === 'anat') {
       chapEl.innerHTML = CHAPTERS.map((c, i) => `<button data-ch="${i}" aria-current="${ALL_STEPS[S.step].ch === i ? 'step' : 'false'}" class="${chapterDone(i) ? 'done' : ''}"><b>${i + 1}</b>${c}</button>`).join('');
@@ -799,10 +802,15 @@
     if (moveFocus) focusTitle();
   }
 
-  /* ---------- ressonância: casos reais do SPIDER (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
-  const rmView = $('#rmview'), rmCv = $('#rmgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
-  // seq: série pedida; loaded: '<caso>/<série>' na tela; goto: { c: caso, mm } para a mira; pick: estrutura clicada; res: rótulo clicado no passo de teste
-  const RM = { nv: null, ready: null, q: Promise.resolve(), loaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  /* ---------- ressonância: trilhas em exames do SPIDER e da RSNA (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
+  const rmView = $('#rmview'), rmCv = $('#rmgl'), rmAxCv = $('#rmaxgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
+  // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido da RSNA, num segundo canvas (#rmax),
+  // porque numa instância só a NiiVue reamostraria o axial na grade do sagital.
+  // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial da RSNA; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
+  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  const rmEx = () => RM_STEPS[S.rmStep].ex;
+  // só os exames da RSNA têm axial próprio, e nenhum deles tem máscara (no lugar dela, os pontos dos radiologistas)
+  const rmRsna = ex => !!ex.ax;
   const RM_V = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9'];
   // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino
   function rmName(v) {
@@ -810,6 +818,22 @@
     if (v === 100) return { nome: 'Canal vertebral', key: 'dura' };
     if (v > 200 && v < 210) { const n = v - 201, d = RM_V[n] + '-' + (n ? RM_V[n - 1] : 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
     return null;
+  }
+  // pontos da RSNA (src/rm.js, at): 'canal.L4-L5' -> 'Canal central, L4-L5'
+  const RM_LM = { canal: 'Canal central', meio: 'Canal central', subD: 'Recesso lateral direito', subE: 'Recesso lateral esquerdo' };
+  const rmLmName = id => RM_LM[id.split('.')[0]] + ', ' + id.split('.')[1];
+  const RM_TOL = 6; // mm: o clique vale para o ponto marcado a até esta distância, no plano do quadro clicado
+  // ponto marcado mais perto do clique, no plano do quadro e a até um corte dele; null se nenhum está a até RM_TOL
+  function rmLm(ex, nv, d) {
+    const v = nv.volumes[0], f = nv.mm2frac(d.mm, 0, true), th = nv === RM.nvAx ? 2 : 0; // eixo entre os cortes: z no axial, x no sagital
+    let best = null, bd = RM_TOL;
+    for (const id in ex.at) {
+      const g = nv.mm2frac(ex.at[id], 0, true), dv = [0, 1, 2].map(i => (g[i] - f[i]) * v.dimsRAS[i + 1]);
+      if (Math.abs(dv[th]) > 1) continue;
+      const mm = Math.hypot(...[0, 1, 2].filter(i => i !== th).map(i => dv[i] * v.pixDimsRAS[i + 1]));
+      if (mm <= bd) { bd = mm; best = id; }
+    }
+    return best;
   }
   // shortcut: entrada -2 transparente na tabela de cores. A NiiVue 0.69.0 (shader das camadas, comentário 'issue1139') arredonda todo valor
   // acima do mínimo para pelo menos 2/256 da tabela, e o fundo 0 pintava com a cor do rótulo 1. Tirar se a NiiVue corrigir; retestar ao trocar de versão
@@ -820,62 +844,94 @@
     return L;
   })();
   const RM_SEQ = [['t2', 'T2'], ['t1', 'T1'], ['space', 'T2 alta resolução']];
+  // contornos no axial montado com 1/4 da opacidade do sagital (0,4 vira 0,1): a 0,4 a cor cobria o saco dural e as raízes
+  const RM_AXA = 0.25;
   // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue
   const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
+  // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout).
+  // Convenção radiológica: no axial a esquerda do paciente fica à direita da tela, como nos exames; o sagital não muda
+  const RM_OPTS = { backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
   function rmInit() {
     return RM.ready || (RM.ready = new Promise((ok, no) => {
       const s = document.createElement('script'); s.src = RM_NIIVUE.src; s.integrity = RM_NIIVUE.sri; s.crossOrigin = 'anonymous';
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
-      // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout)
-      const nv = new niivue.Niivue({ backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false });
+      const nv = new niivue.Niivue(RM_OPTS);
       await nv.attachToCanvas(rmCv);
       // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
       const interp = nv.updateInterpolation.bind(nv);
       nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
-      // axial aproximado, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do caso (o centro do recorte fica atrás demais no SPACE).
-      // O zoom da NiiVue vale para todos os quadros, então só o axial troca na hora de desenhar
+      // axial montado (SPIDER) aproximado, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do exame (o centro do recorte fica atrás demais no SPACE),
+      // e com os contornos mais fracos. O zoom e a opacidade da NiiVue valem para todos os quadros, então só o axial troca na hora de desenhar
       const draw2D = nv.draw2D.bind(nv);
       nv.draw2D = (ltwh, axCorSag, mm, wh) => {
-        if (axCorSag !== 0) return draw2D(ltwh, axCorSag, mm, wh);
-        const { at } = RM_STEPS[S.rmStep].c, c = [0, 1].map(i => (at[100][i] + at[202][i]) / 2);
-        const sc = nv.scene, keep = sc.pan2Dxyzmm, z = Math.max(1, nv.screenFieldOfViewExtendedMM(0).fovMM[0] / 70);
-        sc.pan2Dxyzmm = [c[0] * (1 - z), c[1] * (1 - z), 0, z]; // o centro do quadro, ((mn+mx)/2 - pan)/zoom, fica em c
+        nv.overlayAlphaShader = axCorSag === 0 ? RM_AXA : 1; // uniforme lido a cada quadro em draw2DMain
+        if (axCorSag !== 0 || rmRsna(rmEx())) return draw2D(ltwh, axCorSag, mm, wh);
+        const { at } = rmEx(), sc = nv.scene, keep = sc.pan2Dxyzmm;
+        sc.pan2Dxyzmm = rmPan(nv, [0, 1].map(i => (at[100][i] + at[202][i]) / 2), 70);
         try { return draw2D(ltwh, axCorSag, mm, wh); } finally { sc.pan2Dxyzmm = keep; }
       };
-      nv.onLocationChange = rmPicked; RM.nv = nv; rmLayout(); return nv;
+      nv.onLocationChange = d => rmPicked(d, nv); RM.nv = nv; rmLayout(); return nv;
     }).catch(e => { RM.ready = null; throw e; }));
   }
-  // leva a tela ao estado pedido (caso, série, mira); em fila, para cliques rápidos nunca misturarem duas cargas
+  // zoom do axial: cerca de w mm de largura, com o centro do quadro no ponto c (mm). Medido na 0.69.0: o centro do quadro é ((mn+mx)/2 - pan)/zoom,
+  // com mn e mx do campo em voxels; a conta da versão anterior, c * (1 - zoom), só acertava quando o campo já estava centrado em c
+  function rmPan(nv, c, w) {
+    const e = nv.screenFieldOfViewExtendedVox(0), z = Math.max(1, nv.screenFieldOfViewExtendedMM(0).fovMM[0] / w);
+    return [(e.mnMM[0] + e.mxMM[0]) / 2 - c[0] * z, (e.mnMM[1] + e.mxMM[1]) / 2 - c[1] * z, 0, z];
+  }
+  // segunda instância, só para o axial da RSNA; criada no primeiro exame da RSNA
+  function rmAxInit() {
+    return RM.axReady || (RM.axReady = rmInit().then(async () => {
+      const a = new niivue.Niivue(RM_OPTS);
+      await a.attachToCanvas(rmAxCv);
+      a.onLocationChange = d => rmPicked(d, a); RM.nvAx = a; rmLayout(); return a;
+    }).catch(e => { RM.axReady = null; throw e; }));
+  }
+  // mira num ponto em mm. mm2frac com o sform (true) é exato também no bloco axial inclinado do 3489738948, onde o padrão erra até 6,5 mm;
+  // fora do volume (o axial da RSNA não cobre a coluna toda) a mira fica no corte da borda
+  function rmAim(nv, mm) { nv.scene.crosshairPos = Float32Array.from(nv.mm2frac(mm, 0, true), f => Math.min(1, Math.max(0, f))); nv.drawScene(); }
+  // leva a tela ao estado pedido (exame, série, mira); em fila, para cliques rápidos nunca misturarem duas cargas
   function rmShow() {
-    RM.q = RM.q.then(rmApply).catch(() => { RM.loaded = ''; rmMsg.textContent = 'As imagens não abriram. Confira a conexão e se o navegador tem WebGL2. O texto do passo continua no painel.'; });
+    RM.q = RM.q.then(rmApply).catch(() => { RM.loaded = RM.axLoaded = ''; rmMsg.textContent = 'As imagens não abriram. Confira a conexão e se o navegador tem WebGL2. O texto do passo continua no painel.'; });
     return RM.q;
   }
   async function rmApply() {
     if (S.mode !== 'rm') return;
-    const { c } = RM_STEPS[S.rmStep], seq = c.seqs[RM.seq] ? RM.seq : 't2', want = c.id + '/' + seq;
-    if (RM.loaded !== want) rmMsg.textContent = 'Carregando as imagens…';
+    const id = RM_STEPS[S.rmStep].st.ex, ex = rmEx(), seq = ex.seqs[RM.seq] ? RM.seq : 't2', want = id + '/' + seq, base = 'rm/' + ex.dir + '/';
+    if (RM.loaded !== want || (ex.ax && RM.axLoaded !== id)) rmMsg.textContent = 'Carregando as imagens…';
     const nv = await rmInit();
     if (RM.loaded !== want) {
-      // troca de série no mesmo caso: a mira fica no mesmo ponto
-      const keep = !RM.goto && RM.loaded.split('/')[0] === c.id ? { c: c.id, mm: Array.from(nv.frac2mm(nv.scene.crosshairPos)).slice(0, 3) } : null;
-      const [img, mask] = c.seqs[seq], base = 'rm/' + c.id + '/';
+      // troca de série no mesmo exame: a mira fica no mesmo ponto
+      const keep = !RM.goto && RM.loaded.split('/')[0] === id ? { ex: id, mm: Array.from(nv.frac2mm(nv.scene.crosshairPos, 0, true)).slice(0, 3) } : null;
+      const [img, mask] = ex.seqs[seq];
       RM.loaded = '';
-      await nv.loadVolumes([{ url: base + img + '.nii.gz' }, { url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }]);
-      nv.volumes[1].setColormapLabel(RM_LUT); nv.updateGLVolume();
-      RM.loaded = want; rmMsg.textContent = '';
+      await nv.loadVolumes([{ url: base + img + '.nii.gz' }].concat(mask ? [{ url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }] : []));
+      if (mask) { nv.volumes[1].setColormapLabel(RM_LUT); nv.updateGLVolume(); }
+      RM.loaded = want;
       if (keep) RM.goto = keep;
     }
-    // a mira de outro caso espera a carga dele (uma carga anterior na fila não a consome)
-    if (RM.goto && RM.goto.c === c.id && RM.loaded === want) { nv.scene.crosshairPos = nv.mm2frac(RM.goto.mm); RM.goto = null; nv.drawScene(); }
+    if (ex.ax && RM.axLoaded !== id) {
+      const a = await rmAxInit();
+      RM.axLoaded = '';
+      await a.loadVolumes([{ url: base + ex.ax + '.nii.gz' }]);
+      // axial com cerca de 90 mm de largura em volta do canal em L4-L5, que é a origem do estudo (docs/ressonancia.md, Origem deslocada)
+      a.scene.pan2Dxyzmm = rmPan(a, [0, 0], 90);
+      RM.axLoaded = id;
+    }
+    rmMsg.textContent = '';
+    // a mira de outro exame espera a carga dele (uma carga anterior na fila não a consome)
+    if (RM.goto && RM.goto.ex === id && RM.loaded === want) { rmAim(nv, RM.goto.mm); if (ex.ax) rmAim(RM.nvAx, RM.goto.mm); RM.goto = null; }
   }
-  // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez
+  // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez.
+  // RSNA: o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial
   function rmLayout() {
-    const one = mobileQ.matches;
-    rmView.classList.toggle('ax', one && RM.pane === 'ax');
+    const one = mobileQ.matches, rs = rmRsna(rmEx());
+    rmView.classList.toggle('ax', one && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs);
     // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
-    const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight));
-    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' ? 0 : 2, position: [0, t, 1, 1 - t] }] : [{ sliceType: 2, position: [0, t, 0.6, 1 - t] }, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+    const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight)), ta = Math.min(0.1, 26 / Math.max(1, rmAxCv.clientHeight)), sag = { sliceType: 2, position: [0, t, 0.6, 1 - t] };
+    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' && !rs ? 0 : 2, position: [0, t, 1, 1 - t] }] : rs ? [sag] : [sag, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+    if (RM.nvAx) RM.nvAx.setCustomLayout([{ sliceType: 0, position: [0, ta, 1, 1 - ta] }]);
   }
   mobileQ.addEventListener && mobileQ.addEventListener('change', rmLayout);
   // estrutura clicada acesa no 3D, como a seleção do modo Anatomia; a câmera do encarte não se mexe
@@ -885,33 +941,44 @@
     S.layers = { bone: true, disc: true }; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; });
     S.sel = ms.length ? new Set(ms) : null; S.selKey = key || null; applyVisuals();
   }
-  function rmPicked(d) {
-    const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
-    RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
-    if (RM_STEPS[S.rmStep].st.test) RM.res = v;
+  function rmPicked(d, nv) {
+    const ex = rmEx(), { st } = RM_STEPS[S.rmStep];
+    if (rmRsna(ex)) {
+      // o outro quadro vai ao ponto clicado: o syncWith da NiiVue só propaga com o canvas em foco
+      const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm);
+      const id = rmLm(ex, nv, d); RM.pick = { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id }; rmSel(null);
+      if (st.test) RM.res = id || '';
+    } else {
+      const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
+      RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
+      if (st.test) RM.res = v;
+    }
     rmPanel(true);
   }
-  // graduação do SPIDER de um disco do caso, para a resposta do teste
-  function rmGrade(c, v) {
-    const r = v > 200 && c.g[v - 201]; if (!r) return '';
+  // graduação do SPIDER de um disco do exame, para a resposta do teste
+  function rmGrade(ex, v) {
+    const r = v > 200 && ex.g[v - 201]; if (!r) return '';
     const t = ['Pfirrmann ' + r[RM_G.pf]]; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
-    [['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
+    [['list', 'listese'], ['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
+    if (r[RM_G.up] || r[RM_G.low]) t.push('alteração das placas ou nódulo de Schmorl');
     return ' Graduação do SPIDER neste disco: ' + t.join(', ') + '.';
   }
   function rmPanel(announce) {
-    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { c, st } = RM_STEPS[S.rmStep]; if (!box) return;
+    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
     box.hidden = !p;
+    const lit = has3D && p && p.key; // só os rótulos do SPIDER têm estrutura no 3D
     if (p) {
-      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${has3D ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${has3D ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
-      if (has3D) $('#rmopen').onclick = rmOpen3D;
+      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
+      if (lit) $('#rmopen').onclick = rmOpen3D;
     }
     let msg = p ? 'Você clicou: ' + p.nome + '.' : '';
     if (res) {
       res.hidden = RM.res === null;
       if (RM.res !== null) {
-        const ok = st.test.ok.includes(RM.res);
+        const ok = st.test.ok.includes(RM.res), fora = !p || (rs && !p.lm);
         res.className = 'rmres ' + (ok ? 'ok' : 'no');
-        res.textContent = ok ? 'Certo. ' + p.nome + '.' + rmGrade(c, RM.res) : (p ? 'Não. ' + p.nome + ' não é a resposta. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') + st.test.hint;
+        res.textContent = ok ? 'Certo. ' + p.nome + '.' + (rs ? ' Graduação da RSNA neste ponto: ' + (ex.gr[RM.res] || 'normal ou leve') + '.' : rmGrade(ex, RM.res))
+          : (fora ? (rs ? 'Não. O clique ficou fora dos pontos marcados pelo radiologista. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') : 'Não. ' + p.nome + ' não é a resposta. ') + st.test.hint;
         msg = res.textContent;
       }
     }
@@ -924,7 +991,7 @@
     if (!levelOf(p.key)) { const ms = model.reg.get(aliasKey(p.key)) || []; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; }); applyVisuals(); syncTools(); if (ms.length) frameMeshes(ms); }
     if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
   }
-  // nome sob o cursor (ou sob o dedo) com Nomes ligado
+  // nome sob o cursor (ou sob o dedo) com Nomes ligado; só no SPIDER, que tem máscara
   function rmTagAt(e) {
     const nv = RM.nv;
     if (!RM.names || !nv || nv.volumes.length < 2) { rmTag.hidden = true; return; }
@@ -938,9 +1005,10 @@
   rmCv.addEventListener('pointermove', rmTagAt); rmCv.addEventListener('pointerdown', rmTagAt);
   rmCv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; });
   function rmBarRender() {
-    const { c } = RM_STEPS[S.rmStep], chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
-    rmBar.innerHTML = `<div class="group" role="group" aria-label="Sequência">${RM_SEQ.filter(([k]) => c.seqs[k]).map(([k, t]) => chip(k, t, RM.seq === k)).join('')}</div>`
-      + `<div class="group" role="group" aria-label="Sobre a imagem">${chip('mask', 'Contornos', RM.mask)}${chip('names', 'Nomes', RM.names)}</div>`
+    const ex = rmEx(), chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
+    // RSNA: sem máscara, então sem Contornos e Nomes
+    rmBar.innerHTML = `<div class="group" role="group" aria-label="Sequência">${RM_SEQ.filter(([k]) => ex.seqs[k]).map(([k, t]) => chip(k, t, RM.seq === k)).join('')}</div>`
+      + (rmRsna(ex) ? '' : `<div class="group" role="group" aria-label="Sobre a imagem">${chip('mask', 'Contornos', RM.mask)}${chip('names', 'Nomes', RM.names)}</div>`)
       + `<div class="seg rmpane" role="group" aria-label="Plano">${[['sag', 'Sagital'], ['ax', 'Axial']].map(([k, t]) => `<button type="button" data-pane="${k}" aria-pressed="${RM.pane === k}">${t}</button>`).join('')}</div>`;
     rmBar.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
       const k = b.dataset.rm;
@@ -951,10 +1019,10 @@
     });
     rmBar.querySelectorAll('[data-pane]').forEach(b => b.onclick = () => { RM.pane = b.dataset.pane; rmLayout(); rmBarRender(); rmBar.querySelector(`[data-pane="${RM.pane}"]`).focus(); });
   }
-  // contexto do tira-dúvidas neste modo: título e texto do passo e a estrutura clicada
+  // contexto do tira-dúvidas neste modo: trilha, título e texto do passo e o que foi clicado
   function rmCtx() {
-    const { c, st } = RM_STEPS[S.rmStep];
-    return `Ressonância, ${c.name}. Passo: ${st.t}. ${st.p.map(x => x.replace(/^- /, '').replace(/\*\*/g, '')).join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
+    const { t, st } = RM_STEPS[S.rmStep];
+    return `Ressonância, trilha ${t.name}. Passo: ${st.t}. ${st.p.map(x => x.replace(/^- /, '').replace(/\*\*/g, '')).join(' ')}` + (RM.pick ? ` Estrutura clicada na imagem: ${RM.pick.nome}.` : '');
   }
   // parágrafos do passo (docs/estilo-ressonancia.md): '- ' vira item, itens seguidos numa lista só, **x** negrito; escapa antes da marcação
   function rmHtml(ps) {
@@ -970,18 +1038,18 @@
   const rmVer = ([m, k]) => m === 'dz' ? { txt: 'Rever em Doenças: ' + DZ.find(d => d.id === k).name, go: () => openDz(k, true) }
     : { txt: 'Rever em Anatomia: ' + k, go: () => goStep(ALL_STEPS.findIndex(s => s.title === k), true) };
   function renderRm(moveFocus) {
-    const R = RM_STEPS[S.rmStep], { c, i, st } = R, ci = RM_CASES.indexOf(c);
+    const R = RM_STEPS[S.rmStep], { t, i, st, ex } = R, ver = st.ver || t.ver;
     if (!store.rmSeen.includes(R.id)) store.rmSeen.push(R.id);
-    store.rmStep = S.rmStep; save(); progress(); renderChapters(); rmBarRender();
-    let h = `<div class="eyebrow">Caso ${ci + 1}, passo ${i + 1} de ${c.steps.length}</div><h2>${esc(st.t)}</h2>` + rmHtml(st.p);
-    if (st.ver) h += `<button class="btn link rmver" id="rmver" type="button">${esc(rmVer(st.ver).txt)}</button>`;
+    store.rmStep = R.id; save(); progress(); renderChapters(); rmBarRender();
+    let h = `<div class="eyebrow">${esc(t.name)}, passo ${i + 1} de ${t.steps.length}</div><h2>${esc(st.t)}</h2>` + rmHtml(st.p);
+    if (ver) h += `<button class="btn link rmver" id="rmver" type="button">${esc(rmVer(ver).txt)}</button>`;
     if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
     h += `<div class="rmpick" id="rmpick" hidden></div>`;
     if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
-    h += `<p class="rmcred">Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).</p>`;
+    h += `<p class="rmcred">${esc(RM_CRED[rmRsna(ex) ? 'rsna' : 'spider'])}</p>`;
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
-    if (st.ver) $('#rmver').onclick = rmVer(st.ver).go;
+    if (ver) $('#rmver').onclick = rmVer(ver).go;
     if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
     rmPanel();
     const last = S.rmStep === RM_STEPS.length - 1;
@@ -989,13 +1057,13 @@
     $('#prev').onclick = () => goRm(S.rmStep - 1);
     $('#next').onclick = () => goRm(S.rmStep + 1);
     if (moveFocus) focusTitle();
-    say(`${c.name}. ${st.t}.`);
+    say(`${t.name}. ${st.t}.`);
   }
-  // passo novo: série e mira do passo; caso novo apaga a estrutura clicada
-  function rmStep() { const { c, st } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { c: c.id, mm: c.at[st.at] }; RM.res = null; rmShow(); }
+  // passo novo: série e mira do passo; exame novo apaga o que foi clicado
+  function rmStep() { const { st, ex } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow(); }
   function goRm(k, moveFocus) {
     if (k < 0 || k >= RM_STEPS.length) return;
-    if (RM_STEPS[k].c !== RM_STEPS[S.rmStep].c) { RM.pick = null; rmSel(null); }
+    if (RM_STEPS[k].ex !== RM_STEPS[S.rmStep].ex) { RM.pick = null; rmSel(null); }
     S.rmStep = k;
     if (S.mode !== 'rm') return setMode('rm', moveFocus);
     rmStep(); renderRm(moveFocus);
@@ -1142,7 +1210,7 @@
     const el = store.em || {}, er = r.em || {}, zl = store.zeradoEm || 0, zr = r.zeradoEm || 0, em = {};
     LISTAS.forEach(k => {
       const loc = store[k].filter(v => (el[k + ':' + v] || 0) >= zr), rem = (Array.isArray(r[k]) ? r[k] : []).filter(v => (er[k + ':' + v] || 0) >= zl);
-      store[k] = [...new Set([...loc, ...rem])];
+      store[k] = [...new Set([...loc, ...rem])].filter(v => vale(k, v));
       store[k].forEach(v => { const c = k + ':' + v; em[c] = Math.max(el[c] || 0, er[c] || 0); });
     });
     store.em = em; store.zeradoEm = Math.max(zl, zr);

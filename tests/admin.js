@@ -3,13 +3,13 @@ const { chromium } = require('playwright');
 const fs=require('fs'), vm=require('vm');
 // totais e gabarito do teste final tirados das listas da aula, rodadas aqui fora da página
 const ctx={}; vm.createContext(ctx);
-vm.runInContext(['content.js','disease.js','proc.js','rm.js'].map(f=>fs.readFileSync(__dirname+'/../src/'+f,'utf8')).join('\n')+';this.T={a:ALL_STEPS.length,d:DZ.length,p:PROC.length,r:RM_CASES.reduce((n,c)=>n+c.steps.length,0),q:DZ_QUIZ}',ctx);
+vm.runInContext(['content.js','disease.js','proc.js','rm.js'].map(f=>fs.readFileSync(__dirname+'/../src/'+f,'utf8')).join('\n')+';this.T={a:ALL_STEPS.length,d:DZ.length,p:PROC.length,r:RM_IDS.length,q:DZ_QUIZ}',ctx);
 const {a:NA,d:ND,p:NP,r:NR,q:Q}=ctx.T;
 const SESSAO={access_token:'a.b.c',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'r',user:{id:'u1',aud:'authenticated',email:'gustavo@renovamedical.com.br',user_metadata:{full_name:'Gustavo Perpetuo'}}};
 const H=36e5, iso=ms=>new Date(Date.now()-ms).toISOString();
 const PESSOAS=[
  {email:'fernanda.lima@renovamedical.com.br',nome:'Fernanda Lima',primeiro_acesso:iso(20*24*H),ultimo_acesso:iso(2*H),progresso_em:iso(H),perguntas_total:14,perguntas_hoje:3,voz_segundos_total:95,
-  progresso:{seen:[0,1,2,3,4,5,6,7,8,9,10,11],dzSeen:['ddd','hernia','sten'],procSeen:['tfesi'],rmSeen:['237.0','237.1','45.3'],quiz:{q0:{0:0,1:0,2:0},dz:Object.fromEntries(Q.map((q,i)=>[i,q[2]]))},step:11,zeradoEm:0,railOff:false,pw:430,conta:'u2'}},
+  progresso:{seen:[0,1,2,3,4,5,6,7,8,9,10,11],dzSeen:['ddd','hernia','sten'],procSeen:['tfesi'],rmSeen:['base.sinal','base.orient','hernia.sag','237.0'],quiz:{q0:{0:0,1:0,2:0},dz:Object.fromEntries(Q.map((q,i)=>[i,q[2]]))},step:11,zeradoEm:0,railOff:false,pw:430,conta:'u2'}},
  {email:'ricardo.souza@allivia.com.br',nome:'Ricardo Souza',primeiro_acesso:iso(30*24*H),ultimo_acesso:iso(10*24*H),progresso_em:iso(3*24*H),perguntas_total:2,perguntas_hoje:1,voz_segundos_total:0,
   progresso:{seen:[0,1,2],quiz:{dz:{0:Q[0][2],1:(Q[1][2]+1)%Q[1][1].length,2:Q[2][2]}},step:2,conta:'u3'}},
  {email:'paula.mendes@renovamedical.com.br',nome:'Paula Mendes',primeiro_acesso:'2026-10-01T15:30:00Z',ultimo_acesso:iso(12*24*H),progresso_em:null,perguntas_total:0,perguntas_hoje:0,voz_segundos_total:0,progresso:null},
