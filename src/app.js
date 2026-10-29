@@ -658,7 +658,7 @@
     S.step = i; renderStep(moveFocus);
   }
   function wilkeHtml() {
-    const rows = [['Deitado de costas', 0.10], ['Deitado de lado', 0.12], ['Sentado relaxado', 0.46], ['Em pé relaxado', 0.50], ['Em pé, tronco inclinado', 1.10], ['20 kg junto ao corpo', 1.10], ['20 kg com joelhos fletidos', 1.70], ['20 kg com o tronco fletido', 2.30]];
+    const rows = [['Deitado de costas', 0.10], ['Deitado de lado', 0.12], ['Sentado sem encosto', 0.46], ['Em pé relaxado', 0.50], ['Em pé, tronco inclinado', 1.10], ['20 kg junto ao corpo', 1.10], ['20 kg com joelhos fletidos', 1.70], ['20 kg com o tronco fletido', 2.30]];
     return `<div class="bars">${rows.map(([t, v]) => `<div class="r"><span>${t}</span><span class="t" aria-hidden="true"><i style="width:${(v / 2.3 * 100).toFixed(0)}%"></i></span><span class="v">${v.toFixed(2).replace('.', ',')} MPa</span></div>`).join('')}<div class="note">Pressão intradiscal em L4-L5, um voluntário, Wilke et al., Spine 1999.</div></div>`;
   }
   function order(n, seed) { let t = seed >>> 0; const rnd = () => { t = (t + 0x6D2B79F5) >>> 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r; return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }

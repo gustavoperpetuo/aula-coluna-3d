@@ -8,7 +8,7 @@ const STEPS = [
     how: 'Como usar: o texto guia a aula e o modelo ao lado acompanha cada passo. Gire e aproxime o 3D, clique ou toque numa estrutura para ver o nome, use os links "Localizar no 3D" no fim de cada passo e a régua de níveis (C1 a Co) para ir direto a uma vértebra. As ferramentas no topo do modelo (no celular, o botão "Camadas e cortes") ligam e desligam ossos, discos, ligamentos, nervos e vasos e abrem os cortes.',
     body: ['A coluna tem em geral 33 vértebras em cinco regiões: 7 cervicais (C1 a C7), 12 torácicas (T1 a T12), 5 lombares (L1 a L5), 5 sacrais fundidas no sacro e 3 a 5 coccígeas fundidas no cóccix. As 24 vértebras acima do sacro são móveis e se ligam por 23 discos, do C2-C3 ao L5-S1. Entre o crânio e C1, e entre C1 e C2, não há disco.',
       'Ela tem três funções: sustentar o tronco e passar a carga para a pelve, permitir movimento e proteger a medula e as raízes. Quase toda doença da coluna é a falha de uma delas: dor mecânica, deformidade ou instabilidade, e compressão neural.'],
-    pro: 'Vértebras e discos crescem de cima para baixo porque a carga aumenta. A placa terminal de L4 tem cerca de 15 cm², quatro a cinco vezes a de C5, perto de 3,4 cm² (média em homens, Kishimoto, J Orthop Res 2016). A lombar carrega mais peso e se move mais, e por isso concentra a maior parte das doenças degenerativas.',
+    pro: 'Vértebras e discos crescem de cima para baixo porque a carga aumenta. A placa terminal de L4 tem cerca de 15 cm², quatro a cinco vezes a de C5, perto de 3,4 cm² (média em homens, Kishimoto, J Orthop Res 2016). A lombar carrega mais peso que as outras regiões e soma essa carga a muito movimento, e por isso concentra a maior parte das doenças degenerativas.',
     cam: { t: 'center', az: 32, el: 8, d: 158 }, show: 'bone disc rib', tint: true,
     labels: [['C1', 'C1 atlas'], ['C7', 'C7'], ['T1', 'T1'], ['T12', 'T12'], ['L1', 'L1'], ['L5', 'L5'], ['sacrum', 'Sacro'], ['coccyx', 'Cóccix']]
   },
@@ -155,7 +155,7 @@ const STEPS = [
   },
   {
     ch: 4, title: 'Ligamentos craniovertebrais',
-    body: ['O ligamento transverso do atlas passa atrás do dente e o prende contra o arco anterior de C1. Os ligamentos alares vão da ponta do dente aos côndilos occipitais e limitam a rotação. A membrana tectória continua o LLP até o clivo. O ligamento nucal ancora a musculatura posterior do pescoço.',
+    body: ['O ligamento transverso do atlas passa atrás do dente e o prende contra o arco anterior de C1. Os ligamentos alares vão das faces laterais da parte superior do dente à face medial dos côndilos occipitais e limitam a rotação. A membrana tectória continua o LLP até o clivo. O ligamento nucal ancora a musculatura posterior do pescoço.',
       'Na artrite reumatoide, a inflamação sinovial pode afrouxar o ligamento transverso e causar instabilidade C1-C2.'],
     pro: 'Intervalo atlanto-dental acima de 3 mm no adulto (5 mm na criança) sugere lesão ou frouxidão do ligamento transverso. A fixação C1-C2 com parafusos na massa lateral de C1 e no pedículo de C2 (técnica de Harms) é a cirurgia padrão para essa instabilidade.',
     cam: { t: 'C1', az: 150, el: 42, d: 18 }, show: 'bone lig', ghost: true, focus: ['C1', 'C2', 'C3', 'Occ'],
@@ -172,7 +172,7 @@ const STEPS = [
   /* 6. Medula e nervos */
   {
     ch: 5, title: 'Medula espinhal e meninges',
-    body: ['A medula sai do crânio pelo forame magno, continuação do bulbo, e desce pelo canal. Mede cerca de 45 cm no homem adulto e 42 a 43 cm na mulher. Tem dois alargamentos: o cervical, nos segmentos medulares C4 a T1, de onde sai o plexo braquial, e o lombossacral, nos segmentos L2 a S3, que ficam na altura das vértebras T9 a T12, de onde saem os nervos das pernas.',
+    body: ['A medula sai do crânio pelo forame magno, continuação do bulbo, e desce pelo canal. Mede cerca de 45 cm no homem adulto e 42 a 43 cm na mulher. Tem dois alargamentos: o cervical, nos segmentos medulares C4 a T1, de onde sai o plexo braquial, e o lombossacral, nos segmentos L2 a S3, que ficam aproximadamente na altura das vértebras T11 a L1, de onde saem os nervos das pernas.',
       'Três meninges envolvem a medula. A dura-máter é o tubo externo resistente (o saco dural); A aracnoide fica colada por dentro; A pia-máter adere à medula. Entre aracnoide e pia circula o líquor. Fora da dura fica o espaço epidural, com gordura e o plexo venoso.'],
     pro: 'Os ligamentos denticulados, extensões laterais da pia, prendem a medula à dura por 18 a 20 expansões de cada lado (Ceylan, Acta Neurochir 2012) e a mantêm centrada no canal. São seccionados em algumas cirurgias intradurais para rodar a medula com segurança.',
     cam: { t: 'cord.T', az: 120, el: 6, d: 110 }, show: 'bone neuro', ghost: true,
@@ -221,7 +221,7 @@ const STEPS = [
   },
   {
     ch: 6, title: 'Artérias vertebrais',
-    body: ['Nascem das subclávias e entram no forame transverso de C6 (segmento V1). Sobem pelos forames de C6 a C2 (V2). Passam pelo forame de C1 e contornam seu arco posterior (V3). Entram no crânio pelo forame magno (V4) e se unem na base da ponte, formando a artéria basilar.',
+    body: ['Nascem das subclávias e sobem fora do osso até o forame transverso de C6 (segmento V1). Sobem pelos forames de C6 a C2 (V2). Passam pelo forame de C1 e contornam seu arco posterior (V3). Entram no crânio pelo forame magno (V4) e se unem na base da ponte, formando a artéria basilar.',
       'Irrigam tronco cerebral e cerebelo e dão origem à artéria espinhal anterior. Na frente do pescoço, as carótidas ficam anteriores e laterais aos corpos.'],
     pro: 'Em cerca de 90% das pessoas a vertebral entra em C6; No restante, em C5 ou C7. Na fixação C1-C2 e na via anterior cervical dissecada lateral demais, a lesão da vertebral é a complicação temida. Por isso o trajeto é estudado em angiotomografia antes.',
     cam: { t: 'C3', az: 38, el: 10, d: 34 }, show: 'bone vessel', focus: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'T1', 'Occ'],
@@ -273,7 +273,7 @@ const QUIZ = {
   ],
   3: [
     ['Como o disco adulto recebe nutrientes?', ['Por difusão pelas placas terminais', 'Por artérias dentro do núcleo', 'Pelo LLP', 'Pelo líquor'], 0, 'É a maior estrutura avascular do corpo.'],
-    ['Em qual situação a pressão no disco L4-L5 é maior?', ['Levantando 20 kg com o tronco fletido', 'Sentado relaxado', 'Em pé relaxado', 'Deitado de costas'], 0, 'Cerca de 2,3 MPa contra 0,5 MPa em pé (Wilke, 1999).'],
+    ['Em qual situação a pressão no disco L4-L5 é maior?', ['Levantando 20 kg com o tronco fletido', 'Sentado sem encosto', 'Em pé relaxado', 'Deitado de costas'], 0, 'Cerca de 2,3 MPa contra 0,5 MPa em pé (Wilke, 1999).'],
     ['Qual nervo inerva a faceta e é alvo da radiofrequência?', ['Ramo medial do ramo dorsal', 'Nervo sinuvertebral', 'Ramo ventral', 'Nervo ciático'], 0, 'Cada faceta recebe o ramo medial do mesmo nível e do nível de cima.']
   ],
   4: [
