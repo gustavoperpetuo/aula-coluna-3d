@@ -4,7 +4,7 @@ Público: quem nunca leu uma ressonância e quer aprender. Ensina passo a passo;
 
 ## Regras
 
-1. Nada sem explicação. Todo termo é explicado na primeira vez que aparece: T1, T2, sinal, hipersinal, hipossinal, sagital, axial, líquor, placa terminal, abaulamento, hérnia, estreitamento, Pfirrmann, Modic, listese. Mesmo que pareça básico.
+1. Explique o que é novo da ressonância; não repita o que o app já ensinou. Conceitos de imagem aparecem aqui pela primeira vez e são explicados na primeira vez que surgem: como a ressonância forma a imagem, sinal, hipersinal, hipossinal, T1, T2, sequência de alta resolução, como cada estrutura aparece na imagem. Anatomia e doenças já ensinadas nas abas Anatomia e Doenças (vértebras, disco, núcleo e anel, placa terminal, líquor, cone e cauda equina, abaulamento, hérnia e suas formas, listese, Modic, estenose, cortes sagital e axial) não são reexplicadas: o texto diz como elas aparecem na ressonância e, se ajudar, remete à aba onde foram ensinadas ("visto em Doenças, Hérnia de disco"). Antes de supor que algo já foi ensinado, confira em src/content.js e src/disease.js; o que não estiver lá é novo e precisa de explicação.
 2. Um conceito novo por passo. O passo só usa o que passos anteriores já ensinaram. Se precisa de algo novo, ensina ali, antes de usar.
 3. Ver antes de ler. Cada passo começa com o que fazer na imagem ("Clique no disco L4-L5", "Troque para o T1") e só depois explica o que a pessoa está vendo.
 4. Frases curtas, uma ideia por frase. Nada de listas longas separadas por vírgula num parágrafo.
