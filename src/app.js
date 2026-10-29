@@ -807,7 +807,7 @@
   // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido da RSNA, num segundo canvas (#rmax),
   // porque numa instância só a NiiVue reamostraria o axial na grade do sagital.
   // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial da RSNA; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
-  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null };
   const rmEx = () => RM_STEPS[S.rmStep].ex;
   // só os exames da RSNA têm axial próprio, e nenhum deles tem máscara (no lugar dela, os pontos dos radiologistas)
   const rmRsna = ex => !!ex.ax;
@@ -822,6 +822,8 @@
   // pontos da RSNA (src/rm.js, at): 'canal.L4-L5' -> 'Canal central, L4-L5'
   const RM_LM = { canal: 'Canal central', meio: 'Canal central', subD: 'Recesso lateral direito', subE: 'Recesso lateral esquerdo' };
   const rmLmName = id => RM_LM[id.split('.')[0]] + ', ' + id.split('.')[1];
+  // frase de ensino do ponto, nos passos que não são teste; no recesso desce a raiz da vértebra de baixo (L5-S1: S1)
+  const rmLmDica = id => id.startsWith('sub') ? 'Por aqui passa a raiz que desce. Neste nível, a raiz de ' + id.split('-')[1] + '.' : 'Aqui fica o saco dural, com o líquor claro e as raízes como pontos escuros.';
   const RM_TOL = 6; // mm: o clique vale para o ponto marcado a até esta distância, no plano do quadro clicado
   // ponto marcado mais perto do clique, no plano do quadro e a até um corte dele; null se nenhum está a até RM_TOL
   function rmLm(ex, nv, d) {
@@ -850,14 +852,22 @@
   const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
   // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout).
   // Convenção radiológica: no axial a esquerda do paciente fica à direita da tela, como nos exames; o sagital não muda
-  const RM_OPTS = { backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
+  const RM_OPTS = { fontColor: [1, 1, 1, 1], fontMinPx: 20, backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
+  // letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
+  function rmOutline(nv) {
+    const dt = nv.drawText.bind(nv);
+    nv.drawText = (xy, s, sc = 1, c = null) => {
+      if (!c) { const k = 2 * (nv.uiData.dpr || 1); [[-k, 0], [k, 0], [0, -k], [0, k]].forEach(([x, y]) => dt([xy[0] + x, xy[1] + y], s, sc, [0, 0, 0, 1])); }
+      dt(xy, s, sc, c);
+    };
+  }
   function rmInit() {
     return RM.ready || (RM.ready = new Promise((ok, no) => {
       const s = document.createElement('script'); s.src = RM_NIIVUE.src; s.integrity = RM_NIIVUE.sri; s.crossOrigin = 'anonymous';
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
       const nv = new niivue.Niivue(RM_OPTS);
-      await nv.attachToCanvas(rmCv);
+      await nv.attachToCanvas(rmCv); rmOutline(nv);
       // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
       const interp = nv.updateInterpolation.bind(nv);
       nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
@@ -884,7 +894,7 @@
   function rmAxInit() {
     return RM.axReady || (RM.axReady = rmInit().then(async () => {
       const a = new niivue.Niivue(RM_OPTS);
-      await a.attachToCanvas(rmAxCv);
+      await a.attachToCanvas(rmAxCv); rmOutline(a);
       a.onLocationChange = d => rmPicked(d, a); RM.nvAx = a; rmLayout(); return a;
     }).catch(e => { RM.axReady = null; throw e; }));
   }
@@ -925,12 +935,13 @@
   }
   // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez.
   // RSNA: o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial
+  // SPIDER: o axial montado (borrado) só aparece no passo que o usa (st.axial); na RSNA o axial é adquirido e aparece sempre
   function rmLayout() {
-    const one = mobileQ.matches, rs = rmRsna(rmEx());
-    rmView.classList.toggle('ax', one && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs);
+    const one = mobileQ.matches, rs = rmRsna(rmEx()), ax = rs || !!RM_STEPS[S.rmStep].st.axial;
+    rmView.classList.toggle('ax', one && ax && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs); rmView.classList.toggle('noax', !ax);
     // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
     const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight)), ta = Math.min(0.1, 26 / Math.max(1, rmAxCv.clientHeight)), sag = { sliceType: 2, position: [0, t, 0.6, 1 - t] };
-    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' && !rs ? 0 : 2, position: [0, t, 1, 1 - t] }] : rs ? [sag] : [sag, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+    if (RM.nv) RM.nv.setCustomLayout(one || !ax ? [{ sliceType: one && ax && !rs && RM.pane === 'ax' ? 0 : 2, position: [0, t, 1, 1 - t] }] : rs ? [sag] : [sag, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
     if (RM.nvAx) RM.nvAx.setCustomLayout([{ sliceType: 0, position: [0, ta, 1, 1 - ta] }]);
   }
   mobileQ.addEventListener && mobileQ.addEventListener('change', rmLayout);
@@ -946,43 +957,48 @@
     if (rmRsna(ex)) {
       // o outro quadro vai ao ponto clicado: o syncWith da NiiVue só propaga com o canvas em foco
       const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm);
-      const id = rmLm(ex, nv, d); RM.pick = { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id }; rmSel(null);
+      // fora do teste, só o clique perto de um ponto marcado abre a caixa, com a frase de ensino
+      const id = rmLm(ex, nv, d); RM.pick = st.test ? { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id } : id && { nome: rmLmName(id), lm: id, dica: rmLmDica(id) }; rmSel(null);
       if (st.test) RM.res = id || '';
     } else {
       const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
       RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
-      if (st.test) RM.res = v;
+      // test.sag: só o sagital responde (o axial montado mostra o disco do corte da linha); clique no axial apaga a resposta
+      if (st.test) RM.res = st.test.sag && d.axCorSag === 0 ? null : v;
     }
     rmPanel(true);
   }
   // graduação do SPIDER de um disco do exame, para a resposta do teste
-  function rmGrade(ex, v) {
+  // base: trilha Exame normal, que ainda não ensinou o Pfirrmann (vem na trilha Discopatia degenerativa)
+  function rmGrade(ex, v, base) {
     const r = v > 200 && ex.g[v - 201]; if (!r) return '';
-    const t = ['Pfirrmann ' + r[RM_G.pf]]; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
+    const t = []; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
     [['list', 'listese'], ['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
     if (r[RM_G.up] || r[RM_G.low]) t.push('alteração das placas ou nódulo de Schmorl');
-    return ' Graduação do SPIDER neste disco: ' + t.join(', ') + '.';
+    return ' Graduação do SPIDER neste disco: ' + (base ? 'disco normal' + (t.length ? ', com ' + t.join(', ') : '') : ['Pfirrmann ' + r[RM_G.pf]].concat(t).join(', ')) + '.';
   }
   function rmPanel(announce) {
-    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
+    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st, t } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
     box.hidden = !p;
     const lit = has3D && p && p.key; // só os rótulos do SPIDER têm estrutura no 3D
     if (p) {
-      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
+      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${p.dica ? ' ' + esc(p.dica) : ''}${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
       if (lit) $('#rmopen').onclick = rmOpen3D;
     }
-    let msg = p ? 'Você clicou: ' + p.nome + '.' : '';
+    let msg = p ? 'Você clicou: ' + p.nome + '.' + (p.dica ? ' ' + p.dica : '') : '';
     if (res) {
       res.hidden = RM.res === null;
       if (RM.res !== null) {
         const ok = st.test.ok.includes(RM.res), fora = !p || (rs && !p.lm);
         res.className = 'rmres ' + (ok ? 'ok' : 'no');
-        res.textContent = ok ? 'Certo. ' + p.nome + '.' + (rs ? ' Graduação da RSNA neste ponto: ' + (ex.gr[RM.res] || 'normal ou leve') + '.' : rmGrade(ex, RM.res))
+        res.textContent = ok ? 'Certo. ' + p.nome + '.' + (rs ? ' Graduação da RSNA neste ponto: ' + (ex.gr[RM.res] || 'normal ou leve') + '.' : rmGrade(ex, RM.res, t.id === 'base'))
           : (fora ? (rs ? 'Não. O clique ficou fora dos pontos marcados pelo radiologista. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') : 'Não. ' + p.nome + ' não é a resposta. ') + st.test.hint;
         msg = res.textContent;
       }
     }
     if (announce && msg) say(msg);
+    // caixa abaixo da dobra do painel: rola até ela no clique
+    if (announce) { const el = p ? box : res && !res.hidden && res; if (el) el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); }
   }
   // Abrir no 3D grande: modo Anatomia com a mesma estrutura selecionada e a câmera nela
   function rmOpen3D() {
@@ -1060,10 +1076,14 @@
     say(`${t.name}. ${st.t}.`);
   }
   // passo novo: série e mira do passo; exame novo apaga o que foi clicado
-  function rmStep() { const { st, ex } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow(); }
+  // Contornos começam desligados, para ver o brilho real; st.contornos os liga nos passos de dar nome ou contar
+  function rmStep() {
+    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0);
+    RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow();
+  }
   function goRm(k, moveFocus) {
     if (k < 0 || k >= RM_STEPS.length) return;
-    if (RM_STEPS[k].ex !== RM_STEPS[S.rmStep].ex) { RM.pick = null; rmSel(null); }
+    RM.pick = null; rmSel(null); // passo novo abre com a caixa Você clicou vazia
     S.rmStep = k;
     if (S.mode !== 'rm') return setMode('rm', moveFocus);
     rmStep(); renderRm(moveFocus);

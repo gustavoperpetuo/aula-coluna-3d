@@ -73,6 +73,18 @@ async function page(b,W,H,block,conta){
  const cabeModos=cols=>p.evaluate(cols=>{const bs=[...document.querySelectorAll('.modes button')].map(e=>e.getBoundingClientRect()),s=document.querySelector('.modes').getBoundingClientRect(); return bs.every(r=>r.left>=s.left&&r.right<=s.right+0.5)&&new Set(bs.map(r=>r.top)).size===4/cols;},cols);
  if(!await cabeModos(2)) bad.push('as 4 partes não cabem na trilha em 1440');
  await p.click('#m-rm'); await rmPronto(p,'spider5/t2');
+ // Contornos começam desligados em todo passo; Contar as vértebras (contornos: true) os liga, e o passo seguinte volta a desligar
+ const cont=async id=>{if(id) await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await p.waitForTimeout(200); return p.evaluate(()=>__spine.RM.mask+'|'+document.querySelector('[data-rm="mask"]').getAttribute('aria-pressed')+'|'+__spine.RM.nv.volumes[1].opacity);};
+ const cs=[await cont(),await cont('base.contar'),await cont('base.disco'),await cont('base.sinal')];
+ if(cs.join()!=='false|false|0,true|true|0.4,false|false|0,false|false|0'||await p.evaluate(()=>__spine.RM_STEPS.filter(r=>r.st.contornos).map(r=>r.id).join())!=='base.contar') bad.push('ressonância, Contornos por passo: '+cs.join());
+ // axial montado do SPIDER só nos passos com axial: true; sem ele, o sagital fica no meio do quadro inteiro, e o canvas não guarda tamanho velho.
+ // Todo teste do SPIDER responde só no sagital, e nenhum texto pede o axial no teste
+ const lay=async id=>{await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await rmPronto(p,'spider5/t2'); await p.waitForTimeout(200);
+  return p.evaluate(()=>{const nv=__spine.RM.nv,c=nv.canvas,k=nv.uiData.dpr||1,s=nv.screenSlices,g=s.find(x=>x.axCorSag===2).leftTopWidthHeight;
+   return {t:s.map(x=>x.axCorSag).join(),cap:getComputedStyle(document.querySelector('#cap-ax')).display,meio:Math.round((g[0]+g[2]/2)/c.width*100),tam:c.width===Math.round(c.clientWidth*k)&&c.height===Math.round(c.clientHeight*k)};});};
+ const ly=[await lay('base.disco'),await lay('base.teste'),await lay('base.sinal')];
+ const semSag=await p.evaluate(()=>__spine.RM_STEPS.filter(r=>r.st.test&&!r.ex.ax&&!r.st.test.sag).map(r=>r.id).concat(__spine.RM_STEPS.filter(r=>r.st.p.some(x=>/no sagital ou no axial/.test(x))).map(r=>r.id)));
+ if([ly[0],ly[2]].some(l=>l.t!=='2'||l.cap!=='none'||!(l.meio>45&&l.meio<55)||!l.tam)||ly[1].t!=='2,0'||ly[1].cap==='none'||!(ly[1].meio<35)||!ly[1].tam||semSag.length) bad.push('ressonância, axial por passo: '+JSON.stringify({ly,semSag}));
  const r0=await p.evaluate(()=>({on:document.querySelector('#m-rm').getAttribute('aria-pressed'),grupos:[...document.querySelectorAll('#chap .rmgrp')].filter(e=>e.offsetParent).map(e=>e.textContent),trilhas:[...document.querySelectorAll('#chap > button')].map(e=>e.textContent),passos:[...document.querySelectorAll('#chap .rmsteps button')].filter(e=>e.offsetParent).length,h:document.querySelector('#railh').textContent,ey:document.querySelector('.eyebrow').textContent,cred:document.querySelector('.rmcred').textContent,lib:document.querySelectorAll('script[src*="niivue@0.69.0"][integrity^="sha384-"]').length,inset:(r=>[Math.round(r.width),Math.round(r.height)])(document.querySelector('#view').getBoundingClientRect()),
   // trilha com o id de uma doença tem o nome dela em Doenças
   nomes:RM_TRACKS.filter(t=>DZ.some(d=>d.id===t.id)).map(t=>t.name===DZ.find(d=>d.id===t.id).name?t.id:'X'+t.id).join()}));
@@ -121,6 +133,21 @@ async function page(b,W,H,block,conta){
  await p.click('#rmopen'); await p.waitForTimeout(300);
  const big=await p.evaluate(()=>({m:__spine.S.mode,k:__spine.S.selKey,card:!document.querySelector('#info').hidden,inset:document.querySelector('#view').getBoundingClientRect().width>400}));
  if(big.m!=='anat'||big.k!=='disc.L5-S1'||!big.card||!big.inset) bad.push('Abrir no 3D grande: '+JSON.stringify(big));
+ // teste da trilha de base: só o sagital responde (clique no axial montado apaga a resposta) e a resposta certa não cita o Pfirrmann
+ await p.evaluate(()=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.teste'))); await rmPronto(p,'spider5/t2'); await p.waitForTimeout(300);
+ const j1=await clica(202), xa=await rmXY(p,await p.evaluate(()=>RM_EXAMS.spider5.at[202]),0); await p.mouse.click(xa.x,xa.y); await p.waitForTimeout(300);
+ const j2=await p.evaluate(()=>({v:__spine.RM.res,hid:document.querySelector('#rmres').hidden,txt:document.querySelector('.scroll').innerText}));
+ if(!/^rmres ok\|Certo\. Disco L4-L5\. Graduação do SPIDER neste disco: disco normal, com abaulamento\.$/.test(j1.res)||/Pfirrmann/.test(j1.res)||j2.v!==null||!j2.hid||/no axial\. A resposta|ou no axial/.test(j2.txt)) bad.push('ressonância, teste só no sagital: '+JSON.stringify([j1,j2]));
+ // passo novo abre com a caixa Você clicou vazia e nada aceso no 3D
+ await p.evaluate(()=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.canal'))); await p.waitForTimeout(200);
+ const limpa=await p.evaluate(()=>({hid:document.querySelector('#rmpick').hidden,pick:__spine.RM.pick,sel:__spine.S.sel}));
+ if(!limpa.hid||limpa.pick||limpa.sel) bad.push('ressonância, caixa não limpou no passo novo: '+JSON.stringify(limpa));
+ // RSNA fora do teste: sem 'Fora do ponto marcado'; perto do recesso, nome e frase de ensino; longe dos pontos, caixa oculta
+ await p.evaluate(()=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.raiz'))); await rmPronto(p,'rsna491250714/t2'); await p.waitForFunction(()=>__spine.RM.axLoaded==='rsna491250714'&&!document.querySelector('#rmmsg').textContent,null,{timeout:60000}); await p.waitForTimeout(300);
+ const at8=await p.evaluate(()=>RM_EXAMS.rsna491250714.at), ens=async(id,dx=0)=>{const xy=await rmXY(p,at8[id],0,true); await p.mouse.click(xy.x+dx,xy.y); await p.waitForTimeout(300); return p.evaluate(()=>({hid:document.querySelector('#rmpick').hidden,box:document.querySelector('#rmpick').innerText,res:!!document.querySelector('#rmres')}));};
+ const e1=await ens('subD.L5-S1'), e2=await ens('subD.L5-S1',-60);
+ if(e1.hid||e1.box!=='Você clicou: Recesso lateral direito, L5-S1. Por aqui passa a raiz que desce. Neste nível, a raiz de S1.'||e1.res||!e2.hid||/Fora do ponto marcado/.test(await p.evaluate(()=>document.body.innerText))) bad.push('ressonância RSNA fora do teste: '+JSON.stringify([e1,e2]));
+ await p.evaluate(()=>{__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.teste')); __spine.setMode('anat');}); // volta ao estado de antes (Anatomia, passo do teste)
  await p.setViewportSize({width:1000,height:800}); await p.waitForTimeout(200); if(!await cabeModos(1)) bad.push('as 4 partes não cabem na trilha em 1000');
  console.log('rm errs',p.errs); if(p.errs.length) bad.push('erros na ressonância (desktop)');
  await p.close();
@@ -137,6 +164,9 @@ async function page(b,W,H,block,conta){
  const cdp=await p.context().newCDPSession(p), tap=async xy=>{await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:xy.x,y:xy.y}]}); await p.waitForTimeout(80); await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await p.waitForTimeout(600);};
  await tap(await rmXY(p,await p.evaluate(()=>RM_EXAMS.spider5.at[202]),2));
  const m390=await p.evaluate(()=>({k:__spine.RM.pick&&__spine.RM.pick.key,tiles:__spine.RM.nv.screenSlices.length,lat:document.documentElement.scrollWidth<=innerWidth,inset:getComputedStyle(document.querySelector('#view')).display,ver:!!document.querySelector('#rm3d').offsetParent,altura:Math.round(document.querySelector('.rmcv').getBoundingClientRect().height)}));
+ // passo sem axial (o primeiro): sem o botão Axial; no teste da trilha de base, com axial, o botão troca o quadro
+ const semAx390=await p.evaluate(()=>!document.querySelector('[data-pane="ax"]').offsetParent); if(!semAx390) bad.push('ressonância em 390: botão Axial num passo sem axial');
+ await p.evaluate(()=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.teste'))); await p.waitForTimeout(300);
  await p.click('[data-pane="ax"]'); await p.waitForTimeout(300);
  const a390=await p.evaluate(()=>({t:__spine.RM.nv.screenSlices.map(s=>s.axCorSag).join(),lat:document.documentElement.scrollWidth<=innerWidth}));
  // RSNA no celular: com Axial, o canvas do axial cobre o quadro inteiro; com Sagital, some

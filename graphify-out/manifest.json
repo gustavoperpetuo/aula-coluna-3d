@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793303025.0091555,
-    "seen": 1793304284.4295294,
-    "ast_hash": "7514bed4f7688ee9d7196c0e1c080ef8",
+    "mtime": 1793309305.0994215,
+    "seen": 1793309717.8163824,
+    "ast_hash": "67765b5d94dc7cafa19959f052fcdff0",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793303406.3431194,
-    "seen": 1793304284.4295523,
-    "ast_hash": "65f8ea3e0a8d1afd4d1448d33fc33383",
+    "mtime": 1793309490.4552038,
+    "seen": 1793309717.816411,
+    "ast_hash": "c8e4219116d6c9fedd778e7d59dc1b91",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793302931.4110284,
-    "seen": 1793304284.4295628,
-    "ast_hash": "584350140ffbfdcd4729ad836933a97b",
+    "mtime": 1793309305.1002715,
+    "seen": 1793309717.8164248,
+    "ast_hash": "81a35bd55f90490cdf388a32dfa6ed09",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -228,9 +228,9 @@
     "semantic_hash": ""
   },
   "src/rm.js": {
-    "mtime": 1793304935.4409723,
-    "seen": 1793305564.4241383,
-    "ast_hash": "d608701f061b9808614712134c349837",
+    "mtime": 1793309320.7006047,
+    "seen": 1793309717.8163943,
+    "ast_hash": "78f84a018eba92b7d5f04f243b74e1e6",
     "semantic_hash": ""
   },
   "docs/ressonancia.md": {

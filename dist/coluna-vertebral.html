@@ -151,6 +151,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .pcap { position: absolute; top: 2px; z-index: 1; font-size: 14px; font-weight: 600; color: #D9DCE1; pointer-events: none; }
 #cap-sag { left: 12px; }
 #cap-ax { left: calc(60% + 12px); }
+.rmview.noax #cap-ax, .rmview.noax .rmpane { display: none; }
 .rmtag { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 1; padding: 5px 8px; border-radius: 5px; background: rgba(255,255,255,.94); color: var(--ink); }
 .rmmsg { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; text-align: center; color: #D9DCE1; pointer-events: none; }
 .rmmsg:empty { display: none; }
@@ -3395,7 +3396,9 @@ Object.assign(INFO, {
 //    sagital T2, subD e subE os recessos (subarticulares) direito e esquerdo no axial, meio o meio dos dois recessos (o canal no axial);
 //    A origem de cada estudo foi deslocada para o canal em L4-L5. gr: graduação da RSNA (train.csv) dos pontos que não são normais ou leves.
 // Passos: k id curto (a marca de visto é '<trilha>.<k>', estável), t título, ex exame, seq série (t2 se faltar), at ponto da mira,
-// ver ['dz', id] ou ['anat', título do passo de Anatomia] (sem ver vale o da trilha), test { ok: rótulos ou pontos certos, hint },
+// ver ['dz', id] ou ['anat', título do passo de Anatomia] (sem ver vale o da trilha), test { ok: rótulos ou pontos certos, hint, sag: só o sagital responde },
+// axial: true mostra o axial montado do SPIDER (borrado; só no passo que fala dele, senão o sagital ocupa o quadro todo; a RSNA sempre mostra o axial),
+// contornos: true liga os Contornos ao abrir o passo (só nos de dar nome ou contar; o padrão é desligado, para ver o brilho real),
 // p parágrafos no formato de docs/estilo-ressonancia.md ('- ' item de lista, **negrito**).
 const RM_NIIVUE = { src: 'https://cdn.jsdelivr.net/npm/@niivue/niivue@0.69.0/dist/niivue.umd.js', sri: 'sha384-Oyof6MyzZMH1tvMLLYFRQLWZtk9Y/WbiL3wkdXzwaCS82xRXXy9U+kRrkDDAVq6E' };
 const RM_G = { modic: 0, up: 1, low: 2, list: 3, hern: 4, narrow: 5, bulge: 6, pf: 7 };
@@ -3463,7 +3466,7 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '"Disco com hipossinal" quer dizer disco mais escuro que o normal.',
           'Na próxima ressonância, procure primeiro o que está claro e o que está escuro, antes de dar nome às estruturas.'] },
         { k: 'orient', t: 'Orientação no sagital', ex: 'spider5', at: 203, ver: ['anat', 'Planos e termos de orientação'], p: [
-          'Ache as letras cinza na borda do quadro Sagital: uma no alto e outra à esquerda.',
+          'Ache as letras brancas na borda do quadro Sagital: uma no alto e outra à esquerda.',
           'Elas dizem onde fica cada lado do paciente, com os termos que você viu em Anatomia, no passo "Planos e termos de orientação":',
           '- **S:** superior, a cabeça. O lado oposto é I, inferior.',
           '- **P:** posterior, as costas. O lado oposto é A, anterior, a frente.',
@@ -3482,9 +3485,10 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           'Para saber qual está na tela, olhe o líquor. Escuro é T1, claro é T2.',
           'O T2 mostra a água: disco, líquor e edema. O T1 mostra a gordura e a medula óssea.',
           'Na próxima ressonância, procure o líquor primeiro para saber se está no T1 ou no T2.'] },
-        { k: 'contar', t: 'Contar as vértebras', ex: 'spider5', at: 201, ver: ['anat', 'Sacro e cóccix'], p: [
+        { k: 'contar', t: 'Contar as vértebras', ex: 'spider5', at: 203, contornos: true, ver: ['anat', 'Sacro e cóccix'], p: [
           'Clique no primeiro disco acima do sacro, o osso grande e sem cor na parte de baixo.',
-          'As cores são os Contornos, que você liga e desliga no alto. Foram feitas pelo banco de imagens SPIDER, que não marca o sacro.',
+          'Os contornos coloridos marcam cada vértebra e cada disco. Você os liga e desliga em Contornos, no alto. Foram feitos pelo banco de imagens SPIDER, que não marca o sacro.',
+          'O exame termina no meio do sacro, por isso só a parte de cima dele aparece.',
           'Para dar nome aos níveis, **conte de baixo para cima**, a partir do sacro:',
           '- **L5-S1:** o primeiro disco acima do sacro.',
           '- **L5:** a vértebra logo acima dele.',
@@ -3499,14 +3503,14 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **Placas terminais:** a borda de cima e a de baixo do corpo, lisas.',
           '- **Núcleo do disco:** hipersinal, claro, no meio do disco.',
           '- **Anel fibroso:** hipossinal, escuro, em volta do núcleo.',
-          'Compare a altura dos discos. Aqui o radiologista não marcou nenhum disco mais baixo, e o núcleo de todos continua claro no T2.',
+          'Compare a altura dos discos. Aqui o radiologista não marcou nenhum disco mais baixo, e o núcleo de todos é mais claro que o anel no T2.',
           'Ele marcou só um abaulamento nos três discos de baixo, que a trilha Hérnia de disco lombar explica.',
           'Na próxima ressonância, procure em cada disco o núcleo claro no T2 e compare a altura com a dos vizinhos.'] },
         { k: 'canal', t: 'Canal, cone medular e cauda equina', ex: 'spider5', at: 100, ver: ['anat', 'Cone medular e cauda equina'], p: [
-          'Clique na faixa clara atrás dos corpos vertebrais. No 3D acende o saco dural.',
-          'É o **canal vertebral**, que você viu em Anatomia. No T2 o líquor tem hipersinal, por isso o canal fica claro.',
-          '- **Raízes da cauda equina:** fios escuros que descem dentro do líquor.',
-          '- **Cone medular:** a ponta da medula, cinza, no alto da imagem. No adulto fica perto de L1-L2.',
+          'Clique na faixa clara atrás dos corpos vertebrais.',
+          'É o **canal vertebral**, que você viu em Anatomia. No 3D acende o saco dural, a bolsa de líquor dentro do canal. No T2 o líquor tem hipersinal, por isso o canal fica claro.',
+          '- **Cone medular:** a ponta da medula, uma faixa cinza dentro do líquor, no alto da imagem. No adulto termina perto de L1-L2.',
+          '- **Raízes da cauda equina:** fios escuros e finos que descem dentro do líquor, abaixo do cone.',
           'Troque para o T1: o líquor escurece e as raízes quase somem. Por isso o canal se lê no T2.',
           'Na próxima ressonância, procure onde a medula termina e se as raízes descem soltas no líquor.'] },
         { k: 'axial', t: 'O corte axial', ex: 'rsna491250714', at: 'meio.L4-L5', ver: ['anat', 'Tudo em um corte: L4-L5'], p: [
@@ -3521,13 +3525,17 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **Facetas:** as articulações atrás, uma de cada lado.',
           'Na próxima ressonância, procure no sagital a linha que marca a altura do axial.'] },
         { k: 'raiz', t: 'Raízes no axial', ex: 'rsna491250714', at: 'meio.L5-S1', ver: ['anat', 'Qual raiz a hérnia comprime'], p: [
-          'O axial abriu no disco L5-S1. Procure um ponto escuro de cada lado, logo atrás do disco e na frente das facetas. Clique em cada um.',
-          'São as **raízes de S1**, que você viu em Anatomia, no passo "Qual raiz a hérnia comprime". Elas descem no recesso lateral, o canto do canal entre o disco e a faceta.',
-          'No T2 a raiz é escura, e o líquor e a gordura em volta dela são claros. Por isso a raiz se destaca.',
-          'Em vez dos Contornos, este exame traz pontos marcados pelo radiologista, como o recesso de cada lado em cada disco. Ao clicar perto de um deles, a caixa abaixo mostra o nome.',
+          'O axial abriu no disco L5-S1. Olhe os dois cantos da frente do saco dural, logo atrás do disco, um de cada lado. Clique em cada canto.',
+          'Cada canto é um **recesso lateral**, entre o disco e a faceta. Por ele desce a raiz de S1, que você viu em Anatomia, no passo "Qual raiz a hérnia comprime".',
+          'No T2 a raiz é escura, e o líquor em volta dela é claro.',
+          '- **À direita da tela:** o lado esquerdo do paciente. A raiz é um ponto escuro com um anel claro de líquor em volta.',
+          '- **À esquerda da tela:** o lado direito. A raiz é um círculo pequeno de borda escura, menos nítido.',
+          '- **No meio do saco:** as outras raízes da cauda equina, pontos escuros dentro do líquor claro.',
+          'Em vez dos Contornos, este exame traz pontos marcados pelo radiologista. Ao clicar perto de um recesso, a caixa abaixo mostra o nome dele e a raiz que passa ali.',
           'Na próxima ressonância, procure as raízes nos dois recessos e compare um lado com o outro.'] },
-        { k: 'teste', t: 'Teste: o disco L4-L5', ex: 'spider5', at: 203, test: { ok: [202], hint: 'Conte os discos de baixo para cima a partir do sacro: L5-S1 é o primeiro e L4-L5 é o segundo.' }, p: [
-          'Clique no disco L4-L5, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: o disco L4-L5', ex: 'spider5', at: 203, axial: true, test: { ok: [202], sag: true, hint: 'Conte os discos de baixo para cima a partir do sacro: L5-S1 é o primeiro e L4-L5 é o segundo.' }, p: [
+          'Clique no disco L4-L5 no sagital. A resposta aparece logo abaixo.',
+          'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
           'Na próxima ressonância, procure o sacro e conte de baixo para cima.'] }
       ]
     },
@@ -3564,8 +3572,8 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **L5-S1:** estreitamento, sem alteração das placas.',
           'O L4-L5 tem também Modic 2, assunto da trilha seguinte.',
           'Na próxima ressonância, procure a altura de cada disco e a borda das placas acima e abaixo dele.'] },
-        { k: 'teste', t: 'Teste: o disco Pfirrmann 5', ex: 'spider81', at: 203, test: { ok: rmDiscs(g81, 'pf', 5), hint: 'O grau 5 é o disco preto e colapsado. Compare a altura de cada disco com a dos vizinhos.' }, p: [
-          'Clique no disco com Pfirrmann 5, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: o disco Pfirrmann 5', ex: 'spider81', at: 203, test: { sag: true, ok: rmDiscs(g81, 'pf', 5), hint: 'O grau 5 é o disco preto e colapsado. Compare a altura de cada disco com a dos vizinhos.' }, p: [
+          'Clique no disco com Pfirrmann 5 no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure o disco preto e baixo e dê o nível contando a partir do sacro.'] }
       ]
     },
@@ -3573,7 +3581,7 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       // Doenças não tem item próprio para Modic: ele é ensinado em Discopatia degenerativa, para onde a trilha volta
       id: 'modic', g: 1, name: 'Discopatia degenerativa: Modic', ver: ['dz', 'ddd'], steps: [
         { k: 'medula', t: 'Medula óssea no T1', ex: 'spider10', seq: 't1', at: 202, ver: ['anat', 'Corpo vertebral'], p: [
-          'O quadro abriu no T1. Toque em Contornos para tirar as cores. Depois clique no corpo de L4 e olhe a faixa de osso logo acima e logo abaixo do disco L4-L5.',
+          'O quadro abriu no T1. Clique no corpo de L4 e olhe a faixa de osso logo acima e logo abaixo do disco L4-L5.',
           'Em Doenças, Discopatia degenerativa, você leu que a medula óssea junto às placas muda: são as alterações de Modic. Antes delas, veja a medula no T1.',
           'Em Anatomia você viu que o corpo vertebral tem medula óssea por dentro. No T1, a **medula óssea** do adulto tem gordura e fica clara.',
           'No normal, o corpo inteiro tem o mesmo brilho, como no Exame normal. Faixas de outro brilho junto às placas são uma alteração da medula, assunto do próximo passo.',
@@ -3600,14 +3608,14 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **L4-L5:** Modic 2.',
           'Neste exame a coluna se desvia para o lado. Por isso o corte sagital que passa por L2-L3 não mostra L5-S1.',
           'Na próxima ressonância, procure no T1 se a faixa junto à placa é clara ou escura. Clara é gordura; Escura pede o T2.'] },
-        { k: 'teste', t: 'Teste: o disco com Modic 1', ex: 'spider50', seq: 't1', at: 205, test: { ok: rmDiscs(g50, 'modic', 1), hint: 'No Modic 1 a faixa junto às placas é escura no T1 e clara no T2. Compare cada disco nas duas sequências.' }, p: [
-          'Clique no disco com Modic 1, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: o disco com Modic 1', ex: 'spider50', seq: 't1', at: 205, test: { sag: true, ok: rmDiscs(g50, 'modic', 1), hint: 'No Modic 1 a faixa junto às placas é escura no T1 e clara no T2. Compare cada disco nas duas sequências.' }, p: [
+          'Clique no disco com Modic 1 no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure o Modic no T1 e confirme o tipo no T2.'] }
       ]
     },
     {
       id: 'hernia', g: 1, ...dz('hernia'), steps: [
-        { k: 'abaul', t: 'Abaulamento e hérnia', ex: 'spider45', at: 202, p: [
+        { k: 'abaul', t: 'Abaulamento e hérnia', ex: 'spider45', at: 202, axial: true, p: [
           'Clique no disco L4-L5 e olhe a borda de trás dele.',
           'Em Doenças, Hérnia de disco lombar, você viu no 3D a hérnia e suas formas. A ressonância mostra também o **abaulamento**, que é outra coisa. A diferença está na extensão (Fardon, Spine J 2014):',
           '- **Abaulamento:** o disco passa um pouco da borda das vértebras em mais de um quarto da volta dele.',
@@ -3618,13 +3626,13 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **L2-L3:** abaulamento.',
           '- **L5-S1:** hérnia, no próximo passo.',
           'Na próxima ressonância, procure se o disco sai por igual ou num ponto só.'] },
-        { k: 'sag', t: 'A hérnia L5-S1 no sagital', ex: 'spider45', at: 201, p: [
+        { k: 'sag', t: 'A hérnia L5-S1 no sagital', ex: 'spider45', at: 201, axial: true, p: [
           'Clique no disco L5-S1, o último acima do sacro.',
           'A hérnia que você viu no 3D aparece assim no T2: o material do disco é cinza e avança para trás, em direção ao líquor claro do saco dural. Esse avanço é a **hérnia**.',
           'No corte do meio esta hérnia é discreta. Clique no quadro Axial à direita ou à esquerda do saco dural: o sagital passa para aquele lado.',
           '- **L5-S1:** hérnia, estreitamento, alteração das placas, Pfirrmann 3.',
           'Na próxima ressonância, procure a hérnia também nos cortes sagitais dos lados, não só no do meio.'] },
-        { k: 'axial', t: 'A hérnia no axial: T2 de alta resolução', ex: 'spider45', seq: 'space', at: 201, p: [
+        { k: 'axial', t: 'A hérnia no axial: T2 de alta resolução', ex: 'spider45', seq: 'space', at: 201, axial: true, p: [
           'O quadro abriu no T2 alta resolução. Clique no disco L5-S1 no sagital. Depois clique um pouco acima e um pouco abaixo para percorrer o disco no Axial.',
           'Este banco de imagens só tem cortes sagitais. O axial é montado a partir deles.',
           'Esta série se chama **SPACE**: um T2 feito em cortes de 0,9 mm, contra 3,3 mm do T2 comum deste exame. Com cortes finos, o axial montado sai nítido.',
@@ -3632,14 +3640,15 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           'O axial montado é reto, e o disco L5-S1 é inclinado. Um corte só pega parte do disco e parte do osso de L5, por isso percorra o disco acima e abaixo.',
           'Esta série tem cerca de 10 MB e pode demorar a abrir no celular.',
           'Na próxima ressonância, procure a hérnia no axial e diga o lado e o que ela toca.'] },
-        { k: 'l45', t: 'Hérnia L4-L5 em outro paciente', ex: 'spider142', seq: 'space', at: 202, p: [
+        { k: 'l45', t: 'Hérnia L4-L5 em outro paciente', ex: 'spider142', seq: 'space', at: 202, axial: true, p: [
           'O quadro abriu no T2 alta resolução de outro paciente, no disco L4-L5. Clique um pouco acima e um pouco abaixo do disco para percorrê-lo no Axial.',
           'Aqui a **hérnia** está em L4-L5, o nível que você viu no 3D. No axial, o disco avança para o canal e o saco dural fica apertado.',
           '- **L4-L5:** hérnia, listese, alteração da placa acima do disco, Pfirrmann 4.',
           'A listese aparece na trilha Espondilolistese degenerativa.',
           'Na próxima ressonância, procure no axial quanto do saco dural a hérnia ocupa.'] },
-        { k: 'teste', t: 'Teste: o disco com hérnia', ex: 'spider142', at: 203, test: { ok: rmDiscs(g142, 'hern'), hint: 'Só um nível deste exame foi graduado com hérnia. Procure o disco que avança para o saco dural e confira o nível contando a partir do sacro.' }, p: [
-          'Clique no disco com hérnia, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: o disco com hérnia', ex: 'spider142', at: 203, axial: true, test: { sag: true, ok: rmDiscs(g142, 'hern'), hint: 'Só um nível deste exame foi graduado com hérnia. Procure o disco que avança para o saco dural e confira o nível contando a partir do sacro.' }, p: [
+          'Clique no disco com hérnia no sagital. A resposta aparece logo abaixo.',
+          'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
           'Na próxima ressonância, procure a hérnia no sagital e confirme no axial.'] }
       ]
     },
@@ -3697,8 +3706,8 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           'Este é o paciente da hérnia L4-L5. Ele também tem **listese** nesse nível, o mais comum na listese degenerativa, como você viu em Doenças.',
           '- **L4-L5:** listese, hérnia, alteração da placa acima do disco, Pfirrmann 4.',
           'Na próxima ressonância, procure a listese primeiro em L4-L5, o nível mais comum.'] },
-        { k: 'teste', t: 'Teste: o nível da listese', ex: 'spider200', at: 203, test: { ok: rmDiscs(g200, 'list'), hint: 'Procure o degrau na borda de trás dos corpos e clique no disco desse nível.' }, p: [
-          'Clique no disco do nível com listese, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: o nível da listese', ex: 'spider200', at: 203, test: { sag: true, ok: rmDiscs(g200, 'list'), hint: 'Procure o degrau na borda de trás dos corpos e clique no disco desse nível.' }, p: [
+          'Clique no disco do nível com listese no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure o degrau e dê o nível pelo disco logo abaixo da vértebra que escorregou.'] }
       ]
     },
@@ -3706,7 +3715,7 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       // Doenças não tem item próprio: o nódulo aparece no 3D da Cifose de Scheuermann, com uma linha de explicação no cartão do rótulo
       id: 'schmorl', g: 1, name: 'Nódulo de Schmorl', ver: ['dz', 'scheuer'], steps: [
         { k: 'entalhe', t: 'O nódulo no sagital', ex: 'spider136', seq: 'space', at: 206, p: [
-          'O quadro abriu no T2 alta resolução, no disco T12-L1. Toque em Contornos para tirar as cores e olhe a placa de cima e a de baixo desse disco.',
+          'O quadro abriu no T2 alta resolução, no disco T12-L1. Olhe a placa de cima e a de baixo desse disco.',
           'Em Doenças, Cifose de Scheuermann, o 3D marca o **nódulo de Schmorl**: material do disco que atravessa a placa terminal e entra no corpo vertebral.',
           'No sagital ele aparece como um entalhe na placa. O disco entra no osso, e a borda da placa deixa de ser uma linha reta.',
           'Neste exame o maior está em T12-L1.',
@@ -3719,8 +3728,8 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           '- **T11-T12:** alteração das placas, Pfirrmann 3.',
           'Neles não há Modic, estreitamento, hérnia nem abaulamento.',
           'Na próxima ressonância, procure se o entalhe vem sozinho ou junto com Modic e disco mais baixo.'] },
-        { k: 'teste', t: 'Teste: um disco com nódulo', ex: 'spider136', at: 202, test: { ok: g136.map((r, i) => (r[RM_G.up] || r[RM_G.low]) && !r.slice(3, 7).some(Boolean) && !r[RM_G.modic] ? 201 + i : 0).filter(Boolean), hint: 'Os nódulos deste exame ficam nos discos do alto, perto de T12. Procure o entalhe na placa.' }, p: [
-          'Clique num disco com nódulo de Schmorl nas placas, no sagital ou no axial. A resposta aparece logo abaixo.',
+        { k: 'teste', t: 'Teste: um disco com nódulo', ex: 'spider136', at: 202, test: { sag: true, ok: g136.map((r, i) => (r[RM_G.up] || r[RM_G.low]) && !r.slice(3, 7).some(Boolean) && !r[RM_G.modic] ? 201 + i : 0).filter(Boolean), hint: 'Os nódulos deste exame ficam nos discos do alto, perto de T12. Procure o entalhe na placa.' }, p: [
+          'Clique num disco com nódulo de Schmorl nas placas, no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure entalhes nas placas de todos os discos, não só nos de baixo.'] }
       ]
     }
@@ -4539,7 +4548,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido da RSNA, num segundo canvas (#rmax),
   // porque numa instância só a NiiVue reamostraria o axial na grade do sagital.
   // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial da RSNA; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
-  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: true, names: false, pane: 'sag', pick: null, res: null };
+  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null };
   const rmEx = () => RM_STEPS[S.rmStep].ex;
   // só os exames da RSNA têm axial próprio, e nenhum deles tem máscara (no lugar dela, os pontos dos radiologistas)
   const rmRsna = ex => !!ex.ax;
@@ -4554,6 +4563,8 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   // pontos da RSNA (src/rm.js, at): 'canal.L4-L5' -> 'Canal central, L4-L5'
   const RM_LM = { canal: 'Canal central', meio: 'Canal central', subD: 'Recesso lateral direito', subE: 'Recesso lateral esquerdo' };
   const rmLmName = id => RM_LM[id.split('.')[0]] + ', ' + id.split('.')[1];
+  // frase de ensino do ponto, nos passos que não são teste; no recesso desce a raiz da vértebra de baixo (L5-S1: S1)
+  const rmLmDica = id => id.startsWith('sub') ? 'Por aqui passa a raiz que desce. Neste nível, a raiz de ' + id.split('-')[1] + '.' : 'Aqui fica o saco dural, com o líquor claro e as raízes como pontos escuros.';
   const RM_TOL = 6; // mm: o clique vale para o ponto marcado a até esta distância, no plano do quadro clicado
   // ponto marcado mais perto do clique, no plano do quadro e a até um corte dele; null se nenhum está a até RM_TOL
   function rmLm(ex, nv, d) {
@@ -4582,14 +4593,22 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
   // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout).
   // Convenção radiológica: no axial a esquerda do paciente fica à direita da tela, como nos exames; o sagital não muda
-  const RM_OPTS = { backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
+  const RM_OPTS = { fontColor: [1, 1, 1, 1], fontMinPx: 20, backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
+  // letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
+  function rmOutline(nv) {
+    const dt = nv.drawText.bind(nv);
+    nv.drawText = (xy, s, sc = 1, c = null) => {
+      if (!c) { const k = 2 * (nv.uiData.dpr || 1); [[-k, 0], [k, 0], [0, -k], [0, k]].forEach(([x, y]) => dt([xy[0] + x, xy[1] + y], s, sc, [0, 0, 0, 1])); }
+      dt(xy, s, sc, c);
+    };
+  }
   function rmInit() {
     return RM.ready || (RM.ready = new Promise((ok, no) => {
       const s = document.createElement('script'); s.src = RM_NIIVUE.src; s.integrity = RM_NIIVUE.sri; s.crossOrigin = 'anonymous';
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
       const nv = new niivue.Niivue(RM_OPTS);
-      await nv.attachToCanvas(rmCv);
+      await nv.attachToCanvas(rmCv); rmOutline(nv);
       // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
       const interp = nv.updateInterpolation.bind(nv);
       nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
@@ -4616,7 +4635,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   function rmAxInit() {
     return RM.axReady || (RM.axReady = rmInit().then(async () => {
       const a = new niivue.Niivue(RM_OPTS);
-      await a.attachToCanvas(rmAxCv);
+      await a.attachToCanvas(rmAxCv); rmOutline(a);
       a.onLocationChange = d => rmPicked(d, a); RM.nvAx = a; rmLayout(); return a;
     }).catch(e => { RM.axReady = null; throw e; }));
   }
@@ -4657,12 +4676,13 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   }
   // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez.
   // RSNA: o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial
+  // SPIDER: o axial montado (borrado) só aparece no passo que o usa (st.axial); na RSNA o axial é adquirido e aparece sempre
   function rmLayout() {
-    const one = mobileQ.matches, rs = rmRsna(rmEx());
-    rmView.classList.toggle('ax', one && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs);
+    const one = mobileQ.matches, rs = rmRsna(rmEx()), ax = rs || !!RM_STEPS[S.rmStep].st.axial;
+    rmView.classList.toggle('ax', one && ax && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs); rmView.classList.toggle('noax', !ax);
     // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
     const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight)), ta = Math.min(0.1, 26 / Math.max(1, rmAxCv.clientHeight)), sag = { sliceType: 2, position: [0, t, 0.6, 1 - t] };
-    if (RM.nv) RM.nv.setCustomLayout(one ? [{ sliceType: RM.pane === 'ax' && !rs ? 0 : 2, position: [0, t, 1, 1 - t] }] : rs ? [sag] : [sag, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
+    if (RM.nv) RM.nv.setCustomLayout(one || !ax ? [{ sliceType: one && ax && !rs && RM.pane === 'ax' ? 0 : 2, position: [0, t, 1, 1 - t] }] : rs ? [sag] : [sag, { sliceType: 0, position: [0.6, t, 0.4, 0.62 - t] }]);
     if (RM.nvAx) RM.nvAx.setCustomLayout([{ sliceType: 0, position: [0, ta, 1, 1 - ta] }]);
   }
   mobileQ.addEventListener && mobileQ.addEventListener('change', rmLayout);
@@ -4678,43 +4698,48 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     if (rmRsna(ex)) {
       // o outro quadro vai ao ponto clicado: o syncWith da NiiVue só propaga com o canvas em foco
       const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm);
-      const id = rmLm(ex, nv, d); RM.pick = { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id }; rmSel(null);
+      // fora do teste, só o clique perto de um ponto marcado abre a caixa, com a frase de ensino
+      const id = rmLm(ex, nv, d); RM.pick = st.test ? { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id } : id && { nome: rmLmName(id), lm: id, dica: rmLmDica(id) }; rmSel(null);
       if (st.test) RM.res = id || '';
     } else {
       const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
       RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
-      if (st.test) RM.res = v;
+      // test.sag: só o sagital responde (o axial montado mostra o disco do corte da linha); clique no axial apaga a resposta
+      if (st.test) RM.res = st.test.sag && d.axCorSag === 0 ? null : v;
     }
     rmPanel(true);
   }
   // graduação do SPIDER de um disco do exame, para a resposta do teste
-  function rmGrade(ex, v) {
+  // base: trilha Exame normal, que ainda não ensinou o Pfirrmann (vem na trilha Discopatia degenerativa)
+  function rmGrade(ex, v, base) {
     const r = v > 200 && ex.g[v - 201]; if (!r) return '';
-    const t = ['Pfirrmann ' + r[RM_G.pf]]; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
+    const t = []; if (r[RM_G.modic]) t.push('Modic ' + r[RM_G.modic]);
     [['list', 'listese'], ['hern', 'hérnia'], ['narrow', 'estreitamento'], ['bulge', 'abaulamento']].forEach(([k, n]) => { if (r[RM_G[k]]) t.push(n); });
     if (r[RM_G.up] || r[RM_G.low]) t.push('alteração das placas ou nódulo de Schmorl');
-    return ' Graduação do SPIDER neste disco: ' + t.join(', ') + '.';
+    return ' Graduação do SPIDER neste disco: ' + (base ? 'disco normal' + (t.length ? ', com ' + t.join(', ') : '') : ['Pfirrmann ' + r[RM_G.pf]].concat(t).join(', ')) + '.';
   }
   function rmPanel(announce) {
-    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
+    const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st, t } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
     box.hidden = !p;
     const lit = has3D && p && p.key; // só os rótulos do SPIDER têm estrutura no 3D
     if (p) {
-      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
+      box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${p.dica ? ' ' + esc(p.dica) : ''}${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
       if (lit) $('#rmopen').onclick = rmOpen3D;
     }
-    let msg = p ? 'Você clicou: ' + p.nome + '.' : '';
+    let msg = p ? 'Você clicou: ' + p.nome + '.' + (p.dica ? ' ' + p.dica : '') : '';
     if (res) {
       res.hidden = RM.res === null;
       if (RM.res !== null) {
         const ok = st.test.ok.includes(RM.res), fora = !p || (rs && !p.lm);
         res.className = 'rmres ' + (ok ? 'ok' : 'no');
-        res.textContent = ok ? 'Certo. ' + p.nome + '.' + (rs ? ' Graduação da RSNA neste ponto: ' + (ex.gr[RM.res] || 'normal ou leve') + '.' : rmGrade(ex, RM.res))
+        res.textContent = ok ? 'Certo. ' + p.nome + '.' + (rs ? ' Graduação da RSNA neste ponto: ' + (ex.gr[RM.res] || 'normal ou leve') + '.' : rmGrade(ex, RM.res, t.id === 'base'))
           : (fora ? (rs ? 'Não. O clique ficou fora dos pontos marcados pelo radiologista. ' : 'Não. Esse ponto fica fora das estruturas marcadas. ') : 'Não. ' + p.nome + ' não é a resposta. ') + st.test.hint;
         msg = res.textContent;
       }
     }
     if (announce && msg) say(msg);
+    // caixa abaixo da dobra do painel: rola até ela no clique
+    if (announce) { const el = p ? box : res && !res.hidden && res; if (el) el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); }
   }
   // Abrir no 3D grande: modo Anatomia com a mesma estrutura selecionada e a câmera nela
   function rmOpen3D() {
@@ -4792,10 +4817,14 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     say(`${t.name}. ${st.t}.`);
   }
   // passo novo: série e mira do passo; exame novo apaga o que foi clicado
-  function rmStep() { const { st, ex } = RM_STEPS[S.rmStep]; RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow(); }
+  // Contornos começam desligados, para ver o brilho real; st.contornos os liga nos passos de dar nome ou contar
+  function rmStep() {
+    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0);
+    RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow();
+  }
   function goRm(k, moveFocus) {
     if (k < 0 || k >= RM_STEPS.length) return;
-    if (RM_STEPS[k].ex !== RM_STEPS[S.rmStep].ex) { RM.pick = null; rmSel(null); }
+    RM.pick = null; rmSel(null); // passo novo abre com a caixa Você clicou vazia
     S.rmStep = k;
     if (S.mode !== 'rm') return setMode('rm', moveFocus);
     rmStep(); renderRm(moveFocus);

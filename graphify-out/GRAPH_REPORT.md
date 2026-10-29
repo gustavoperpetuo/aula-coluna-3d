@@ -1,17 +1,17 @@
 # Graph Report - aula-coluna-3d  (2026-10-29)
 
 ## Corpus Check
-- 32 files · ~113,765 words
+- 32 files · ~114,698 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 305 nodes · 513 edges · 23 communities (16 shown, 7 thin omitted)
+- 306 nodes · 516 edges · 23 communities (16 shown, 7 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2277968c`
+- Built from commit: `9fcb347c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -122,8 +122,8 @@ Cohesion: 0.29
 Nodes (7): RM_CRED, [RM_EXAMS, RM_TRACKS], RM_G, RM_GROUPS, RM_IDS, RM_NIIVUE, rmDiscs()
 
 ### Community 20 - "rmPicked"
-Cohesion: 0.20
-Nodes (15): rmAim(), rmApply(), rmAxInit(), rmBarRender(), rmGrade(), rmInit(), rmLayout(), rmLm() (+7 more)
+Cohesion: 0.19
+Nodes (16): rmAim(), rmApply(), rmAxInit(), rmBarRender(), rmGrade(), rmInit(), rmLayout(), rmLm() (+8 more)
 
 ### Community 22 - "Como escrever a Ressonância"
 Cohesion: 0.50
@@ -144,7 +144,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `applyConfig` be split into smaller, more focused modules?**
   _Cohesion score 0.10628019323671498 - nodes in this community are weakly interconnected._
 - **Why does `sync()` connect `app.js` to `applyConfig`, `Ressonância: spike de viabilidade (fase 1)`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
 - **Should `playwright` be split into smaller, more focused modules?**
   _Cohesion score 0.06072874493927125 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
