@@ -269,6 +269,8 @@ Ficam em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d
 
 ### RSNA LumbarDISC: axial nativo
 
+Atualização de 29/10/2026: o acesso veio depois, por um link pré-assinado. Os casos estão na seção "RSNA: casos com axial nativo".
+
 O dataset RSNA-LSDD (agora LumbarDISC) tem axial T2 adquirido, não reconstruído. Para baixar 2 ou 3 estudos sem o login do Gustavo, foram testadas três vias, e as três pedem conta:
 
 - **Bucket AWS** `lumbar-spine-degenerative-classification` (us-west-2): o registro do AWS Open Data o marca como "Controlled Access", via MIRA. Pedidos sem credencial, de listagem ou de arquivo, voltam 403.
@@ -284,6 +286,181 @@ Então a comparação do axial nativo com a reconstrução do SPIDER não foi fe
 Se a competição não aceitar mais inscrição, a via é o MIRA: entrar, pedir o dataset 6 e aceitar os termos. Não se sabe se o MIRA dá acesso arquivo por arquivo ou só ao zip inteiro.
 
 Crédito: a página do MIRA dá o DOI 10.1148/dataset.lsdd.2025. O artigo é Richards TJ et al., The RSNA Lumbar Degenerative Imaging Spine Classification (LumbarDISC) Dataset, Radiol Artif Intell 2026;8(2):e250480, doi:10.1148/ryai.250480. O texto de licença do registro AWS cita, por erro de cópia, o dataset de mamografia RSNA-SMBC.
+
+## RSNA: casos com axial nativo
+
+Feito em 29/10/2026. Três estudos do RSNA-LSDD (LumbarDISC) com axial T2 adquirido, não reconstruído, convertidos para NIfTI em `dist/rm/rsna-<estudo>/`. Nenhum arquivo de `src/` ou `tests/` mudou.
+
+Crédito a mostrar: "RSNA Lumbar Spine Degenerative Classification Dataset (RSNA-LSDD / LumbarDISC), Radiological Society of North America", DOI https://doi.org/10.1148/dataset.lsdd.2025.
+
+### Acesso e conteúdo do zip
+
+- O acesso foi por um link pré-assinado do S3 para `rsna-2024-lsdd.zip`, válido por 7 dias a partir de 29/10/2026 19:03 UTC, que aceita Range (resposta 206). O link é uma credencial: fica só na pasta de rascunho da sessão, nunca no repositório. Com `remotezip` se lê o índice do zip e só os membros pedidos. Foram baixados os 3 CSV de rótulos (5,2 MiB), o cabeçalho de 3.265 DICOM (uns 25 KB cada, por Range, descomprimindo só o começo), 171 DICOM de prévia (40,5 MiB) e as 9 séries escolhidas (263 DICOM, 35,1 MiB). O zip inteiro não foi baixado.
+- O zip tem 155.596 membros, com 35,3 GB descomprimidos (29,8 GB comprimidos). Tudo fica sob `rsna-2024-lumbar-spine-degenerative-classification/`:
+  - `train.csv`: 1975 estudos. Colunas `study_id` e 25 graduações, de `spinal_canal_stenosis_l1_l2` a `right_subarticular_stenosis_l5_s1`, com os valores `Normal/Mild`, `Moderate` e `Severe`.
+  - `train_series_descriptions.csv`: colunas `study_id, series_id, series_description`. São 1980 séries `Sagittal T1`, 1974 `Sagittal T2/STIR` e 2340 `Axial T2`.
+  - `train_label_coordinates.csv`: 48.692 linhas com `study_id, series_id, instance_number, condition, level, x, y`. O canal é marcado no sagital T2, os forames no sagital T1 e os recessos subarticulares no axial. O nível vem escrito como `L4/L5`.
+  - `train_images/<study_id>/<series_id>/<instance>.dcm`: 147.218 DICOM.
+  - `test_images/` (1 estudo, 97 DICOM), `test_series_descriptions.csv` e `sample_submission.csv`.
+- O zip não tem arquivo de licença nem de termos, só os 5 CSV e os DICOM. Vale a decisão já tomada: uso não comercial, com compartilhamento permitido mediante citação, conforme o texto de licença da RSNA em github.com/RSNA/AI-Challenge-Data.
+- Os DICOM estão em RLE sem perda, com 12 bits e `PatientPosition` HFS. Sobram poucas tags: geometria, UIDs, `PatientID`, `ContentDate` e janela. `SeriesDescription` vem vazio, e não há TE, TR nem TI. Por isso, T2 e STIR só se distinguem olhando a imagem: no T2 a gordura é clara, no STIR é escura.
+
+### Escolha
+
+O filtro nos CSV pegou estudos com exatamente uma série de cada tipo, graduação completa e pontos do axial em L4/L5 e L5/S1. Sobraram 214 estudos para o papel (a), tudo normal/leve, 179 para o (b), canal grave em L4-L5, e 224 para o (c), subarticular ou forame grave de um lado só em L4-L5 ou L5-S1, com o outro lado e o canal normais/leves no nível. Entre os que têm axial com 35 imagens ou mais, 38 tiveram os cabeçalhos lidos, para ver os blocos, e 16 ganharam prévias dos sagitais e dos axiais nos níveis marcados. Ficaram de fora os de sagital STIR (113758629 e 1502243484 para o papel a; 4646740 e 200354973 para o b).
+
+| Estudo | Papel | Séries (sag T1 / sag T2 / axial T2) | Por quê |
+|---|---|---|---|
+| 491250714 | (a) tudo normal/leve | 3006601672 / 4212608450 / 613508131 | O sagital é T2, não STIR. O axial é uma pilha só, de L1 ao sacro (50 cortes de 0,56 mm no plano). Em L4-L5 o canal é amplo, e em L5-S1 as raízes de S1 aparecem nítidas. Ponto fraco: o sagital T1 tem 256 x 256 (1,0 mm). |
+| 1435972903 | (b) canal grave em L4-L5 | 3246798172 / 655221258 / 1587054823 | O sagital é T2, e o axial é uma pilha só (61 cortes, 0,56 mm). Em L4-L5 o saco dural vira um trevo com as raízes agrupadas, e em L5-S1 o canal é normal, então o contraste está no mesmo exame. L4-L5 também tem subarticular esquerdo grave e forames moderados; o resto é normal/leve. |
+| 3489738948 | (c) subarticular direito grave em L4-L5 | 2587818987 / 4120337982 / 3186939889 | É o único achado do exame: os outros 24 itens são normais/leves. O sagital é T2 com 640 x 640 (0,47 mm). O axial vem em dois blocos e serve de exemplo de bloco oblíquo. |
+
+Graduação completa (`train.csv`):
+
+| Estudo | Nível | Canal | Forame E | Forame D | Subarticular E | Subarticular D |
+|---|---|---|---|---|---|---|
+| 491250714 | L1-L2 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 491250714 | L2-L3 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 491250714 | L3-L4 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 491250714 | L4-L5 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 491250714 | L5-S1 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 1435972903 | L1-L2 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 1435972903 | L2-L3 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 1435972903 | L3-L4 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 1435972903 | L4-L5 | **grave** | **moderada** | **moderada** | **grave** | normal/leve |
+| 1435972903 | L5-S1 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 3489738948 | L1-L2 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 3489738948 | L2-L3 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 3489738948 | L3-L4 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+| 3489738948 | L4-L5 | normal/leve | normal/leve | normal/leve | normal/leve | **grave** |
+| 3489738948 | L5-S1 | normal/leve | normal/leve | normal/leve | normal/leve | normal/leve |
+
+### Conversão, blocos e tamanhos
+
+O script `rsna/scripts/dcm2nii.py`, na pasta de rascunho, lê cada série com pydicom e a separa em blocos de mesma `ImageOrientationPatient` e passo regular ao longo da normal. Ele confere essas duas condições, ordena os cortes pela normal e monta o NIfTI só com a geometria (`ImagePositionPatient`, `ImageOrientationPatient`, `PixelSpacing` e o passo medido entre posições). A imagem fica em int16 e é gravada pelo SimpleITK com gzip nível 9. Não há reamostragem nem recorte.
+
+- **Blocos do axial.** Em 491250714 e 1435972903 o axial é um bloco só, inclinado 1,2° e 1,7° em relação ao eixo do aparelho: é um axial reto, não paralelo ao disco. Em 3489738948 são dois blocos de 23 imagens. O das instâncias 1 a 23 é reto (0°) e tem os pontos de L1/L2 e L2/L3. O das instâncias 24 a 46 é inclinado 12° e cobre de L3-L4 a L5-S1, com os pontos desses três níveis. Só o segundo foi mantido, como `ax_t2.nii.gz`. Como um bloco só cobre L4-L5 e L5-S1, ele não foi dividido em `ax_t2_l45` e `ax_t2_l5s1`. Não é um bloco por disco, e sim um bloco inclinado para os discos de baixo.
+- **Orientação.** O axial fica em LPS e os sagitais em PIR (códigos do nibabel), com qform igual ao sform e código 1. A NiiVue posiciona sozinha.
+- **Metadados.** Nos cabeçalhos, `descrip`, `aux_file`, `intent_name` e `db_name` estão vazios e não há extensões. Nenhum identificador dos DICOM (`PatientID`, UIDs, `ContentDate`) aparece nos bytes descomprimidos de nenhum arquivo. O nome da pasta leva o `study_id`, que é o identificador público do dataset.
+- **Origem deslocada.** Os três arquivos de cada estudo foram transladados juntos, para que o ponto (0, 0, 0) do mundo caia no canal em L4-L5: o meio dos dois pontos subarticulares de L4/L5 no axial. A geometria entre as séries não muda. Motivo: no modo padrão (`isSliceMM: false`), a NiiVue converte mm em voxel com uma matriz sem obliquidade, ancorada no (0, 0, 0) do mundo (`frac2mmOrtho`, em `calculateOblique`). O erro cresce com a distância à origem vezes o seno da obliquidade. Nas coordenadas do aparelho, o 3489738948 fica em z ≈ -540 mm, e o sagital sincronizado caía 2 cortes (uns 10 mm) fora da linha média. Com o deslocamento, a diferença entre o modo padrão e o sform exato, nos pontos de L4-L5 e L5-S1, ficou em até 1,8 mm nos volumes quase ortogonais. No bloco axial de 12° do 3489738948 ela chega a 6,5 mm, quase toda no sentido anteroposterior dentro do corte; o corte escolhido erra menos de 1 mm. Para centrar exato nesse bloco há duas saídas: usar o `ijk` abaixo ou ligar `isSliceMM: true`, que porém refaz o axial nos eixos do aparelho e perde o plano nativo. A escolha fica para a implementação.
+
+| Arquivo | Matriz | Voxel (mm) | 491250714 | 1435972903 | 3489738948 |
+|---|---|---|---|---|---|
+| `sag_t1.nii.gz` | 256x256x15 / 384x408x23 / 384x384x15 | 1,02x1,02x4,4 / 0,68x0,68x4,4 / 0,78x0,78x4,8 | 0,85 MiB | 3,79 MiB | 1,78 MiB |
+| `sag_t2.nii.gz` | 384x384x15 / 384x408x23 / 640x640x15 | 0,68x0,68x4,4 / 0,68x0,68x4,4 / 0,47x0,47x4,8 | 1,89 MiB | 3,83 MiB | 5,38 MiB |
+| `ax_t2.nii.gz` | 320x320x50 / 320x320x61 / 320x320x23 | 0,56x0,56x4,4 / 0,56x0,56x4,4 / 0,63x0,63x4,4 | 5,09 MiB | 7,28 MiB | 2,19 MiB |
+
+As colunas de matriz e voxel seguem a ordem 491250714 / 1435972903 / 3489738948. Todos os arquivos ficam abaixo de 10 MiB, com 33 MiB no total.
+
+### Pontos dos radiologistas no NIfTI
+
+Cada ponto (série, instância, x, y) vira LPS = `ImagePositionPatient` + x · espaçamento entre colunas · cosseno da linha + y · espaçamento entre linhas · cosseno da coluna. Depois se soma o deslocamento do estudo e se passa para RAS, que é o que a NiiVue usa em `mm2frac`. O `ijk` é o voxel no arquivo: i é a coluna (x do CSV), j é a linha (y do CSV) e k é o índice do corte no NIfTI, que não é o número da instância. O script confere que cada ponto volta, pelo SimpleITK, ao pixel e ao corte marcados.
+
+O axial não tem ponto de canal. Para centrar no canal, use o meio dos dois subarticulares do nível, que as linhas "canal (meio dos subart.)" já trazem; em L4-L5 esse meio é (0, 0, 0) por construção. Os dois lados nem sempre estão no mesmo corte: no 1435972903, em L4/L5, ficam nas instâncias 43 e 44.
+
+```
+// rsna-491250714: origem = scanner (LPS) + [-28.5, -68.2, 33.2] mm
+ax_t2   canal (meio dos subart.) L4/L5  ras [   0.0,    0.0,    0.1]
+ax_t2   canal (meio dos subart.) L5/S1  ras [   0.4,  -12.8,  -31.0]
+ax_t2   subart. D  L1/L2  ras [  11.1,   -4.9,  105.4]  ijk [143.9, 185.9, 38]
+ax_t2   subart. D  L2/L3  ras [  13.0,   -0.6,   70.2]  ijk [139.7, 179.2, 30]
+ax_t2   subart. D  L3/L4  ras [   8.8,    3.8,   30.8]  ijk [146.4, 172.6, 21]
+ax_t2   subart. D  L4/L5  ras [  11.5,    0.4,   -0.1]  ijk [140.8, 179.5, 14]
+ax_t2   subart. D  L5/S1  ras [  12.3,  -12.1,  -31.1]  ijk [138.7, 202.6, 7]
+ax_t2   subart. E  L1/L2  ras [ -11.8,   -4.0,  105.7]  ijk [184.6, 184.4, 38]
+ax_t2   subart. E  L2/L3  ras [ -11.6,    0.1,   66.2]  ijk [183.5, 178.1, 29]
+ax_t2   subart. E  L3/L4  ras [ -11.7,    4.2,   31.0]  ijk [182.9, 171.7, 21]
+ax_t2   subart. E  L4/L5  ras [ -11.5,   -0.4,    0.2]  ijk [181.7, 180.9, 14]
+ax_t2   subart. E  L5/S1  ras [ -11.6,  -13.5,  -30.9]  ijk [181.2, 205.1, 7]
+sag_t1  forame D   L1/L2  ras [  19.6,   -4.5,  106.4]  ijk [138.8, 55.4, 11]
+sag_t1  forame D   L2/L3  ras [  18.7,    0.8,   72.4]  ijk [133.6, 88.9, 11]
+sag_t1  forame D   L3/L4  ras [  22.2,    6.9,   36.6]  ijk [127.6, 124.1, 12]
+sag_t1  forame D   L4/L5  ras [  21.4,    7.8,    4.0]  ijk [126.7, 156.2, 12]
+sag_t1  forame D   L5/S1  ras [  25.1,    0.1,  -24.3]  ijk [134.3, 184.0, 13]
+sag_t1  forame E   L1/L2  ras [ -15.6,   -2.8,  108.6]  ijk [137.1, 54.2, 3]
+sag_t1  forame E   L2/L3  ras [ -16.4,    3.2,   75.3]  ijk [131.3, 86.9, 3]
+sag_t1  forame E   L3/L4  ras [ -17.2,    5.1,   43.7]  ijk [129.3, 118.1, 3]
+sag_t1  forame E   L4/L5  ras [ -18.1,    6.3,    8.5]  ijk [128.1, 152.7, 3]
+sag_t1  forame E   L5/S1  ras [ -18.8,    0.8,  -21.6]  ijk [133.6, 182.4, 3]
+sag_t2  canal      L1/L2  ras [   1.9,   -4.9,  102.9]  ijk [208.8, 88.9, 7]
+sag_t2  canal      L2/L3  ras [   1.0,    0.3,   68.7]  ijk [201.2, 139.5, 7]
+sag_t2  canal      L3/L4  ras [   0.2,    2.1,   34.9]  ijk [198.4, 189.4, 7]
+sag_t2  canal      L4/L5  ras [  -0.7,   -4.0,    1.6]  ijk [207.4, 238.6, 7]
+sag_t2  canal      L5/S1  ras [  -1.3,  -18.5,  -24.2]  ijk [228.9, 276.7, 7]
+```
+
+```
+// rsna-1435972903: origem = scanner (LPS) + [-2.7, -51.3, 15.6] mm
+ax_t2   canal (meio dos subart.) L4/L5  ras [   0.0,   -0.1,   -0.0]
+ax_t2   canal (meio dos subart.) L5/S1  ras [   3.6,   -3.4,  -35.3]
+ax_t2   subart. D  L1/L2  ras [  10.1,   -8.4,  112.0]  ijk [145.1, 182.9, 43]
+ax_t2   subart. D  L2/L3  ras [  10.2,   -1.3,   77.0]  ijk [145.1, 172.0, 35]
+ax_t2   subart. D  L3/L4  ras [   9.1,    2.4,   37.5]  ijk [147.4, 167.4, 26]
+ax_t2   subart. D  L4/L5  ras [   7.7,    0.1,    2.2]  ijk [150.3, 173.1, 18]
+ax_t2   subart. D  L5/S1  ras [  13.9,   -3.1,  -37.4]  ijk [140.0, 181.1, 9]
+ax_t2   subart. E  L1/L2  ras [  -7.7,  -10.8,  111.9]  ijk [177.0, 186.3, 43]
+ax_t2   subart. E  L2/L3  ras [  -8.3,   -3.5,   76.9]  ijk [178.1, 175.2, 35]
+ax_t2   subart. E  L3/L4  ras [  -7.2,    0.3,   37.4]  ijk [176.4, 170.3, 26]
+ax_t2   subart. E  L4/L5  ras [  -7.7,   -0.2,   -2.3]  ijk [177.8, 173.2, 17]
+ax_t2   subart. E  L5/S1  ras [  -6.8,   -3.6,  -33.2]  ijk [176.7, 180.9, 10]
+sag_t1  forame D   L1/L2  ras [  24.0,  -10.3,  121.5]  ijk [234.6, 106.0, 16]
+sag_t1  forame D   L2/L3  ras [  23.8,   -0.8,   87.1]  ijk [220.5, 156.9, 16]
+sag_t1  forame D   L3/L4  ras [  28.0,    8.5,   42.6]  ijk [207.3, 222.6, 17]
+sag_t1  forame D   L4/L5  ras [  28.4,    6.9,   11.9]  ijk [209.6, 267.9, 17]
+sag_t1  forame D   L5/S1  ras [  28.5,   10.6,  -26.2]  ijk [204.1, 324.2, 17]
+sag_t1  forame E   L1/L2  ras [ -15.3,  -16.2,  126.3]  ijk [239.8, 98.5, 7]
+sag_t1  forame E   L2/L3  ras [ -15.7,   -3.8,   85.6]  ijk [221.5, 158.6, 7]
+sag_t1  forame E   L3/L4  ras [ -15.9,    3.6,   50.8]  ijk [210.5, 209.9, 7]
+sag_t1  forame E   L4/L5  ras [ -15.5,    3.2,   12.6]  ijk [211.2, 266.3, 7]
+sag_t1  forame E   L5/S1  ras [ -15.3,    5.2,  -21.1]  ijk [208.3, 316.1, 7]
+sag_t2  canal      L1/L2  ras [   6.6,  -13.7,  117.4]  ijk [238.1, 111.9, 12]
+sag_t2  canal      L2/L3  ras [   6.5,   -5.5,   78.7]  ijk [226.0, 169.0, 12]
+sag_t2  canal      L3/L4  ras [   6.5,   -0.8,   42.0]  ijk [219.0, 223.2, 12]
+sag_t2  canal      L4/L5  ras [   7.0,   -3.1,    4.6]  ijk [222.5, 278.5, 12]
+sag_t2  canal      L5/S1  ras [   7.5,   -6.9,  -28.9]  ijk [228.2, 327.9, 12]
+```
+
+```
+// rsna-3489738948: origem = scanner (LPS) + [-3.0, -67.7, 541.8] mm
+ax_t2   canal (meio dos subart.) L4/L5  ras [   0.0,    0.1,   -0.1]
+ax_t2   canal (meio dos subart.) L5/S1  ras [  -3.5,   -3.9,  -28.4]
+ax_t2   subart. D  L3/L4  ras [   8.8,    3.5,   32.8]  ijk [146.1, 187.0, 19]
+ax_t2   subart. D  L4/L5  ras [   9.3,    0.8,   -2.6]  ijk [144.4, 179.7, 11]
+ax_t2   subart. D  L5/S1  ras [   6.4,   -5.0,  -28.3]  ijk [148.4, 180.2, 5]
+ax_t2   subart. E  L3/L4  ras [  -9.2,    0.9,   33.7]  ijk [174.9, 191.5, 19]
+ax_t2   subart. E  L4/L5  ras [  -9.3,   -0.7,    2.5]  ijk [174.2, 183.7, 12]
+ax_t2   subart. E  L5/S1  ras [ -13.3,   -2.7,  -28.5]  ijk [180.0, 176.6, 5]
+sag_t1  forame D   L1/L2  ras [  16.4,  -12.7,  113.0]  ijk [216.9, 99.5, 10]
+sag_t1  forame D   L2/L3  ras [  15.6,   -8.0,   79.0]  ijk [210.9, 142.9, 10]
+sag_t1  forame D   L3/L4  ras [  14.9,   -0.9,   43.5]  ijk [201.9, 188.3, 10]
+sag_t1  forame D   L4/L5  ras [  18.9,    3.6,    8.7]  ijk [196.1, 232.8, 11]
+sag_t1  forame D   L5/S1  ras [  18.3,    0.5,  -22.6]  ijk [200.0, 272.9, 11]
+sag_t1  forame E   L1/L2  ras [  -7.6,  -11.1,  114.0]  ijk [214.7, 98.8, 5]
+sag_t1  forame E   L2/L3  ras [ -13.2,   -4.7,   78.6]  ijk [206.6, 144.2, 4]
+sag_t1  forame E   L3/L4  ras [ -13.9,   -0.1,   42.7]  ijk [200.7, 190.1, 4]
+sag_t1  forame E   L4/L5  ras [ -14.6,    2.8,   10.8]  ijk [197.0, 231.0, 4]
+sag_t1  forame E   L5/S1  ras [ -20.1,    2.3,  -23.6]  ijk [197.5, 275.1, 3]
+sag_t2  canal      L1/L2  ras [   1.8,  -11.8,  106.6]  ijk [359.6, 179.9, 7]
+sag_t2  canal      L2/L3  ras [   1.1,   -8.0,   70.9]  ijk [351.5, 256.2, 7]
+sag_t2  canal      L3/L4  ras [   0.3,   -4.2,   34.1]  ijk [343.4, 334.7, 7]
+sag_t2  canal      L4/L5  ras [  -0.4,   -4.8,    0.5]  ijk [344.5, 406.4, 7]
+sag_t2  canal      L5/S1  ras [  -1.0,  -12.9,  -28.2]  ijk [361.9, 467.6, 7]
+```
+
+### Visualização e convenção radiológica
+
+O protótipo `proto/rsna.html`, na pasta de rascunho, põe lado a lado duas instâncias da NiiVue 0.69.0, uma por volume, com as miras sincronizadas em mm por `syncWith`. Uma instância só com `setCustomLayout`, como na fase 1, não serve aqui: o sagital e o axial são volumes diferentes, e a NiiVue reamostra o segundo volume na grade do primeiro. O `syncWith` só propaga quando o canvas tem foco (`sync()` confere `:focus`), por isso nas capturas a mira foi posta nas duas instâncias por script.
+
+- **Convenção radiológica.** É a opção `isRadiologicalConvention: true` no construtor (ou `nv.setRadiologicalConvention(true)`). O padrão é `false`, a convenção neurológica, com a esquerda do paciente à esquerda de quem olha. Medido no 3489738948 em L4-L5: com `false`, o ponto subarticular direito fica a 54,6% da largura do quadro e o esquerdo a 45,4%. Com `true` a ordem se inverte (direito a 45,4%, esquerdo a 54,6%), e a esquerda do paciente fica à direita de quem olha.
+- **O que mais a opção muda.** Ela vira também o coronal (mesma medida) e troca as letras R/L nas bordas. O sagital não muda: o quadro saiu idêntico byte a byte. O render 3D também não, porque no código ela só vale para vistas 2D com `axCorSag < 2`. O sagital continua com o nariz para a direita (anterior à direita, "P" à esquerda). A vista habitual da radiologia, com o anterior à esquerda, é outra opção: `sagittalNoseLeft: true`.
+
+As capturas estão em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/rm3/`, em 1440 x 900 e na convenção radiológica:
+
+- `<estudo>_L4L5.png` e `<estudo>_L5S1.png`: sagital T2 sincronizado com o axial nativo, para cada um dos três estudos;
+- `<estudo>_vs_spider45_L4L5.png`: o axial nativo em L4-L5 ao lado do axial reconstruído do SPIDER 45 T2 SPACE, centrado no disco L4-L5 (rótulo 202);
+- `conv_rad0.png` e `conv_rad1.png`: o 3489738948 em L4-L5 nas convenções neurológica e radiológica.
+
+Comparação: o axial nativo mostra recessos, facetas e raízes com nitidez. O axial reconstruído do SPACE (0,9 mm) sai mais borrado e com campo lateral menor. Os scripts ficam em `rsna/scripts/` (`listzip.py`, `fetch.py`, `headscan.py`, `geom.py`, `pick.py`, `prevlist.py`, `montage.py`, `axzoom.py`, `dcm2nii.py`, `jobs.py`, `lmkmd.py`) e em `scripts/` (`shoot_rsna.js`, `orthocheck.js`). Os pontos em JSON estão em `rsna/landmarks.json`.
 
 ## Onde ficou o material do spike (fora do repo)
 
