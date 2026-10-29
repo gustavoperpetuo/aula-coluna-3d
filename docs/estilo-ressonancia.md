@@ -1,6 +1,8 @@
 # Como escrever a Ressonância
 
-Público: quem nunca leu uma ressonância e quer aprender. Ensina passo a passo; nunca supõe que a pessoa já sabe.
+Propósito: mostrar como o que a pessoa já estudou nas abas Anatomia, Doenças e Procedimentos aparece num exame real. A ressonância é a ponte entre o modelo 3D e o paciente: cada passo parte de algo já visto ("a hérnia L5-S1 que você viu no 3D") e mostra como aquilo fica na imagem.
+
+Público: quem já fez as outras abas, mas nunca leu uma ressonância. Ensina passo a passo o que é novo da imagem; não repete o que o app já ensinou.
 
 ## Regras
 
