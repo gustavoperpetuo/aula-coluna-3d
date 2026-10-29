@@ -161,6 +161,129 @@ Em cada caso, no corte sagital mediano do T2, contei a partir do sacro: o osso l
 
 O recorte não mostra a coluna inteira nem as costelas, então uma vértebra de transição (sacralização de L5 ou lombarização de S1) não se descarta só com estas imagens. Um radiologista deve confirmar os níveis antes de a aula ir para os alunos.
 
+## Fase 2: casos novos (dados)
+
+Preparado em 29/10/2026. Só dados: seis casos novos do SPIDER em `dist/rm/<caso>/`, ainda fora do `src/rm.js`. Nenhum arquivo de código mudou.
+
+Critério, a pedido do Gustavo: todo caso novo tem T2 SPACE (0,9 mm), para o axial sair nítido, e também T1 e T2 comuns. Um caso sem SPACE só entraria se nenhum caso com SPACE tivesse o achado; Não foi preciso. Dos 36 pacientes graduados com SPACE, 35 são de 1,5 T (Siemens Avanto_fit); Os seis escolhidos também. Os 6 pacientes com níveis divergentes (35, 55, 57, 64, 98, 118) ficaram de fora.
+
+O SPIDER gradua placa terminal e nódulo de Schmorl juntos. Trecho do artigo: "Upper and lower endplate changes/Schmorl nodes (binary)".
+
+### Casos
+
+| Caso | Achado-chave | Nível (rótulo) | Por quê |
+|---|---|---|---|
+| 5 | quase normal; substitui o 237 na aula de base | todos | Três pacientes com SPACE não têm achado além de abaulamento: 5, 41 e 141. Só o 5 tem também T1 e T2 comuns. Pfirrmann 2 em todos os discos e abaulamento nos 3 de baixo. O 41 e o 141 têm Pfirrmann 1 em tudo, mas só o SPACE (o 141 é de 3 T) |
+| 200 | listese | L5-S1 (201) | Listese isolada: L5-S1 é o único nível alterado (Pfirrmann 5, Modic 2, estreitamento, abaulamento) e os outros 6 discos estão em Pfirrmann 2, sem achados. É o de menos achados entre os 9 com SPACE e listese em L5-S1 ou L4-L5. No sagital, L5 está deslocada para a frente sobre o sacro |
+| 136 | nódulos de Schmorl | T12-L1 (206), T11-T12 (207), L1-L2 (205) | Alteração de placa em 5 níveis. Em 205, 206 e 207 ela é o único achado: sem Modic, estreitamento, hérnia nem abaulamento, e com Pfirrmann 3. No SPACE os nódulos são entalhes nítidos das placas, o maior em T12-L1. O 239 (achado parecido, Pfirrmann 2) foi convertido para comparar e descartado: os nódulos são menores |
+| 81 | disco preto e colapsado (Pfirrmann 5) | L4-L5 (202) | L4-L5 com Pfirrmann 5, estreitamento grave e Modic 2. L5-S1 em Pfirrmann 4 com estreitamento e os outros 5 discos em Pfirrmann 2. O 200 também tem Pfirrmann 5, mas ficou para a listese |
+| 50 | Modic 1 | L2-L3 (204) | É o único paciente com SPACE e Modic 1. Tem Modic 2 em L4-L5, L1-L2 e T12-L1, então os dois tipos aparecem no mesmo exame: no tipo 1 a medula perto da placa fica escura no T1 e clara no T2, e no tipo 2 fica clara no T1. Caso carregado: todos os discos em Pfirrmann 3 a 4, hérnia e listese em L4-L5, e a coluna curva para o lado (o centro dos corpos anda 27 mm de L5 a T11; escoliose ou paciente inclinado no aparelho) |
+| 142 | hérnia em L4-L5 | L4-L5 (202) | Nível diferente do caso 45. Entre os 7 com SPACE e hérnia fora de L5-S1, é o único sem Modic. O 107 tem menos níveis alterados, mas em L4-L5 a hérnia dele vem com Pfirrmann 5, Modic 2 e listese; O 209 tem o SPACE de outro aparelho. No 142 a hérnia vem com listese no mesmo nível, e o axial do SPACE mostra o saco dural apertado. Nenhum caso com SPACE tem hérnia isolada em L4-L5; Os que têm (por exemplo 12, 67, 168 e 174) não têm SPACE |
+
+### Graduação por nível
+
+De baixo para cima. P é o grau de Pfirrmann; "placa" é alteração de placa ou nódulo de Schmorl (sup. e inf. são as colunas `UP endplate` e `LOW endplate`).
+
+- **5**: L5-S1 P2, abaulamento; L4-L5 P2, abaulamento; L3-L4 P2, abaulamento; L2-L3, L1-L2, T12-L1 e T11-T12 P2.
+- **200**: L5-S1 P5, Modic 2, listese, estreitamento, abaulamento; L4-L5 a T11-T12 P2, sem achados.
+- **136**: L5-S1 P4, estreitamento, abaulamento; L4-L5 P3, abaulamento; L3-L4 P3, placa sup. e inf., abaulamento; L2-L3 P3, Modic 2, placa sup. e inf., abaulamento; L1-L2, T12-L1 e T11-T12 P3, placa sup. e inf.
+- **81**: L5-S1 P4, estreitamento, abaulamento; L4-L5 P5, Modic 2, placa sup. e inf., estreitamento, abaulamento; L3-L4 a T11-T12 P2, sem achados.
+- **50**: L5-S1 P4; L4-L5 P4, Modic 2, placa sup. e inf., listese, hérnia, estreitamento, abaulamento; L3-L4 P4, placa sup. e inf., abaulamento; L2-L3 P4, **Modic 1**, placa sup. e inf., estreitamento, abaulamento; L1-L2 e T12-L1 P4, Modic 2, placa sup. e inf., abaulamento; T11-T12 P4, placa sup. e inf., abaulamento; T10-T11 P3.
+- **142**: L5-S1 P4; L4-L5 P4, placa sup., listese, hérnia; L3-L4 P4, abaulamento; L2-L3 P4, placa sup. e inf., estreitamento, abaulamento; L1-L2 P4, placa sup. e inf., abaulamento; T12-L1 P3; T11-T12 P3, placa inf.
+
+No formato `g` do `src/rm.js` (`[Modic, placa superior, placa inferior, listese, hérnia, estreitamento, abaulamento, Pfirrmann]`, um disco por linha, de baixo para cima):
+
+```js
+const g5 = [[0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
+const g200 = [[2, 0, 0, 1, 0, 1, 1, 5], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
+const g136 = [[0, 0, 0, 0, 0, 1, 1, 4], [0, 0, 0, 0, 0, 0, 1, 3], [0, 1, 1, 0, 0, 0, 1, 3], [2, 1, 1, 0, 0, 0, 1, 3], [0, 1, 1, 0, 0, 0, 0, 3], [0, 1, 1, 0, 0, 0, 0, 3], [0, 1, 1, 0, 0, 0, 0, 3]];
+const g81 = [[0, 0, 0, 0, 0, 1, 1, 4], [2, 1, 1, 0, 0, 1, 1, 5], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
+const g50 = [[0, 0, 0, 0, 0, 0, 0, 4], [2, 1, 1, 1, 1, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [1, 1, 1, 0, 0, 1, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3]];
+const g142 = [[0, 0, 0, 0, 0, 0, 0, 4], [0, 1, 0, 1, 1, 0, 0, 4], [0, 0, 0, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3], [0, 0, 1, 0, 0, 0, 0, 3]];
+```
+
+### Conferência da numeração
+
+Mesmo método da fase 1: no T2 sagital mediano, conto a partir do sacro. Nos seis casos o osso logo abaixo do disco 201 é o sacro, com os segmentos sacrais e o promontório, e a vértebra 1 é a primeira acima do disco 201. A numeração confere com 1 = L5 e 201 = L5-S1 em todos.
+
+| Caso | Vértebras e discos na máscara | Resultado |
+|---|---|---|
+| 5 | 1 a 7, 201 a 207 (L5 a T11) | Confere |
+| 200 | 1 a 7, 201 a 207 | Confere. L5 deslizada para a frente sobre S1. O disco rudimentar S1-S2 é bem formado, então não dá para descartar S1 lombarizada só com este recorte |
+| 136 | 1 a 6, 201 a 207 (a vértebra 7 não está na máscara; o disco 207 fica no topo do recorte) | Confere |
+| 81 | 1 a 7, 201 a 207 | Confere |
+| 50 | 1 a 8, 201 a 208 (L5 a T10) | Confere. Disco 201 em cunha, apoiado no sacro |
+| 142 | 1 a 7, 201 a 207 | Confere |
+
+Como na fase 1, o recorte não mostra a coluna inteira nem as costelas: uma vértebra de transição não se descarta. Um radiologista deve confirmar os níveis.
+
+### Conversão e tamanhos
+
+Mesmo pipeline e mesmo script (`convert.py`): recorte pela caixa da máscara com 45 mm na direção cabeça-pé, imagem em int16 e máscara em uint8, gzip nível 9. T1 e T2 sem reamostragem. SPACE de 0,47 mm para 0,75 mm no plano, mantendo 0,9 mm entre cortes, como no 45. Os mesmos nomes dos casos anteriores. Quando a máscara do T1 é byte a byte igual à do T2 (5, 200, 136 e 142), só há `<caso>_t2_mask.nii.gz`, e o T1 usa essa máscara, como no 45. No 81 e no 50 as máscaras diferem (no 50 até a grade: 30 x 273 x 364 no T1 e 30 x 275 x 366 no T2), então há também `<caso>_t1_mask.nii.gz`.
+
+| Caso | T2 | T1 | SPACE (grade) | Máscaras | Total (MiB) |
+|---|---|---|---|---|---|
+| 5 | 2,00 | 1,97 | 8,36 (192 x 386 x 120) | 0,11 | 12,4 |
+| 200 | 1,98 | 1,94 | 11,60 (120 x 179 x 361) | 0,09 | 15,6 |
+| 136 | 2,55 | 2,61 | 10,61 (211 x 389 x 120) | 0,13 | 15,9 |
+| 81 | 2,63 | 2,66 | 10,56 (130 x 155 x 372) | 0,14 | 16,0 |
+| 50 | 2,69 | 2,78 | 10,31 (211 x 400 x 120) | 0,19 | 16,0 |
+| 142 | 3,49 | 3,53 | 13,79 (108 x 204 x 402) | 0,13 | 21,0 |
+
+Os MHA originais têm de 4 a 6 MB (T1, T2) e de 33 a 41 MB (SPACE). Os seis casos somam 96,9 MiB em 32 arquivos, 65,2 MiB deles de SPACE. Com os três casos da fase 1, `dist/rm` passa de 27,7 para 124,5 MiB. O maior arquivo é `142_t2_SPACE.nii.gz`, com 13,8 MiB, abaixo dos 25 MiB do Pages, mas cinco SPACE passam de 10 MB. Como `dist/` é versionado, cada versão dos casos soma quase 100 MiB ao git.
+
+### Posições dos rótulos (`at`)
+
+São os centros em mm (RAS) da máscara do T2, como no `src/rm.js`, calculados com nibabel pelo mesmo método (o script reproduz o `at` do caso 45). No mesmo caso, os centros do T2 e do SPACE diferem até 3 mm. Nas 12 capturas abaixo, a mira posta no `at` caiu no rótulo pedido no T2, no SPACE e no T1.
+
+```js
+// 5: base (L4-L5 e L5-S1 normais)
+at: { 1: [-4.1, -11.4, -52.3], 2: [-6.6, -14.2, -16.9], 100: [-5.0, -41.6, 38.8], 201: [-5.3, -6.0, -71.3], 202: [-5.8, -4.3, -34.4], 203: [-6.6, -9.5, 3.3] }
+// 200: listese em L5-S1 (201); vértebra 1 = L5 que deslizou
+at: { 1: [-10.0, -12.6, 31.0], 2: [-10.9, -8.4, 65.9], 100: [-12.3, -38.2, 120.0], 201: [-9.3, -11.6, 14.9], 202: [-9.1, 1.2, 46.2], 203: [-10.5, -0.6, 85.1] }
+// 136: Schmorl em 205, 206 (o mais nítido) e 207
+at: { 1: [2.9, 18.2, -43.7], 2: [1.6, 16.2, -9.2], 5: [1.3, -21.5, 93.3], 6: [1.6, -32.6, 124.8], 100: [1.7, -24.6, 61.8], 201: [3.1, 29.4, -63.4], 202: [2.2, 30.4, -25.9], 203: [0.9, 24.6, 12.7], 205: [2.0, -4.1, 82.0], 206: [1.3, -16.1, 114.1], 207: [2.9, -28.6, 144.0] }
+// 81: Pfirrmann 5 em L4-L5 (202)
+at: { 1: [4.1, -11.1, 11.1], 2: [5.1, -8.2, 39.8], 100: [1.1, -26.1, 108.0], 201: [1.9, -8.6, -8.0], 202: [3.9, -1.1, 24.2], 203: [5.5, 2.2, 59.1] }
+// 50: Modic 1 em L2-L3 (204), Modic 2 em 202, 205 e 206; coluna curva para o lado, então cada passo centra no próprio rótulo
+at: { 1: [-6.4, -12.2, 4.1], 2: [-9.0, -4.6, 36.7], 3: [2.1, -11.8, 68.8], 4: [12.5, -21.8, 98.3], 5: [17.1, -35.1, 129.1], 100: [7.2, -46.5, 91.8], 201: [-7.7, -7.0, -16.0], 202: [-12.7, 2.8, 19.6], 203: [-4.5, 3.7, 55.0], 204: [11.5, -3.6, 86.3], 205: [16.6, -16.6, 119.0], 206: [20.1, -32.3, 149.3] }
+// 142: hérnia e listese em L4-L5 (202)
+at: { 1: [20.4, -3.9, -47.5], 2: [21.3, 12.9, -18.2], 100: [17.7, -23.9, 35.3], 201: [19.8, -0.3, -66.5], 202: [20.7, 17.3, -37.8], 203: [21.6, 26.1, -0.5] }
+```
+
+No 50, o sagital que passa por L2-L3 (x = 11,5 mm) não mostra L5-S1 (x = -7,7 mm), por causa da curva lateral. No 136, os nódulos aparecem bem no sagital que passa pelo centro do disco 206.
+
+### Capturas
+
+Ficam em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/rm2/`. São do protótipo da fase 1 (`proto/index.html`), lendo os arquivos novos, em 1440 x 900, com a mira no `at` do achado. Cada uma tem uma versão com máscara e outra sem (`_nomask`): `5_t2_L4L5`, `5_space_L4L5`, `200_t2_listese_L5S1`, `200_space_listese_L5S1`, `136_t2_schmorl_T12L1`, `136_space_schmorl_T12L1`, `81_t2_pfirrmann5_L4L5`, `81_space_pfirrmann5_L4L5`, `50_t2_modic1_L2L3`, `50_t1_modic1_L2L3`, `142_t2_hernia_L4L5`, `142_space_hernia_L4L5`. As prévias e os recortes ampliados usados na escolha estão em `rm2/prev/`. Os scripts novos estão em `scripts/`: `pick2.py` (seleção), `centers.py` (`at`), `shoot2.js` (capturas), e `sagprev.py`, `zoomlv.py` e `lzoom.py` (prévias).
+
+### O que o SPIDER não tem
+
+- **Vácuo discal**: não é graduado. Para "disco muito escuro" o caso é o 81 (Pfirrmann 5).
+- **Modic 1**: só 4 discos em 3 pacientes (50, 154 e 68). Só o 50 tem SPACE.
+- **Modic 3**: 7 discos em 6 pacientes; Só o 78 tem SPACE (L5-S1, com hérnia e Pfirrmann 5). Não foi convertido.
+- **Schmorl separado de outras alterações de placa**: não existe; A coluna é a mesma.
+- **Hérnia isolada fora de L5-S1 com SPACE**: nenhuma. O 209 tem hérnia em L4-L5, mas o SPACE dele vem de outro aparelho (1,5 T) que o T1 e o T2 (3 T), e foi evitado.
+- **SPACE em 3 T**: só o 141, que não tem T1 nem T2 comuns.
+
+### RSNA LumbarDISC: axial nativo
+
+O dataset RSNA-LSDD (agora LumbarDISC) tem axial T2 adquirido, não reconstruído. Para baixar 2 ou 3 estudos sem o login do Gustavo, foram testadas três vias, e as três pedem conta:
+
+- **Bucket AWS** `lumbar-spine-degenerative-classification` (us-west-2): o registro do AWS Open Data o marca como "Controlled Access", via MIRA. Pedidos sem credencial, de listagem ou de arquivo, voltam 403.
+- **MIRA**, dataset 6 (https://imaging.rsna.org/dataset/6): a página é pública, mas a API redireciona para `/login`, e o download fica atrás de "Request Data".
+- **Kaggle**, competição `rsna-2024-lumbar-spine-degenerative-classification`: a API de download de arquivo responde 401 sem token.
+
+Então a comparação do axial nativo com a reconstrução do SPIDER não foi feita. O caminho mais curto é o Kaggle, porque baixa arquivo por arquivo (`kaggle competitions download -c rsna-2024-lumbar-spine-degenerative-classification -f train_images/<estudo>/<série>/<n>.dcm`), sem o zip inteiro. O Gustavo precisa:
+
+1. Entrar no kaggle.com, abrir a aba Rules da competição (https://www.kaggle.com/competitions/rsna-2024-lumbar-spine-degenerative-classification/rules) e aceitar as regras.
+2. Em Settings, seção API, clicar em "Create New Token". Isso baixa um `kaggle.json` com o usuário e a chave.
+3. Pôr os dois valores nas configurações do ambiente da nuvem (menu do ambiente na barra de título da sessão, Editar), em Network secrets ou como variáveis de ambiente, com os nomes `KAGGLE_USERNAME` e `KAGGLE_KEY`. Uma sessão nova já os lê. A chave não deve ir pelo chat.
+
+Se a competição não aceitar mais inscrição, a via é o MIRA: entrar, pedir o dataset 6 e aceitar os termos. Não se sabe se o MIRA dá acesso arquivo por arquivo ou só ao zip inteiro.
+
+Crédito: a página do MIRA dá o DOI 10.1148/dataset.lsdd.2025. O artigo é Richards TJ et al., The RSNA Lumbar Degenerative Imaging Spine Classification (LumbarDISC) Dataset, Radiol Artif Intell 2026;8(2):e250480, doi:10.1148/ryai.250480. O texto de licença do registro AWS cita, por erro de cópia, o dataset de mamografia RSNA-SMBC.
+
 ## Onde ficou o material do spike (fora do repo)
 
 Pasta de rascunho da sessão `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/`:
