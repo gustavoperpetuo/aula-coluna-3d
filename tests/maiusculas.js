@@ -30,10 +30,10 @@ const hits=(txt,where)=>{const out=[];for(const m of txt.matchAll(RX)){const ctx
   for(const d of PROC){__spine.openDz(d.id);await w(30);dom('procedimento '+d.id);}
   __spine.setMode('proc');await w(30);dom('lista de procedimentos');
   // ressonância: cada passo, e a resposta do teste (certa, errada e fora) como aparece depois do clique.
-  // SPIDER: valor da máscara sob a mira; RSNA: ponto clicado no axial (certo, outro ponto marcado e longe de todos)
+  // com máscara (SPIDER e os casos além da lombar): valor da máscara sob a mira; RSNA: ponto clicado no axial (certo, outro ponto marcado e longe de todos)
   for(let k=0;k<__spine.RM_STEPS.length;k++){__spine.goRm(k);await w(30);dom('ressonância '+k);const R=__spine.RM_STEPS[k],st=R.st;if(st.test){await __spine.RM.q;
-   if(R.ex.ax){const a=__spine.RM.nvAx,outro=Object.keys(R.ex.at).find(id=>!st.test.ok.includes(id)&&!id.startsWith('meio'));for(const mm of [R.ex.at[st.test.ok[0]],R.ex.at[outro],[90,90,0]]){a.onLocationChange({mm});await w(30);dom('ressonância '+k+' clique '+mm);}}
-   else for(const v of [st.test.ok[0],100,0]){__spine.RM.nv.onLocationChange({values:[{value:0},{value:v}]});await w(30);dom('ressonância '+k+' clique '+v);}}}
+   if(R.ex.cred==='rsna'){const a=__spine.RM.nvAx,outro=Object.keys(R.ex.at).find(id=>!st.test.ok.includes(id)&&!id.startsWith('meio'));for(const mm of [R.ex.at[st.test.ok[0]],R.ex.at[outro],[90,90,0]]){a.onLocationChange({mm});await w(30);dom('ressonância '+k+' clique '+mm);}}
+   else for(const v of [st.test.ok[0],100,0]){__spine.RM.nv.onLocationChange({values:[{value:0},{value:v}],mm:[0,0,0]});await w(30);dom('ressonância '+k+' clique '+v);}}}
   return out;});
  const bad=[...new Set(texts.flatMap(([k,v])=>hits(v,k)))];
  const home=fs.readFileSync(__dirname+'/../dist/index.html','utf8').replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g,'');

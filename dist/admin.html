@@ -1301,6 +1301,9 @@ Object.assign(INFO, {
 // contando a partir do sacro), 100 canal, 201 em diante discos (201 = L5-S1).
 // RSNA: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), doi:10.1148/dataset.lsdd.2025. Sagital T1 e T2 e axial T2
 // adquirido, sem máscara; em vez dela, os pontos marcados pelos radiologistas. Conversão, casos e pontos em docs/ressonancia.md; arquivos em dist/rm/<dir>/.
+// Além da lombar (docs/ressonancia.md, Além da lombar: casos): spine-generic (sg-*, cervical, T2 e T1 sagitais e T2* axial adquirido), whole-spine
+// OpenNeuro ds005616 (ws-amuAL, T2 de C1 a L3) e VCF do HCFMRP no Zenodo (vcf-*, só T1, máscara só de L4 = 44). Máscara em outro esquema:
+// 11 a 17 C1 a C7, 21 a 32 T1 a T12, 41 a 45 L1 a L5, disco = 100 + a vértebra de cima, 100 canal, 101 medula. A origem fica na medula do disco-chave (VCF: no centro de L4).
 // g: radiological_gradings.csv do SPIDER, um disco por linha de baixo para cima (IVD label 1 = rótulo 201):
 //    [Modic, placa superior, placa inferior, listese, hérnia, estreitamento, abaulamento, Pfirrmann]; Placa é "endplate changes/Schmorl nodes".
 // at: ponto em mm (RAS) onde o passo põe a mira. SPIDER: centro de cada rótulo da máscara do T2. RSNA: canal.<nível> é o ponto do canal no
@@ -1308,7 +1311,7 @@ Object.assign(INFO, {
 //    A origem de cada estudo foi deslocada para o canal em L4-L5. gr: graduação da RSNA (train.csv) dos pontos que não são normais ou leves.
 // Passos: k id curto (a marca de visto é '<trilha>.<k>', estável), t título, ex exame, seq série (t2 se faltar), at ponto da mira,
 // ver ['dz', id] ou ['anat', título do passo de Anatomia] (sem ver vale o da trilha), test { ok: rótulos ou pontos certos, hint, sag: só o sagital responde },
-// axial: true mostra o axial montado do SPIDER (borrado; só no passo que fala dele, senão o sagital ocupa o quadro todo; a RSNA sempre mostra o axial),
+// axial: true mostra o axial montado do sagital (borrado; só no passo que fala dele, senão o sagital ocupa o quadro todo; o axial adquirido, ax, aparece sempre),
 // contornos: true liga os Contornos ao abrir o passo (só nos de dar nome ou contar; o padrão é desligado, para ver o brilho real),
 // p parágrafos no formato de docs/estilo-ressonancia.md ('- ' item de lista, **negrito**).
 const RM_NIIVUE = { src: 'https://cdn.jsdelivr.net/npm/@niivue/niivue@0.69.0/dist/niivue.umd.js', sri: 'sha384-Oyof6MyzZMH1tvMLLYFRQLWZtk9Y/WbiL3wkdXzwaCS82xRXXy9U+kRrkDDAVq6E' };
@@ -1316,9 +1319,13 @@ const RM_G = { modic: 0, up: 1, low: 2, list: 3, hern: 4, narrow: 5, bulge: 6, p
 // discos (rótulos) em que a coluna da graduação é maior que zero, ou igual a v
 const rmDiscs = (g, col, v) => g.map((r, i) => (v === undefined ? r[RM_G[col]] > 0 : r[RM_G[col]] === v) ? 201 + i : 0).filter(Boolean);
 const RM_GROUPS = ['Como ler a ressonância', 'Doenças na ressonância'];
+// crédito pelo campo cred do exame; sg e vcf são os sugeridos em docs/ressonancia.md, ws segue a citação do dataset (CC0)
 const RM_CRED = {
   spider: 'Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).',
-  rsna: 'Imagens: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), Radiological Society of North America, doi 10.1148/dataset.lsdd.2025.'
+  rsna: 'Imagens: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), Radiological Society of North America, doi 10.1148/dataset.lsdd.2025.',
+  sg: 'Imagens: spine-generic (Cohen-Adad et al., Sci Data 2021), CC BY 4.0, recortadas e convertidas.',
+  ws: 'Imagens: whole-spine, OpenNeuro ds005616 (Molinier et al., doi 10.18112/openneuro.ds005616.v1.1.6), CC0, recortadas e convertidas.',
+  vcf: 'Imagens: HCFMRP VCF Dataset (Chiari-Correia et al., Zenodo 2024), CC BY 4.0, convertidas.'
 };
 const [RM_EXAMS, RM_TRACKS] = (() => {
   const g5 = [[0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
@@ -1330,8 +1337,12 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
   const g50 = [[0, 0, 0, 0, 0, 0, 0, 4], [2, 1, 1, 1, 1, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [1, 1, 1, 0, 0, 1, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3]];
   const g142 = [[0, 0, 0, 0, 0, 0, 0, 4], [0, 1, 0, 1, 1, 0, 0, 4], [0, 0, 0, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3], [0, 0, 1, 0, 0, 0, 0, 3]];
   // SPIDER: t1m, o T1 tem máscara própria (senão usa a do T2, mesma grade); space, tem o T2 SPACE
-  const sp = (n, t1m, space, g, at) => ({ dir: '' + n, g, at, seqs: Object.assign({ t2: [n + '_t2', n + '_t2_mask'], t1: [n + '_t1', n + (t1m ? '_t1' : '_t2') + '_mask'] }, space && { space: [n + '_t2_SPACE', n + '_t2_SPACE_mask'] }) });
-  const rs = (n, at, gr) => ({ dir: 'rsna-' + n, ax: 'ax_t2', seqs: { t2: ['sag_t2'], t1: ['sag_t1'] }, at, gr });
+  const sp = (n, t1m, space, g, at) => ({ dir: '' + n, cred: 'spider', g, at, seqs: Object.assign({ t2: [n + '_t2', n + '_t2_mask'], t1: [n + '_t1', n + (t1m ? '_t1' : '_t2') + '_mask'] }, space && { space: [n + '_t2_SPACE', n + '_t2_SPACE_mask'] }) });
+  const rs = (n, at, gr) => ({ dir: 'rsna-' + n, cred: 'rsna', ax: ['ax_t2'], seqs: { t2: ['sag_t2'], t1: ['sag_t1'] }, at, gr });
+  // spine-generic: T2 e T1 sagitais com máscara; t2s, o T2* axial adquirido com máscara própria. cam: o encarte do 3D no pescoço, de C1 a T1
+  const sg = (dir, t2s, at) => ({ dir, cred: 'sg', cam: { t: 'C4', d: 30 }, at, seqs: { t2: ['sag_t2', 'sag_t2_mask'], t1: ['sag_t1', 'sag_t1_mask'] }, ax: t2s && ['ax_t2star', 'ax_t2star_mask'] });
+  // mira: ponto neutro 60 mm acima do centro de L4, para a mira do teste não marcar a resposta
+  const vcf = n => ({ dir: 'vcf-' + n, cred: 'vcf', at: { 44: [0, 0, 0], mira: [0, 0, 60] }, seqs: { t1: ['sag_t1', 'sag_t1_mask'] } });
   const E = {
     spider5: sp(5, 0, 1, g5, { 1: [-4.1, -11.4, -52.3], 2: [-6.6, -14.2, -16.9], 100: [-5.0, -41.6, 38.8], 201: [-5.3, -6.0, -71.3], 202: [-5.8, -4.3, -34.4], 203: [-6.6, -9.5, 3.3] }),
     spider45: sp(45, 0, 1, g45, { 1: [25.6, 0.2, -74.6], 2: [25.6, -0.2, -38.7], 100: [24.0, -33.6, 30.5], 201: [25.9, 3.6, -93.4], 202: [25.6, 9.9, -57.8], 203: [25.9, 5.6, -18.7] }),
@@ -1360,7 +1371,18 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       'subD.L3-L4': [8.8, 3.5, 32.8], 'subD.L4-L5': [9.3, 0.8, -2.6], 'subD.L5-S1': [6.4, -5.0, -28.3],
       'subE.L3-L4': [-9.2, 0.9, 33.7], 'subE.L4-L5': [-9.3, -0.7, 2.5], 'subE.L5-S1': [-13.3, -2.7, -28.5],
       'canal.L1-L2': [1.8, -11.8, 106.6], 'canal.L2-L3': [1.1, -8.0, 70.9], 'canal.L3-L4': [0.3, -4.2, 34.1], 'canal.L4-L5': [-0.4, -4.8, 0.5], 'canal.L5-S1': [-1.0, -12.9, -28.2]
-    }, { 'subD.L4-L5': 'estenose grave' })
+    }, { 'subD.L4-L5': 'estenose grave' }),
+    // at: docs/ressonancia.md, Posições dos rótulos, do T2 (o T1 e o T2* diferem em até 3 mm)
+    sgAmu01: sg('sg-amu01', 1, { 11: [-3.4, 14.4, 65.6], 12: [-0.9, 14.3, 48.9], 13: [-1.8, 15.0, 26.9], 14: [-0.9, 14.9, 9.2], 15: [-0.4, 14.4, -7.3], 16: [-0.1, 13.2, -24.7], 17: [0.3, 9.4, -42.8], 21: [0.2, 1.9, -61.3], 22: [-0.3, -8.5, -80.0], 23: [-1.1, -19.8, -99.7], 112: [-1.2, 16.5, 34.8], 113: [-0.9, 16.2, 17.2], 114: [0.8, 17.0, -0.2], 115: [1.1, 16.3, -17.1], 116: [1.3, 14.3, -34.5], 117: [1.1, 7.7, -52.6], 121: [0.2, -1.9, -70.9], 122: [-0.8, -15.1, -88.6], 'cord.C4-C5': [0.0, 0.0, 0.0], 'canal.C4-C5': [0.2, 1.0, 0.0] }),
+    // hérnia C5-C6 (115); o T2* é um bloco inclinado 18,9° ao longo do disco
+    sgNwu01: sg('sg-nwu01', 1, { 11: [-1.6, 34.9, 81.7], 12: [-2.6, 34.2, 63.6], 13: [-1.6, 28.3, 42.4], 14: [-0.4, 23.0, 25.7], 15: [0.9, 16.7, 9.3], 16: [1.4, 11.8, -6.8], 17: [1.2, 7.4, -24.4], 21: [-0.3, 1.1, -42.9], 22: [-0.6, -7.0, -62.4], 23: [-0.4, -15.0, -82.2], 24: [1.1, -21.5, -103.3], 112: [-1.8, 31.7, 50.1], 113: [0.1, 26.7, 32.9], 114: [1.5, 21.1, 15.9], 115: [2.7, 14.7, 0.0], 116: [2.5, 10.8, -16.0], 117: [1.2, 6.1, -33.9], 121: [-0.2, -1.7, -52.8], 122: [-0.9, -11.9, -71.7], 123: [0.1, -18.8, -92.1], 'cord.C5-C6': [0.0, 0.0, 0.0], 'canal.C5-C6': [0.8, 0.2, 0.0] }),
+    // mielopatia, compressão grave em C6-C7 (116); sem T2* nesse nível, o axial é montado do T2 de 0,8 mm (axial: true); 24 (T4) é só um fragmento lateral
+    sgTokyo: sg('sg-tokyoSkyra02', 0, { 11: [-2.4, 27.4, 101.9], 12: [-0.2, 27.4, 84.2], 13: [-1.3, 23.9, 61.9], 14: [-1.7, 20.4, 44.5], 15: [-1.5, 18.1, 26.9], 16: [-1.9, 16.5, 9.4], 17: [-1.3, 14.4, -7.7], 21: [-1.1, 8.4, -26.7], 22: [0.6, 0.5, -46.6], 23: [1.7, -8.0, -66.4], 112: [0.6, 26.6, 69.9], 113: [0.3, 23.3, 51.9], 114: [-0.8, 20.3, 34.5], 115: [-1.8, 18.7, 17.0], 116: [-1.3, 17.3, -0.2], 117: [-1.0, 13.5, -17.8], 121: [-0.5, 5.5, -36.8], 122: [1.0, -3.6, -56.2], 'cord.C6-C7': [0.0, 0.0, 0.0], 'canal.C6-C7': [0.0, 1.0, -0.1] }),
+    // coluna inteira, só T2; cord.T12-L1 é o cone medular. O encarte do 3D fica na torácica
+    wsAmuAL: { dir: 'ws-amuAL', cred: 'ws', cam: { t: 'T7', d: 90 }, seqs: { t2: ['sag_t2', 'sag_t2_mask'] }, at: { 11: [-1.1, 59.2, 249.5], 12: [6.0, 59.5, 235.3], 13: [4.3, 59.3, 209.1], 14: [2.5, 59.5, 191.7], 15: [1.6, 58.0, 172.7], 16: [1.0, 57.1, 154.7], 17: [0.9, 52.4, 133.9], 21: [-1.2, 45.3, 113.8], 22: [-1.9, 37.6, 93.5], 23: [-2.6, 30.6, 74.8], 24: [-2.6, 25.0, 54.2], 25: [-1.3, 20.5, 33.6], 26: [-0.2, 18.0, 10.8], 27: [0.7, 16.9, -12.0], 28: [1.1, 17.9, -36.3], 29: [1.4, 20.3, -59.1], 30: [2.0, 23.5, -84.6], 31: [3.1, 27.0, -110.4], 32: [3.6, 30.7, -140.8], 41: [3.5, 32.5, -171.7], 42: [2.4, 34.3, -206.4], 43: [2.0, 36.2, -243.6], 112: [5.2, 61.1, 217.5], 113: [3.6, 61.8, 199.0], 114: [1.6, 60.4, 180.9], 115: [0.1, 59.9, 162.3], 116: [-1.2, 56.7, 143.1], 117: [-1.6, 49.7, 123.1], 121: [-2.4, 42.2, 104.2], 122: [-3.1, 32.4, 85.0], 123: [-3.6, 25.7, 65.4], 124: [-2.9, 20.7, 44.8], 125: [-0.8, 17.3, 23.0], 126: [0.7, 16.2, -0.4], 127: [0.9, 16.7, -24.0], 128: [1.3, 19.0, -47.5], 129: [1.5, 22.1, -71.3], 130: [2.2, 25.6, -97.0], 131: [3.4, 29.0, -124.8], 132: [3.1, 32.4, -155.8], 141: [2.9, 32.9, -188.5], 142: [1.2, 35.2, -226.2], 'cord.T6-T7': [0.0, 0.0, 0.0], 'canal.T6-T7': [-0.1, -1.3, 0.0], 'cord.T12-L1': [4.5, 9.4, -156.0], 'canal.T12-L1': [4.7, 10.9, -156.0] } },
+    // L4 fraturada na origem: P59 osteoporótica (benigna), P79 por metástase (maligna, com biópsia)
+    vcfP59: vcf('P59'),
+    vcfP79: vcf('P79')
   };
   const dz = id => ({ name: DZ.find(d => d.id === id).name, ver: ['dz', id] });
   const T = [
@@ -1448,6 +1470,92 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           'Clique no disco L4-L5 no sagital. A resposta aparece logo abaixo.',
           'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
           'Na próxima ressonância, procure o sacro e conte de baixo para cima.'] }
+      ]
+    },
+    {
+      id: 'cerv', g: 0, name: 'Exame normal cervical', steps: [
+        { k: 'c2', t: 'Achar C2 pelo dente', ex: 'sgAmu01', at: 12, contornos: true, ver: ['anat', 'C1 e C2: a junção craniovertebral'], p: [
+          'No alto do quadro Sagital, clique no osso que tem um pino apontado para cima, logo na frente da medula.',
+          'Este é o pescoço de um voluntário saudável de 28 anos, de outro banco de imagens. O T2 vai da base do crânio até o alto da torácica.',
+          'O pino é o **dente** de C2, que você viu em Anatomia, no passo "C1 e C2: a junção craniovertebral". Na frente da ponta dele fica o arco anterior de C1, um osso pequeno e redondo.',
+          'No pescoço, conte de cima para baixo, a partir de C2:',
+          '- **C2:** o osso com o dente.',
+          '- **C2-C3:** o primeiro disco abaixo dele. Entre C1 e C2 não há disco.',
+          '- **Depois:** C3, C3-C4, C4, e assim por diante até C7 e o disco C7-T1.',
+          'Na lombar você contou a partir do sacro. No pescoço o exame começa no crânio, e o dente é o ponto de partida.',
+          'Na próxima ressonância do pescoço, procure o dente e conte os discos a partir dele.'] },
+        { k: 'medula', t: 'A medula no canal', ex: 'sgAmu01', at: 114, ver: ['anat', 'Medula espinhal e meninges'], p: [
+          'Clique na faixa cinza que desce pelo meio do canal, atrás dos corpos vertebrais.',
+          'É a **medula espinhal**. No Exame normal da lombar só aparecia a ponta dela, o cone. No pescoço ela ocupa o canal de cima a baixo.',
+          'No T2 a medula é cinza: tem hipossinal em relação ao líquor claro em volta dela.',
+          'Troque para o T1. O líquor escurece, e a medula fica mais clara que ele.',
+          'Na próxima ressonância do pescoço, procure a medula cinza e siga-a do alto até o fim do exame.'] },
+        { k: 'liquor', t: 'O líquor em volta da medula', ex: 'sgAmu01', at: 114, p: [
+          'No T2, clique na faixa clara logo na frente da medula. Depois clique na faixa clara atrás dela.',
+          'As duas faixas são o **líquor** em volta da medula. No axial ele forma um anel, como você vai ver adiante.',
+          'A caixa abaixo chama esse espaço de Canal vertebral, e no 3D acende o saco dural.',
+          'Neste exame as duas faixas seguem sem falha em todos os níveis do pescoço.',
+          'Essas faixas são a folga da medula dentro do canal. A trilha Mielopatia cervical espondilótica mostra o que acontece quando elas somem.',
+          'Na próxima ressonância do pescoço, procure as duas faixas claras e veja se alguma some.'] },
+        { k: 'disco', t: 'Disco e articulação uncovertebral', ex: 'sgAmu01', at: 114, p: [
+          'Clique no disco C4-C5 e nos vizinhos dele. Conte a partir de C2, se precisar.',
+          'Os discos do pescoço são finos, mas se leem como os da lombar. No T2 o meio do disco, o núcleo, é mais claro que a borda.',
+          'Nas bordas laterais do disco ficam os processos unciformes e as **articulações uncovertebrais**, que você viu em Anatomia, no passo "Cervical subaxial: C3 a C7". Elas ficam ao lado do canal, na frente dos forames, fora do corte sagital do meio.',
+          'Em Anatomia você viu que os osteófitos delas estreitam o forame e apertam a raiz. Por isso, na dor que desce para o braço, vale olhar os forames nos cortes sagitais dos lados e no axial.',
+          'Na próxima ressonância do pescoço, procure os forames dos dois lados de cada disco, onde ficam as uncovertebrais.'] },
+        { k: 't2star', t: 'O axial T2* e a borboleta', ex: 'sgAmu01', at: 14, p: [
+          'Olhe o quadro Axial, à direita. Ele abriu na altura do corpo de C4. Depois clique no sagital um pouco acima e um pouco abaixo e veja o axial mudar.',
+          'O axial deste exame é outra sequência, o T2*, que se lê **T2 estrela**. Como no T2, o líquor fica claro. A diferença está dentro da medula.',
+          'A medula tem duas partes, que o T2* separa:',
+          '- **Substância cinzenta:** no meio, em forma de borboleta ou de H. É onde ficam os corpos dos neurônios. No T2* ela é um pouco mais clara.',
+          '- **Substância branca:** em volta da borboleta. São as fibras que sobem e descem. No T2* ela é um pouco mais escura.',
+          'A diferença é discreta. Procure a borboleta no meio da medula, dentro do anel claro de líquor. Neste exame ela fica mais nítida na altura do corpo vertebral que na do disco.',
+          'Os cortes deste axial têm 5 mm e vão de C2 a C6. Acima ou abaixo disso, o axial fica no corte da borda.',
+          'Na próxima ressonância do pescoço, procure no axial a medula oval, o anel de líquor em volta e a borboleta no meio.'] },
+        { k: 'teste', t: 'Teste: o disco C5-C6', ex: 'sgAmu01', at: 113, test: { ok: [115], sag: true, hint: 'Ache o dente de C2 e conte os discos para baixo: C2-C3 é o primeiro e C5-C6 é o quarto.' }, p: [
+          'Clique no disco C5-C6 no sagital. A resposta aparece logo abaixo.',
+          'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
+          'Na próxima ressonância do pescoço, procure o dente de C2 e conte de cima para baixo.'] }
+      ]
+    },
+    {
+      id: 'torac', g: 0, name: 'Exame normal torácico', steps: [
+        { k: 'inteira', t: 'A coluna inteira numa imagem', ex: 'wsAmuAL', at: 126, ver: ['anat', 'A coluna inteira'], p: [
+          'Olhe o quadro Sagital de cima a baixo. Ele vai da base do crânio até L3.',
+          'Este é um voluntário saudável de 25 anos, de outro banco de imagens.',
+          'O aparelho não cobre essa altura de uma vez. Ele faz a coluna em partes, e o computador junta as partes numa **imagem da coluna inteira**.',
+          'Ela mostra de uma vez o que as outras trilhas mostraram por partes:',
+          '- **Pescoço:** a medula com o líquor em volta, como no Exame normal cervical.',
+          '- **Tórax:** a medula continua pelo canal, atrás dos corpos torácicos.',
+          '- **Fim da torácica:** a medula termina, e abaixo descem as raízes da cauda equina, como na lombar.',
+          'Na próxima ressonância da coluna inteira, procure primeiro de onde a imagem vai e até onde.'] },
+        { k: 'contar', t: 'Contar a partir de C2', ex: 'wsAmuAL', at: 126, contornos: true, p: [
+          'Ache o dente de C2 no alto. Depois clique nos discos, um a um, descendo até o fim da torácica.',
+          'As vértebras torácicas se ligam às costelas, mas o corte sagital do meio não mostra as costelas. Não dá para contar por elas.',
+          'Por isso o nível se dá **contando a partir de C2**:',
+          '- **C2-C3 a C7-T1:** os 6 discos do pescoço.',
+          '- **T1-T2 a T12-L1:** os 12 discos da torácica.',
+          '- **T12:** a vértebra logo acima do 18º disco.',
+          'Os Contornos ajudam a não pular um nível. Num exame sem eles, conte duas vezes.',
+          'Na próxima ressonância torácica, procure C2 e conte os discos para baixo, sem pular nenhum.'] },
+        { k: 'cifose', t: 'A cifose torácica', ex: 'wsAmuAL', at: 126, ver: ['anat', 'Curvaturas e alinhamento sagital'], p: [
+          'Siga com os olhos a borda da frente dos corpos vertebrais, do pescoço até a lombar.',
+          'A linha faz as curvas que você viu em Anatomia, no passo "Curvaturas e alinhamento sagital":',
+          '- **Cervical:** lordose, convexa para a frente.',
+          '- **Torácica:** cifose, convexa para trás.',
+          '- **Lombar:** lordose de novo, no fim do exame.',
+          'No sagital a frente fica à direita. A **cifose torácica** aparece como a coluna arqueada para a esquerda da tela, no meio do tórax.',
+          'Um ângulo num nível só, em vez de uma curva suave, chama atenção para a vértebra desse nível. É a cifose local que você viu em Doenças, na Fratura osteoporótica por compressão.',
+          'Na próxima ressonância torácica, procure se a curva é suave em todos os níveis.'] },
+        { k: 'cone', t: 'O cone medular', ex: 'wsAmuAL', at: 132, ver: ['anat', 'Cone medular e cauda equina'], p: [
+          'Siga a medula para baixo até ela terminar em ponta. Clique na ponta.',
+          'É o **cone medular**. Neste exame ele termina na altura do disco T12-L1.',
+          'Em Anatomia você viu que no adulto ele fica perto de L1-L2. A altura varia. Num estudo com 504 adultos, o cone ficou entre o meio de T12 e o alto de L3, em média no terço de baixo de L1 (Saifuddin et al., Spine 1998). T12-L1 está dentro dessa faixa.',
+          'Para dar o nível do cone, conte a partir de C2, como no passo "Contar a partir de C2".',
+          'Na próxima ressonância, procure a ponta da medula e dê o nível dela pela contagem.'] },
+        { k: 'teste', t: 'Teste: a vértebra T12', ex: 'wsAmuAL', at: 126, test: { ok: [32], sag: true, hint: 'Ache o dente de C2 e conte os discos para baixo. O 18º é o T12-L1, e T12 é a vértebra logo acima dele.' }, p: [
+          'Clique na vértebra T12 no sagital. A resposta aparece logo abaixo.',
+          'Na próxima ressonância torácica, procure C2 e conte para baixo, sem pular nível.'] }
       ]
     },
     {
@@ -1623,6 +1731,39 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       ]
     },
     {
+      id: 'myelo', g: 1, ...dz('myelo'), steps: [
+        { k: 'sag', t: 'A medula apertada no sagital', ex: 'sgTokyo', at: 116, p: [
+          'No T2, siga a medula de cima para baixo, com as duas faixas claras de líquor, até o disco C6-C7.',
+          'Em Doenças, Mielopatia cervical espondilótica, você viu no 3D a medula comprimida. No T2 sagital, a **compressão da medula** se gradua de 0, sem estenose, a 3 (Kang et al., AJR 2011):',
+          '- **Grau 1:** o espaço do líquor em volta da medula some em mais da metade.',
+          '- **Grau 2:** a medula se deforma.',
+          '- **Grau 3:** a medula muda de sinal no T2.',
+          'Em C6-C7 o líquor some na frente e atrás, e a medula afina.',
+          'O radiologista descreveu este exame assim, sem usar essa escala:',
+          '- **C6-C7:** compressão grave da medula, com mielopatia.',
+          '- **C3-C4 a C6-C7:** protrusões e hérnias de disco.',
+          'Este paciente tem 36 anos, e a compressão vem dos discos. Não é o caso clássico de Doenças, do idoso com osteófitos e ligamento amarelo dobrado. A medula apertada se lê do mesmo jeito.',
+          'Na próxima ressonância do pescoço, procure o nível em que o líquor some e veja se a medula se deforma.'] },
+        { k: 'axial', t: 'A medula achatada no axial', ex: 'sgTokyo', at: 116, axial: true, p: [
+          'O quadro Axial mostra o disco C6-C7. Clique no sagital no disco C2-C3 para comparar, e depois volte ao C6-C7.',
+          'Este exame não tem axial feito pelo aparelho em C6-C7. O axial é montado do T2 sagital, feito em cortes finos de 0,8 mm.',
+          '- **C2-C3:** a medula é oval, com líquor claro em volta.',
+          '- **C6-C7:** a medula fica **achatada** de frente para trás, e quase não sobra líquor em volta.',
+          'Em Doenças você leu que hipersinal da medula no T2 indica lesão. A nota do radiologista fala em mielopatia em C6-C7, mas nesta imagem o hipersinal não fica nítido.',
+          'Na próxima ressonância do pescoço, procure no axial a forma da medula e o líquor em volta dela.'] },
+        { k: 'hernia', t: 'Hérnia C5-C6 em outro paciente', ex: 'sgNwu01', at: 115, p: [
+          'No T2 sagital, siga a faixa clara de líquor na frente da medula até o disco C5-C6. Depois olhe o quadro Axial.',
+          'Este é um homem de 24 anos. O radiologista descreveu:',
+          '- **C5-C6:** compressão da medula por hérnia de disco.',
+          'No sagital, o líquor na frente da medula some em C5-C6, e a medula é empurrada para trás. Atrás dela, o líquor continua.',
+          'O axial é o T2* que você viu no Exame normal cervical, aqui feito inclinado, ao longo do disco. Nele a **hérnia** encosta na frente da medula e a deforma.',
+          'Na próxima ressonância do pescoço, procure de que lado o líquor some: na frente, atrás ou nos dois.'] },
+        { k: 'teste', t: 'Teste: o nível da compressão grave', ex: 'sgTokyo', at: 114, test: { ok: [116], sag: true, hint: 'Siga a medula e procure o nível em que o líquor some na frente e atrás. Depois conte os discos a partir do dente de C2.' }, p: [
+          'Clique no disco do nível com a compressão grave da medula, no sagital. A resposta aparece logo abaixo.',
+          'Na próxima ressonância do pescoço, procure onde o líquor some e dê o nível contando a partir de C2.'] }
+      ]
+    },
+    {
       // Doenças não tem item próprio: o nódulo aparece no 3D da Cifose de Scheuermann, com uma linha de explicação no cartão do rótulo
       id: 'schmorl', g: 1, name: 'Nódulo de Schmorl', ver: ['dz', 'scheuer'], steps: [
         { k: 'entalhe', t: 'O nódulo no sagital', ex: 'spider136', seq: 'space', at: 206, p: [
@@ -1642,6 +1783,58 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
         { k: 'teste', t: 'Teste: um disco com nódulo', ex: 'spider136', at: 202, test: { sag: true, ok: g136.map((r, i) => (r[RM_G.up] || r[RM_G.low]) && !r.slice(3, 7).some(Boolean) && !r[RM_G.modic] ? 201 + i : 0).filter(Boolean), hint: 'Os nódulos deste exame ficam nos discos do alto, perto de T12. Procure o entalhe na placa.' }, p: [
           'Clique num disco com nódulo de Schmorl nas placas, no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure entalhes nas placas de todos os discos, não só nos de baixo.'] }
+      ]
+    },
+    {
+      id: 'osteofx', g: 1, ...dz('osteofx'), steps: [
+        { k: 'nivel', t: 'A vértebra fraturada', ex: 'vcfP59', seq: 't1', at: 44, contornos: true, p: [
+          'O quadro abriu no T1, com o contorno numa vértebra só. Conte a partir do sacro para dar o nível dela.',
+          'Este é outro banco de imagens: uma mulher de 73 anos com fratura osteoporótica. Não há laudo, só a classe da fratura e a vértebra.',
+          'A vértebra marcada é L4. Abaixo dela vem L5, e depois o sacro.',
+          'Em Doenças, Fratura osteoporótica por compressão, você viu no 3D o corpo de L1 em cunha. Aqui a fratura é em L4: o corpo ficou **mais baixo** que o de L3 e o de L5.',
+          'Este banco só tem T1. Por isso esta trilha e a da metástase leem a fratura pelo T1.',
+          'Na próxima ressonância, procure o corpo mais baixo que os vizinhos e dê o nível contando a partir do sacro.'] },
+        { k: 'gordura', t: 'A gordura que sobra no T1', ex: 'vcfP59', seq: 't1', at: 44, p: [
+          'Compare o brilho do corpo de L4 com o de L3 e o de L5. Depois siga a borda de trás de L4.',
+          'No Exame normal você viu que a medula óssea do adulto tem gordura e fica clara no T1. Nesta fratura, o T1 mostra duas coisas:',
+          '- **Gordura preservada:** quase todo o corpo de L4 continua claro, como as vértebras vizinhas.',
+          '- **Parede de trás reta:** a borda de trás de L4 segue a linha das vizinhas e não abaula para o canal.',
+          'Os dois sinais pesam a favor da fratura osteoporótica, e não da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996).',
+          'Em Doenças você leu que o STIR mostra o edema e diz se a fratura é recente. Este banco não tem STIR nem T2.',
+          'Na próxima ressonância, procure no T1 se a vértebra fraturada ainda tem gordura clara.'] },
+        { k: 'teste', t: 'Teste: a vértebra fraturada', ex: 'vcfP59', seq: 't1', at: 'mira', test: { ok: [44], sag: true, hint: 'Procure o corpo mais baixo que os vizinhos. Confira o nível contando a partir do sacro.' }, p: [
+          'Clique na vértebra fraturada, no sagital. A resposta aparece logo abaixo.',
+          'Neste exame os Contornos marcam só a vértebra fraturada. Deixe-os desligados.',
+          'Na próxima ressonância, procure a vértebra mais baixa e confira o nível pelo sacro.'] }
+      ]
+    },
+    {
+      id: 'mets', g: 1, ...dz('mets'), steps: [
+        { k: 'escura', t: 'O corpo inteiro escuro no T1', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'O quadro abriu no T1, em L4. Compare o brilho do corpo de L4 com o de L3, logo acima, e o de L5, logo abaixo.',
+          'Esta é uma mulher de 69 anos, do mesmo banco da Fratura osteoporótica por compressão. A fratura de L4 é por metástase, confirmada por biópsia.',
+          'Em Doenças, Metástase vertebral, você viu que o tumor chega à medula óssea do corpo vertebral. No T1 ele toma o lugar da gordura clara.',
+          'Aqui o **corpo inteiro** de L4 fica escuro. Não sobra gordura clara em parte nenhuma dele.',
+          'Na próxima ressonância, procure no T1 um corpo vertebral escuro por inteiro, diferente dos vizinhos.'] },
+        { k: 'parede', t: 'A parede de trás convexa', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'Siga a borda de trás dos corpos vertebrais, de L3 até o sacro. Pare em L4.',
+          'Nos vizinhos, a borda de trás é reta. Em L4 ela fica **convexa**: abaula para trás e entra no canal.',
+          'A parede de trás convexa pesa a favor da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996).',
+          'Na próxima ressonância, procure se a parede de trás da vértebra fraturada fica reta ou abaula para o canal.'] },
+        { k: 'comparar', t: 'Osteoporótica ou metástase no T1', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'Compare esta L4 com a da trilha Fratura osteoporótica por compressão. As duas são do mesmo banco e do mesmo nível.',
+          'Estes **sinais no T1** ajudam a separar a fratura osteoporótica da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996):',
+          '- **Gordura que sobra no corpo:** a favor de fratura osteoporótica. É a L4 da outra trilha.',
+          '- **Corpo inteiro escuro:** a favor de metástase. É esta L4. Mas ele também apareceu em 12 de 63 fraturas osteoporóticas recentes (Cuénod).',
+          '- **Parede de trás convexa:** a favor de metástase. É esta L4. A da outra trilha é reta.',
+          'Jung cita também uma faixa escura logo abaixo da placa fraturada, no T1 e no T2, a favor de fratura osteoporótica. Na L4 da outra trilha ela não fica nítida.',
+          'Nenhum sinal decide sozinho. Aqui o diagnóstico veio da biópsia.',
+          'Este banco só tem T1. O STIR ou o T2, e o contraste, acrescentariam outros sinais que não dá para ver aqui.',
+          'Na próxima ressonância com uma vértebra fraturada, procure no T1 quanto de gordura sobra e a forma da parede de trás.'] },
+        { k: 'teste', t: 'Teste: a vértebra com metástase', ex: 'vcfP79', seq: 't1', at: 'mira', test: { ok: [44], sag: true, hint: 'Procure o corpo vertebral escuro por inteiro no T1, com a parede de trás abaulada. Confira o nível contando a partir do sacro.' }, p: [
+          'Clique na vértebra com metástase, no sagital. A resposta aparece logo abaixo.',
+          'Neste exame os Contornos marcam só essa vértebra. Deixe-os desligados.',
+          'Na próxima ressonância, procure no T1 a vértebra escura por inteiro.'] }
       ]
     }
   ];

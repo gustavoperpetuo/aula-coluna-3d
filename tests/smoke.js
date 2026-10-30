@@ -73,10 +73,10 @@ async function page(b,W,H,block,conta){
  const cabeModos=cols=>p.evaluate(cols=>{const bs=[...document.querySelectorAll('.modes button')].map(e=>e.getBoundingClientRect()),s=document.querySelector('.modes').getBoundingClientRect(); return bs.every(r=>r.left>=s.left&&r.right<=s.right+0.5)&&new Set(bs.map(r=>r.top)).size===4/cols;},cols);
  if(!await cabeModos(2)) bad.push('as 4 partes não cabem na trilha em 1440');
  await p.click('#m-rm'); await rmPronto(p,'spider5/t2');
- // Contornos começam desligados em todo passo; Contar as vértebras (contornos: true) os liga, e o passo seguinte volta a desligar
+ // Contornos começam desligados em todo passo; Contar as vértebras (contornos: true, como os outros passos de contar ou dar nome) os liga, e o passo seguinte volta a desligar
  const cont=async id=>{if(id) await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await p.waitForTimeout(200); return p.evaluate(()=>__spine.RM.mask+'|'+document.querySelector('[data-rm="mask"]').getAttribute('aria-pressed')+'|'+__spine.RM.nv.volumes[1].opacity);};
  const cs=[await cont(),await cont('base.contar'),await cont('base.disco'),await cont('base.sinal')];
- if(cs.join()!=='false|false|0,true|true|0.4,false|false|0,false|false|0'||await p.evaluate(()=>__spine.RM_STEPS.filter(r=>r.st.contornos).map(r=>r.id).join())!=='base.contar') bad.push('ressonância, Contornos por passo: '+cs.join());
+ if(cs.join()!=='false|false|0,true|true|0.4,false|false|0,false|false|0'||await p.evaluate(()=>__spine.RM_STEPS.filter(r=>r.st.contornos).map(r=>r.id).join())!=='base.contar,cerv.c2,torac.contar,osteofx.nivel') bad.push('ressonância, Contornos por passo: '+cs.join());
  // axial montado do SPIDER só nos passos com axial: true; sem ele, o sagital fica no meio do quadro inteiro, e o canvas não guarda tamanho velho.
  // Todo teste do SPIDER responde só no sagital, e nenhum texto pede o axial no teste
  const lay=async id=>{await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await rmPronto(p,'spider5/t2'); await p.waitForTimeout(200);
@@ -89,7 +89,7 @@ async function page(b,W,H,block,conta){
   // trilha com o id de uma doença tem o nome dela em Doenças
   nomes:RM_TRACKS.filter(t=>DZ.some(d=>d.id===t.id)).map(t=>t.name===DZ.find(d=>d.id===t.id).name?t.id:'X'+t.id).join()}));
  console.log('rm',JSON.stringify(r0));
- if(r0.on!=='true'||r0.grupos.join('|')!=='Como ler a ressonância|Doenças na ressonância'||r0.trilhas.join('|')!=='Exame normal|Discopatia degenerativa|Discopatia degenerativa: Modic|Hérnia de disco lombar|Estenose do canal lombar|Espondilolistese degenerativa|Nódulo de Schmorl'||r0.nomes!=='ddd,hernia,sten,dspondy'||r0.passos!==9||r0.h!=='Trilhas'||r0.ey!=='Exame normal, passo 1 de 9') bad.push('ressonância, lista: '+JSON.stringify(r0));
+ if(r0.on!=='true'||r0.grupos.join('|')!=='Como ler a ressonância|Doenças na ressonância'||r0.trilhas.join('|')!=='Exame normal|Exame normal cervical|Exame normal torácico|Discopatia degenerativa|Discopatia degenerativa: Modic|Hérnia de disco lombar|Estenose do canal lombar|Espondilolistese degenerativa|Mielopatia cervical espondilótica|Nódulo de Schmorl|Fratura osteoporótica por compressão|Metástase vertebral'||r0.nomes!=='ddd,hernia,sten,dspondy,myelo,osteofx,mets'||r0.passos!==9||r0.h!=='Trilhas'||r0.ey!=='Exame normal, passo 1 de 9') bad.push('ressonância, lista: '+JSON.stringify(r0));
  if(r0.lib!==1||r0.inset.join()!=='200,214'||!/SPIDER, CC BY 4\.0/.test(r0.cred)) bad.push('ressonância, NiiVue, encarte ou crédito: '+JSON.stringify(r0));
  const px=await rmPixels(p); if(!(px>0.05)) bad.push('ressonância sem imagem: '+px);
  // todo arquivo de todo exame existe em dist/rm, e todo passo acha o exame, o ponto da mira e as respostas do teste
@@ -99,7 +99,7 @@ async function page(b,W,H,block,conta){
  if(falta.length||arq.sem.length||arq.n!==arq.ids||arq.ids!==arq.unicos||fs.existsSync(__dirname+'/../dist/rm/237')) bad.push('ressonância, exames: '+JSON.stringify({falta,sem:arq.sem,n:arq.n,ids:arq.ids,unicos:arq.unicos}));
  await p.click('#next'); await p.waitForTimeout(200);
  if(await p.evaluate(()=>document.querySelector('.eyebrow').textContent+'|'+document.querySelector('#chap .rmsteps [aria-current="step"]').textContent)!=='Exame normal, passo 2 de 9|2Orientação no sagital') bad.push('ressonância: Próximo não andou');
- await p.click('#chap > button:nth-of-type(2)'); await rmPronto(p,'spider45/t2');
+ await p.click('#chap > button:nth-of-type(4)'); await rmPronto(p,'spider45/t2');
  if(!await p.evaluate(()=>document.querySelector('.eyebrow').textContent==='Discopatia degenerativa, passo 1 de 4'&&!!document.querySelector('[data-rm="space"]'))) bad.push('ressonância: trilha da discopatia não abriu com o T2 alta resolução');
  // texto do passo: '- ' vira lista e **x** negrito, sem marcação crua na tela; todo link de volta acha a doença ou o passo de Anatomia
  const fmt=await p.evaluate(()=>({li:document.querySelectorAll('.scroll ul.rml li').length,b:document.querySelectorAll('.scroll ul.rml li strong').length,cru:/\*\*|^- /m.test(document.querySelector('.scroll').innerText),ver:document.querySelector('#rmver')&&document.querySelector('#rmver').textContent,
@@ -147,6 +147,37 @@ async function page(b,W,H,block,conta){
  const at8=await p.evaluate(()=>RM_EXAMS.rsna491250714.at), ens=async(id,dx=0)=>{const xy=await rmXY(p,at8[id],0,true); await p.mouse.click(xy.x+dx,xy.y); await p.waitForTimeout(300); return p.evaluate(()=>({hid:document.querySelector('#rmpick').hidden,box:document.querySelector('#rmpick').innerText,res:!!document.querySelector('#rmres')}));};
  const e1=await ens('subD.L5-S1'), e2=await ens('subD.L5-S1',-60);
  if(e1.hid||e1.box!=='Você clicou: Recesso lateral direito, L5-S1. Por aqui passa a raiz que desce. Neste nível, a raiz de S1.'||e1.res||!e2.hid||/Fora do ponto marcado/.test(await p.evaluate(()=>document.body.innerText))) bad.push('ressonância RSNA fora do teste: '+JSON.stringify([e1,e2]));
+ // casos além da lombar (spine-generic, whole-spine e VCF): cada trilha nova abre com a imagem, o crédito do banco e o link de volta
+ const pronto=id=>p.waitForFunction(id=>{const R=__spine.RM_STEPS[__spine.S.rmStep];return R.id===id&&__spine.RM.loaded.startsWith(R.st.ex+'/')&&!document.querySelector('#rmmsg').textContent&&(!R.ex.ax||__spine.RM.axLoaded===R.st.ex);},id,{timeout:60000}).then(()=>p.waitForTimeout(300));
+ const vai=async id=>{await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await pronto(id);};
+ const abre=[]; for(const id of ['cerv.c2','torac.inteira','myelo.sag','osteofx.nivel','mets.escura']){await vai(id); abre.push(await p.evaluate(()=>({ey:document.querySelector('.eyebrow').textContent,cred:document.querySelector('.rmcred').textContent,ver:(document.querySelector('#rmver')||{}).textContent||''}))); abre.at(-1).px=await rmPixels(p);}
+ console.log('rm novas',JSON.stringify(abre));
+ const eyN=['Exame normal cervical, passo 1 de 6','Exame normal torácico, passo 1 de 5','Mielopatia cervical espondilótica, passo 1 de 4','Fratura osteoporótica por compressão, passo 1 de 3','Metástase vertebral, passo 1 de 4'];
+ const crN=[/^Imagens: spine-generic \(Cohen-Adad et al\., Sci Data 2021\), CC BY 4\.0, recortadas e convertidas\.$/,/^Imagens: whole-spine, OpenNeuro ds005616 \(Molinier et al\., doi 10\.18112\/openneuro\.ds005616\.v1\.1\.6\), CC0/,/^Imagens: spine-generic/,/^Imagens: HCFMRP VCF Dataset \(Chiari-Correia et al\., Zenodo 2024\), CC BY 4\.0, convertidas\.$/,/^Imagens: HCFMRP VCF Dataset/];
+ if(abre.some((o,i)=>o.ey!==eyN[i]||!crN[i].test(o.cred)||!(o.px>0.02))||abre[2].ver!=='Rever em Doenças: Mielopatia cervical espondilótica'||abre[4].ver!=='Rever em Doenças: Metástase vertebral') bad.push('ressonância, trilhas novas: '+JSON.stringify(abre));
+ // clique no sagital de um exame: rótulo, caixa, resposta do teste, 3D aceso e a mira do axial adquirido
+ const clicaEx=async(ex,lbl)=>{const mm=await p.evaluate(([e,l])=>RM_EXAMS[e].at[l],[ex,lbl]),xy=await rmXY(p,mm,2); await p.mouse.click(xy.x,xy.y); await p.waitForTimeout(300);
+  return p.evaluate(()=>({v:__spine.RM.res,key:__spine.RM.pick&&__spine.RM.pick.key,box:document.querySelector('#rmpick').innerText,res:(r=>r?r.className+'|'+r.innerText:'')(document.querySelector('#rmres')),sel:__spine.S.sel?[...new Set([...__spine.S.sel].map(m=>m.userData.key))].join():'',ax:__spine.RM.nvAx&&Array.from(__spine.RM.nvAx.frac2mm(__spine.RM.nvAx.scene.crosshairPos,0,true)).slice(0,3)}));};
+ // cervical: disco C5-C6 certo (rótulo 115), C4-C5 errado, medula (101); o T2* axial vai junto ao nível clicado
+ await vai('cerv.teste');
+ const n1=await clicaEx('sgAmu01',115), n2=await clicaEx('sgAmu01',114), n3=await clicaEx('sgAmu01','cord.C4-C5');
+ console.log('rm cervical',JSON.stringify([n1,n2,n3]));
+ if(n1.v!==115||n1.key!=='disc.C5-C6'||!/^Você clicou: Disco C5-C6\. Ele aparece aceso no 3D\./.test(n1.box)||n1.sel!=='disc.C5-C6'||n1.res!=='rmres ok|Certo. Disco C5-C6.'||Math.abs(n1.ax[2]+17.1)>3) bad.push('ressonância cervical, clique certo: '+JSON.stringify(n1));
+ if(n2.v!==114||!/^rmres no\|Não\. Disco C4-C5 não é a resposta\./.test(n2.res)) bad.push('ressonância cervical, clique errado: '+JSON.stringify(n2));
+ if(n3.key!=='cord'||!/^Você clicou: Medula espinhal\. Ela aparece acesa no 3D\./.test(n3.box)||!/cord/.test(n3.sel)) bad.push('ressonância cervical, medula: '+JSON.stringify(n3));
+ // T2* axial na segunda instância, com máscara e convenção radiológica; clique nele mostra o rótulo do T2* e não vale no teste (sag)
+ const t2s=await p.evaluate(()=>{const a=__spine.RM.nvAx;return {n:a.volumes.length,url:a.volumes.map(v=>v.name).join(),rad:a.opts.isRadiologicalConvention,vis:getComputedStyle(document.querySelector('#rmax')).display,sag:__spine.RM.nv.screenSlices.map(s=>s.axCorSag).join()};});
+ const xyA=await rmXY(p,[0,0,0],0,true); await p.mouse.click(xyA.x,xyA.y); await p.waitForTimeout(300);
+ const t2c=await p.evaluate(()=>({box:document.querySelector('#rmpick').innerText,res:__spine.RM.res,hid:document.querySelector('#rmres').hidden,sag:Array.from(__spine.RM.nv.frac2mm(__spine.RM.nv.scene.crosshairPos,0,true)).slice(0,3)}));
+ console.log('rm t2*',JSON.stringify([t2s,t2c]));
+ if(t2s.n!==2||!/ax_t2star/.test(t2s.url)||!t2s.rad||t2s.vis!=='block'||t2s.sag!=='2'||!/^Você clicou: Medula espinhal\./.test(t2c.box)||t2c.res!==null||!t2c.hid||Math.abs(t2c.sag[2])>3) bad.push('ressonância, T2* axial: '+JSON.stringify([t2s,t2c]));
+ // um teste certo e um errado por trilha de doença nova
+ await vai('myelo.teste'); const y1=await clicaEx('sgTokyo',116), y2=await clicaEx('sgTokyo',114);
+ await vai('osteofx.teste'); const o1=await clicaEx('vcfP59',44), o2=await clicaEx('vcfP59','mira');
+ await vai('mets.teste'); const z1=await clicaEx('vcfP79',44), z2=await clicaEx('vcfP79','mira');
+ console.log('rm testes novos',JSON.stringify([y1,y2,o1,o2,z1,z2].map(x=>x.res)));
+ if(y1.res!=='rmres ok|Certo. Disco C6-C7.'||!/^rmres no\|Não\. Disco C4-C5 não é a resposta\./.test(y2.res)) bad.push('ressonância, teste da mielopatia: '+JSON.stringify([y1,y2]));
+ for(const [a,b,n] of [[o1,o2,'fratura osteoporótica'],[z1,z2,'metástase']]) if(a.res!=='rmres ok|Certo. Vértebra L4.'||a.key!=='L4'||!/^rmres no\|Não\. Esse ponto fica fora das estruturas marcadas\./.test(b.res)) bad.push('ressonância, teste da '+n+': '+JSON.stringify([a,b]));
  await p.evaluate(()=>{__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id==='base.teste')); __spine.setMode('anat');}); // volta ao estado de antes (Anatomia, passo do teste)
  await p.setViewportSize({width:1000,height:800}); await p.waitForTimeout(200); if(!await cabeModos(1)) bad.push('as 4 partes não cabem na trilha em 1000');
  console.log('rm errs',p.errs); if(p.errs.length) bad.push('erros na ressonância (desktop)');
@@ -177,6 +208,9 @@ async function page(b,W,H,block,conta){
  if(m390.k!=='disc.L4-L5'||m390.tiles!==1||!m390.lat||m390.inset!=='none'||!m390.ver||m390.altura>0.7*844) bad.push('ressonância em 390: '+JSON.stringify(m390));
  if(a390.t!=='0'||!a390.lat) bad.push('ressonância em 390, axial: '+JSON.stringify(a390));
  if(r390a.vis!=='visible'||!r390a.cobre||!r390a.lat||r390s.vis!=='hidden'||!r390s.lat) bad.push('ressonância em 390, RSNA: '+JSON.stringify([r390a,r390s]));
+ // trilhas novas no celular: sem rolagem lateral, também com o T2* no quadro Axial
+ const lat390=[]; for(const id of ['cerv.t2star','torac.inteira','myelo.axial','mets.comparar']){await p.evaluate(id=>__spine.goRm(__spine.RM_STEPS.findIndex(r=>r.id===id)),id); await p.waitForFunction(()=>__spine.RM.loaded&&!document.querySelector('#rmmsg').textContent,null,{timeout:60000}); await p.waitForTimeout(300); if(id==='cerv.t2star'){await p.click('[data-pane="ax"]'); await p.waitForTimeout(300);} lat390.push(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ if(lat390.some(x=>!x)) bad.push('ressonância em 390, trilhas novas com rolagem lateral: '+lat390);
  const tgt=await p.evaluate(()=>[...document.querySelectorAll('button,select,summary')].filter(e=>e.offsetParent).map(e=>{const r=e.getBoundingClientRect();return [r.width,r.height,(e.id||e.className)+':'+e.textContent.trim().slice(0,12)]}).filter(([w,h])=>h<36||w<36).slice(0,20));
  console.log('small targets',JSON.stringify(tgt)); console.log('mob errs',p.errs); if(p.errs.length) bad.push('erros no celular');
  await p.close();

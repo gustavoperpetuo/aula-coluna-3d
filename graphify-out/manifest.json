@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793309305.0994215,
-    "seen": 1793309717.8163824,
-    "ast_hash": "67765b5d94dc7cafa19959f052fcdff0",
+    "mtime": 1793326107.3541338,
+    "seen": 1793327810.1273377,
+    "ast_hash": "fe4f8ba1a670b2434d841325683c57a4",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": ""
   },
   "tests/smoke.js": {
-    "mtime": 1793309490.4552038,
-    "seen": 1793309717.816411,
-    "ast_hash": "c8e4219116d6c9fedd778e7d59dc1b91",
+    "mtime": 1793326890.346471,
+    "seen": 1793327810.1273656,
+    "ast_hash": "3e85a3175be6d4dbd0fa4977087e043d",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793309305.1002715,
-    "seen": 1793309717.8164248,
-    "ast_hash": "81a35bd55f90490cdf388a32dfa6ed09",
+    "mtime": 1793325711.1323514,
+    "seen": 1793327810.1273794,
+    "ast_hash": "8d99e9dee6452f3fb7bca1298006518b",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "tests/maiusculas.js": {
-    "mtime": 1793303200.395569,
-    "seen": 1793304284.429547,
-    "ast_hash": "390ece440ba1c8b40ec3c9807bae83fa",
+    "mtime": 1793326514.7424474,
+    "seen": 1793327810.1273592,
+    "ast_hash": "d5b9f889bacab759bce610323ffca2bf",
     "semantic_hash": ""
   },
   "functions/api/pergunta.js": {
@@ -228,15 +228,15 @@
     "semantic_hash": ""
   },
   "src/rm.js": {
-    "mtime": 1793309320.7006047,
-    "seen": 1793309717.8163943,
-    "ast_hash": "78f84a018eba92b7d5f04f243b74e1e6",
+    "mtime": 1793327148.659042,
+    "seen": 1793327810.1273499,
+    "ast_hash": "0b777e789851781ce0f2814d5c56becf",
     "semantic_hash": ""
   },
   "docs/ressonancia.md": {
-    "mtime": 1793304262.1731203,
-    "seen": 1793304284.429559,
-    "ast_hash": "08e46517727fb153f60f06b7d23f1fa4",
+    "mtime": 1793324948.0076718,
+    "seen": 1793327810.1273742,
+    "ast_hash": "61cfa51c6713da8bfc2055cc41d859fe",
     "semantic_hash": ""
   },
   "docs/estilo-ressonancia.md": {

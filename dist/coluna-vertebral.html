@@ -384,7 +384,7 @@ body.resizing { cursor: col-resize; user-select: none; }
     <div class="split" id="split" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="panel" aria-label="Largura do texto" aria-valuemin="320" title="Arraste para mudar a largura do texto; Clique duplo volta ao padrão"></div>
     <section class="rmview" id="rmview" aria-label="Ressonância magnética" hidden>
       <div class="rmbar" id="rmbar"></div>
-      <div class="rmcv"><canvas id="rmgl" role="img" aria-label="Ressonância lombar, cortes sagital e axial. Clique numa estrutura para ver o nome no painel."></canvas><div class="rmax" id="rmax"><canvas id="rmaxgl" role="img" aria-label="Ressonância lombar, corte axial feito pelo aparelho. Clique perto de um ponto marcado para ver o nome no painel."></canvas></div><span class="pcap" id="cap-sag" aria-hidden="true">Sagital</span><span class="pcap" id="cap-ax" aria-hidden="true">Axial (linha vermelha)</span><div class="rmtag" id="rmtag" hidden></div><div class="rmmsg" id="rmmsg"></div></div>
+      <div class="rmcv"><canvas id="rmgl" role="img" aria-label="Ressonância da coluna, cortes sagital e axial. Clique numa estrutura para ver o nome no painel."></canvas><div class="rmax" id="rmax"><canvas id="rmaxgl" role="img" aria-label="Ressonância da coluna, corte axial feito pelo aparelho. Clique na imagem para ver o nome no painel."></canvas></div><span class="pcap" id="cap-sag" aria-hidden="true">Sagital</span><span class="pcap" id="cap-ax" aria-hidden="true">Axial (linha vermelha)</span><div class="rmtag" id="rmtag" hidden></div><div class="rmmsg" id="rmmsg"></div></div>
     </section>
     <section class="view" id="view" aria-label="Modelo 3D da coluna">
       <div class="incap" aria-hidden="true">Mesma estrutura no 3D</div>
@@ -3390,6 +3390,9 @@ Object.assign(INFO, {
 // contando a partir do sacro), 100 canal, 201 em diante discos (201 = L5-S1).
 // RSNA: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), doi:10.1148/dataset.lsdd.2025. Sagital T1 e T2 e axial T2
 // adquirido, sem máscara; em vez dela, os pontos marcados pelos radiologistas. Conversão, casos e pontos em docs/ressonancia.md; arquivos em dist/rm/<dir>/.
+// Além da lombar (docs/ressonancia.md, Além da lombar: casos): spine-generic (sg-*, cervical, T2 e T1 sagitais e T2* axial adquirido), whole-spine
+// OpenNeuro ds005616 (ws-amuAL, T2 de C1 a L3) e VCF do HCFMRP no Zenodo (vcf-*, só T1, máscara só de L4 = 44). Máscara em outro esquema:
+// 11 a 17 C1 a C7, 21 a 32 T1 a T12, 41 a 45 L1 a L5, disco = 100 + a vértebra de cima, 100 canal, 101 medula. A origem fica na medula do disco-chave (VCF: no centro de L4).
 // g: radiological_gradings.csv do SPIDER, um disco por linha de baixo para cima (IVD label 1 = rótulo 201):
 //    [Modic, placa superior, placa inferior, listese, hérnia, estreitamento, abaulamento, Pfirrmann]; Placa é "endplate changes/Schmorl nodes".
 // at: ponto em mm (RAS) onde o passo põe a mira. SPIDER: centro de cada rótulo da máscara do T2. RSNA: canal.<nível> é o ponto do canal no
@@ -3397,7 +3400,7 @@ Object.assign(INFO, {
 //    A origem de cada estudo foi deslocada para o canal em L4-L5. gr: graduação da RSNA (train.csv) dos pontos que não são normais ou leves.
 // Passos: k id curto (a marca de visto é '<trilha>.<k>', estável), t título, ex exame, seq série (t2 se faltar), at ponto da mira,
 // ver ['dz', id] ou ['anat', título do passo de Anatomia] (sem ver vale o da trilha), test { ok: rótulos ou pontos certos, hint, sag: só o sagital responde },
-// axial: true mostra o axial montado do SPIDER (borrado; só no passo que fala dele, senão o sagital ocupa o quadro todo; a RSNA sempre mostra o axial),
+// axial: true mostra o axial montado do sagital (borrado; só no passo que fala dele, senão o sagital ocupa o quadro todo; o axial adquirido, ax, aparece sempre),
 // contornos: true liga os Contornos ao abrir o passo (só nos de dar nome ou contar; o padrão é desligado, para ver o brilho real),
 // p parágrafos no formato de docs/estilo-ressonancia.md ('- ' item de lista, **negrito**).
 const RM_NIIVUE = { src: 'https://cdn.jsdelivr.net/npm/@niivue/niivue@0.69.0/dist/niivue.umd.js', sri: 'sha384-Oyof6MyzZMH1tvMLLYFRQLWZtk9Y/WbiL3wkdXzwaCS82xRXXy9U+kRrkDDAVq6E' };
@@ -3405,9 +3408,13 @@ const RM_G = { modic: 0, up: 1, low: 2, list: 3, hern: 4, narrow: 5, bulge: 6, p
 // discos (rótulos) em que a coluna da graduação é maior que zero, ou igual a v
 const rmDiscs = (g, col, v) => g.map((r, i) => (v === undefined ? r[RM_G[col]] > 0 : r[RM_G[col]] === v) ? 201 + i : 0).filter(Boolean);
 const RM_GROUPS = ['Como ler a ressonância', 'Doenças na ressonância'];
+// crédito pelo campo cred do exame; sg e vcf são os sugeridos em docs/ressonancia.md, ws segue a citação do dataset (CC0)
 const RM_CRED = {
   spider: 'Imagens: SPIDER, CC BY 4.0 (van der Graaf et al., Sci Data 2024).',
-  rsna: 'Imagens: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), Radiological Society of North America, doi 10.1148/dataset.lsdd.2025.'
+  rsna: 'Imagens: RSNA Lumbar Spine Degenerative Classification Dataset (LumbarDISC), Radiological Society of North America, doi 10.1148/dataset.lsdd.2025.',
+  sg: 'Imagens: spine-generic (Cohen-Adad et al., Sci Data 2021), CC BY 4.0, recortadas e convertidas.',
+  ws: 'Imagens: whole-spine, OpenNeuro ds005616 (Molinier et al., doi 10.18112/openneuro.ds005616.v1.1.6), CC0, recortadas e convertidas.',
+  vcf: 'Imagens: HCFMRP VCF Dataset (Chiari-Correia et al., Zenodo 2024), CC BY 4.0, convertidas.'
 };
 const [RM_EXAMS, RM_TRACKS] = (() => {
   const g5 = [[0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 1, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 2]];
@@ -3419,8 +3426,12 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
   const g50 = [[0, 0, 0, 0, 0, 0, 0, 4], [2, 1, 1, 1, 1, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [1, 1, 1, 0, 0, 1, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [2, 1, 1, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3]];
   const g142 = [[0, 0, 0, 0, 0, 0, 0, 4], [0, 1, 0, 1, 1, 0, 0, 4], [0, 0, 0, 0, 0, 0, 1, 4], [0, 1, 1, 0, 0, 1, 1, 4], [0, 1, 1, 0, 0, 0, 1, 4], [0, 0, 0, 0, 0, 0, 0, 3], [0, 0, 1, 0, 0, 0, 0, 3]];
   // SPIDER: t1m, o T1 tem máscara própria (senão usa a do T2, mesma grade); space, tem o T2 SPACE
-  const sp = (n, t1m, space, g, at) => ({ dir: '' + n, g, at, seqs: Object.assign({ t2: [n + '_t2', n + '_t2_mask'], t1: [n + '_t1', n + (t1m ? '_t1' : '_t2') + '_mask'] }, space && { space: [n + '_t2_SPACE', n + '_t2_SPACE_mask'] }) });
-  const rs = (n, at, gr) => ({ dir: 'rsna-' + n, ax: 'ax_t2', seqs: { t2: ['sag_t2'], t1: ['sag_t1'] }, at, gr });
+  const sp = (n, t1m, space, g, at) => ({ dir: '' + n, cred: 'spider', g, at, seqs: Object.assign({ t2: [n + '_t2', n + '_t2_mask'], t1: [n + '_t1', n + (t1m ? '_t1' : '_t2') + '_mask'] }, space && { space: [n + '_t2_SPACE', n + '_t2_SPACE_mask'] }) });
+  const rs = (n, at, gr) => ({ dir: 'rsna-' + n, cred: 'rsna', ax: ['ax_t2'], seqs: { t2: ['sag_t2'], t1: ['sag_t1'] }, at, gr });
+  // spine-generic: T2 e T1 sagitais com máscara; t2s, o T2* axial adquirido com máscara própria. cam: o encarte do 3D no pescoço, de C1 a T1
+  const sg = (dir, t2s, at) => ({ dir, cred: 'sg', cam: { t: 'C4', d: 30 }, at, seqs: { t2: ['sag_t2', 'sag_t2_mask'], t1: ['sag_t1', 'sag_t1_mask'] }, ax: t2s && ['ax_t2star', 'ax_t2star_mask'] });
+  // mira: ponto neutro 60 mm acima do centro de L4, para a mira do teste não marcar a resposta
+  const vcf = n => ({ dir: 'vcf-' + n, cred: 'vcf', at: { 44: [0, 0, 0], mira: [0, 0, 60] }, seqs: { t1: ['sag_t1', 'sag_t1_mask'] } });
   const E = {
     spider5: sp(5, 0, 1, g5, { 1: [-4.1, -11.4, -52.3], 2: [-6.6, -14.2, -16.9], 100: [-5.0, -41.6, 38.8], 201: [-5.3, -6.0, -71.3], 202: [-5.8, -4.3, -34.4], 203: [-6.6, -9.5, 3.3] }),
     spider45: sp(45, 0, 1, g45, { 1: [25.6, 0.2, -74.6], 2: [25.6, -0.2, -38.7], 100: [24.0, -33.6, 30.5], 201: [25.9, 3.6, -93.4], 202: [25.6, 9.9, -57.8], 203: [25.9, 5.6, -18.7] }),
@@ -3449,7 +3460,18 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       'subD.L3-L4': [8.8, 3.5, 32.8], 'subD.L4-L5': [9.3, 0.8, -2.6], 'subD.L5-S1': [6.4, -5.0, -28.3],
       'subE.L3-L4': [-9.2, 0.9, 33.7], 'subE.L4-L5': [-9.3, -0.7, 2.5], 'subE.L5-S1': [-13.3, -2.7, -28.5],
       'canal.L1-L2': [1.8, -11.8, 106.6], 'canal.L2-L3': [1.1, -8.0, 70.9], 'canal.L3-L4': [0.3, -4.2, 34.1], 'canal.L4-L5': [-0.4, -4.8, 0.5], 'canal.L5-S1': [-1.0, -12.9, -28.2]
-    }, { 'subD.L4-L5': 'estenose grave' })
+    }, { 'subD.L4-L5': 'estenose grave' }),
+    // at: docs/ressonancia.md, Posições dos rótulos, do T2 (o T1 e o T2* diferem em até 3 mm)
+    sgAmu01: sg('sg-amu01', 1, { 11: [-3.4, 14.4, 65.6], 12: [-0.9, 14.3, 48.9], 13: [-1.8, 15.0, 26.9], 14: [-0.9, 14.9, 9.2], 15: [-0.4, 14.4, -7.3], 16: [-0.1, 13.2, -24.7], 17: [0.3, 9.4, -42.8], 21: [0.2, 1.9, -61.3], 22: [-0.3, -8.5, -80.0], 23: [-1.1, -19.8, -99.7], 112: [-1.2, 16.5, 34.8], 113: [-0.9, 16.2, 17.2], 114: [0.8, 17.0, -0.2], 115: [1.1, 16.3, -17.1], 116: [1.3, 14.3, -34.5], 117: [1.1, 7.7, -52.6], 121: [0.2, -1.9, -70.9], 122: [-0.8, -15.1, -88.6], 'cord.C4-C5': [0.0, 0.0, 0.0], 'canal.C4-C5': [0.2, 1.0, 0.0] }),
+    // hérnia C5-C6 (115); o T2* é um bloco inclinado 18,9° ao longo do disco
+    sgNwu01: sg('sg-nwu01', 1, { 11: [-1.6, 34.9, 81.7], 12: [-2.6, 34.2, 63.6], 13: [-1.6, 28.3, 42.4], 14: [-0.4, 23.0, 25.7], 15: [0.9, 16.7, 9.3], 16: [1.4, 11.8, -6.8], 17: [1.2, 7.4, -24.4], 21: [-0.3, 1.1, -42.9], 22: [-0.6, -7.0, -62.4], 23: [-0.4, -15.0, -82.2], 24: [1.1, -21.5, -103.3], 112: [-1.8, 31.7, 50.1], 113: [0.1, 26.7, 32.9], 114: [1.5, 21.1, 15.9], 115: [2.7, 14.7, 0.0], 116: [2.5, 10.8, -16.0], 117: [1.2, 6.1, -33.9], 121: [-0.2, -1.7, -52.8], 122: [-0.9, -11.9, -71.7], 123: [0.1, -18.8, -92.1], 'cord.C5-C6': [0.0, 0.0, 0.0], 'canal.C5-C6': [0.8, 0.2, 0.0] }),
+    // mielopatia, compressão grave em C6-C7 (116); sem T2* nesse nível, o axial é montado do T2 de 0,8 mm (axial: true); 24 (T4) é só um fragmento lateral
+    sgTokyo: sg('sg-tokyoSkyra02', 0, { 11: [-2.4, 27.4, 101.9], 12: [-0.2, 27.4, 84.2], 13: [-1.3, 23.9, 61.9], 14: [-1.7, 20.4, 44.5], 15: [-1.5, 18.1, 26.9], 16: [-1.9, 16.5, 9.4], 17: [-1.3, 14.4, -7.7], 21: [-1.1, 8.4, -26.7], 22: [0.6, 0.5, -46.6], 23: [1.7, -8.0, -66.4], 112: [0.6, 26.6, 69.9], 113: [0.3, 23.3, 51.9], 114: [-0.8, 20.3, 34.5], 115: [-1.8, 18.7, 17.0], 116: [-1.3, 17.3, -0.2], 117: [-1.0, 13.5, -17.8], 121: [-0.5, 5.5, -36.8], 122: [1.0, -3.6, -56.2], 'cord.C6-C7': [0.0, 0.0, 0.0], 'canal.C6-C7': [0.0, 1.0, -0.1] }),
+    // coluna inteira, só T2; cord.T12-L1 é o cone medular. O encarte do 3D fica na torácica
+    wsAmuAL: { dir: 'ws-amuAL', cred: 'ws', cam: { t: 'T7', d: 90 }, seqs: { t2: ['sag_t2', 'sag_t2_mask'] }, at: { 11: [-1.1, 59.2, 249.5], 12: [6.0, 59.5, 235.3], 13: [4.3, 59.3, 209.1], 14: [2.5, 59.5, 191.7], 15: [1.6, 58.0, 172.7], 16: [1.0, 57.1, 154.7], 17: [0.9, 52.4, 133.9], 21: [-1.2, 45.3, 113.8], 22: [-1.9, 37.6, 93.5], 23: [-2.6, 30.6, 74.8], 24: [-2.6, 25.0, 54.2], 25: [-1.3, 20.5, 33.6], 26: [-0.2, 18.0, 10.8], 27: [0.7, 16.9, -12.0], 28: [1.1, 17.9, -36.3], 29: [1.4, 20.3, -59.1], 30: [2.0, 23.5, -84.6], 31: [3.1, 27.0, -110.4], 32: [3.6, 30.7, -140.8], 41: [3.5, 32.5, -171.7], 42: [2.4, 34.3, -206.4], 43: [2.0, 36.2, -243.6], 112: [5.2, 61.1, 217.5], 113: [3.6, 61.8, 199.0], 114: [1.6, 60.4, 180.9], 115: [0.1, 59.9, 162.3], 116: [-1.2, 56.7, 143.1], 117: [-1.6, 49.7, 123.1], 121: [-2.4, 42.2, 104.2], 122: [-3.1, 32.4, 85.0], 123: [-3.6, 25.7, 65.4], 124: [-2.9, 20.7, 44.8], 125: [-0.8, 17.3, 23.0], 126: [0.7, 16.2, -0.4], 127: [0.9, 16.7, -24.0], 128: [1.3, 19.0, -47.5], 129: [1.5, 22.1, -71.3], 130: [2.2, 25.6, -97.0], 131: [3.4, 29.0, -124.8], 132: [3.1, 32.4, -155.8], 141: [2.9, 32.9, -188.5], 142: [1.2, 35.2, -226.2], 'cord.T6-T7': [0.0, 0.0, 0.0], 'canal.T6-T7': [-0.1, -1.3, 0.0], 'cord.T12-L1': [4.5, 9.4, -156.0], 'canal.T12-L1': [4.7, 10.9, -156.0] } },
+    // L4 fraturada na origem: P59 osteoporótica (benigna), P79 por metástase (maligna, com biópsia)
+    vcfP59: vcf('P59'),
+    vcfP79: vcf('P79')
   };
   const dz = id => ({ name: DZ.find(d => d.id === id).name, ver: ['dz', id] });
   const T = [
@@ -3537,6 +3559,92 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
           'Clique no disco L4-L5 no sagital. A resposta aparece logo abaixo.',
           'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
           'Na próxima ressonância, procure o sacro e conte de baixo para cima.'] }
+      ]
+    },
+    {
+      id: 'cerv', g: 0, name: 'Exame normal cervical', steps: [
+        { k: 'c2', t: 'Achar C2 pelo dente', ex: 'sgAmu01', at: 12, contornos: true, ver: ['anat', 'C1 e C2: a junção craniovertebral'], p: [
+          'No alto do quadro Sagital, clique no osso que tem um pino apontado para cima, logo na frente da medula.',
+          'Este é o pescoço de um voluntário saudável de 28 anos, de outro banco de imagens. O T2 vai da base do crânio até o alto da torácica.',
+          'O pino é o **dente** de C2, que você viu em Anatomia, no passo "C1 e C2: a junção craniovertebral". Na frente da ponta dele fica o arco anterior de C1, um osso pequeno e redondo.',
+          'No pescoço, conte de cima para baixo, a partir de C2:',
+          '- **C2:** o osso com o dente.',
+          '- **C2-C3:** o primeiro disco abaixo dele. Entre C1 e C2 não há disco.',
+          '- **Depois:** C3, C3-C4, C4, e assim por diante até C7 e o disco C7-T1.',
+          'Na lombar você contou a partir do sacro. No pescoço o exame começa no crânio, e o dente é o ponto de partida.',
+          'Na próxima ressonância do pescoço, procure o dente e conte os discos a partir dele.'] },
+        { k: 'medula', t: 'A medula no canal', ex: 'sgAmu01', at: 114, ver: ['anat', 'Medula espinhal e meninges'], p: [
+          'Clique na faixa cinza que desce pelo meio do canal, atrás dos corpos vertebrais.',
+          'É a **medula espinhal**. No Exame normal da lombar só aparecia a ponta dela, o cone. No pescoço ela ocupa o canal de cima a baixo.',
+          'No T2 a medula é cinza: tem hipossinal em relação ao líquor claro em volta dela.',
+          'Troque para o T1. O líquor escurece, e a medula fica mais clara que ele.',
+          'Na próxima ressonância do pescoço, procure a medula cinza e siga-a do alto até o fim do exame.'] },
+        { k: 'liquor', t: 'O líquor em volta da medula', ex: 'sgAmu01', at: 114, p: [
+          'No T2, clique na faixa clara logo na frente da medula. Depois clique na faixa clara atrás dela.',
+          'As duas faixas são o **líquor** em volta da medula. No axial ele forma um anel, como você vai ver adiante.',
+          'A caixa abaixo chama esse espaço de Canal vertebral, e no 3D acende o saco dural.',
+          'Neste exame as duas faixas seguem sem falha em todos os níveis do pescoço.',
+          'Essas faixas são a folga da medula dentro do canal. A trilha Mielopatia cervical espondilótica mostra o que acontece quando elas somem.',
+          'Na próxima ressonância do pescoço, procure as duas faixas claras e veja se alguma some.'] },
+        { k: 'disco', t: 'Disco e articulação uncovertebral', ex: 'sgAmu01', at: 114, p: [
+          'Clique no disco C4-C5 e nos vizinhos dele. Conte a partir de C2, se precisar.',
+          'Os discos do pescoço são finos, mas se leem como os da lombar. No T2 o meio do disco, o núcleo, é mais claro que a borda.',
+          'Nas bordas laterais do disco ficam os processos unciformes e as **articulações uncovertebrais**, que você viu em Anatomia, no passo "Cervical subaxial: C3 a C7". Elas ficam ao lado do canal, na frente dos forames, fora do corte sagital do meio.',
+          'Em Anatomia você viu que os osteófitos delas estreitam o forame e apertam a raiz. Por isso, na dor que desce para o braço, vale olhar os forames nos cortes sagitais dos lados e no axial.',
+          'Na próxima ressonância do pescoço, procure os forames dos dois lados de cada disco, onde ficam as uncovertebrais.'] },
+        { k: 't2star', t: 'O axial T2* e a borboleta', ex: 'sgAmu01', at: 14, p: [
+          'Olhe o quadro Axial, à direita. Ele abriu na altura do corpo de C4. Depois clique no sagital um pouco acima e um pouco abaixo e veja o axial mudar.',
+          'O axial deste exame é outra sequência, o T2*, que se lê **T2 estrela**. Como no T2, o líquor fica claro. A diferença está dentro da medula.',
+          'A medula tem duas partes, que o T2* separa:',
+          '- **Substância cinzenta:** no meio, em forma de borboleta ou de H. É onde ficam os corpos dos neurônios. No T2* ela é um pouco mais clara.',
+          '- **Substância branca:** em volta da borboleta. São as fibras que sobem e descem. No T2* ela é um pouco mais escura.',
+          'A diferença é discreta. Procure a borboleta no meio da medula, dentro do anel claro de líquor. Neste exame ela fica mais nítida na altura do corpo vertebral que na do disco.',
+          'Os cortes deste axial têm 5 mm e vão de C2 a C6. Acima ou abaixo disso, o axial fica no corte da borda.',
+          'Na próxima ressonância do pescoço, procure no axial a medula oval, o anel de líquor em volta e a borboleta no meio.'] },
+        { k: 'teste', t: 'Teste: o disco C5-C6', ex: 'sgAmu01', at: 113, test: { ok: [115], sag: true, hint: 'Ache o dente de C2 e conte os discos para baixo: C2-C3 é o primeiro e C5-C6 é o quarto.' }, p: [
+          'Clique no disco C5-C6 no sagital. A resposta aparece logo abaixo.',
+          'O axial não vale neste teste. Ele mostra só o disco do corte da linha vermelha.',
+          'Na próxima ressonância do pescoço, procure o dente de C2 e conte de cima para baixo.'] }
+      ]
+    },
+    {
+      id: 'torac', g: 0, name: 'Exame normal torácico', steps: [
+        { k: 'inteira', t: 'A coluna inteira numa imagem', ex: 'wsAmuAL', at: 126, ver: ['anat', 'A coluna inteira'], p: [
+          'Olhe o quadro Sagital de cima a baixo. Ele vai da base do crânio até L3.',
+          'Este é um voluntário saudável de 25 anos, de outro banco de imagens.',
+          'O aparelho não cobre essa altura de uma vez. Ele faz a coluna em partes, e o computador junta as partes numa **imagem da coluna inteira**.',
+          'Ela mostra de uma vez o que as outras trilhas mostraram por partes:',
+          '- **Pescoço:** a medula com o líquor em volta, como no Exame normal cervical.',
+          '- **Tórax:** a medula continua pelo canal, atrás dos corpos torácicos.',
+          '- **Fim da torácica:** a medula termina, e abaixo descem as raízes da cauda equina, como na lombar.',
+          'Na próxima ressonância da coluna inteira, procure primeiro de onde a imagem vai e até onde.'] },
+        { k: 'contar', t: 'Contar a partir de C2', ex: 'wsAmuAL', at: 126, contornos: true, p: [
+          'Ache o dente de C2 no alto. Depois clique nos discos, um a um, descendo até o fim da torácica.',
+          'As vértebras torácicas se ligam às costelas, mas o corte sagital do meio não mostra as costelas. Não dá para contar por elas.',
+          'Por isso o nível se dá **contando a partir de C2**:',
+          '- **C2-C3 a C7-T1:** os 6 discos do pescoço.',
+          '- **T1-T2 a T12-L1:** os 12 discos da torácica.',
+          '- **T12:** a vértebra logo acima do 18º disco.',
+          'Os Contornos ajudam a não pular um nível. Num exame sem eles, conte duas vezes.',
+          'Na próxima ressonância torácica, procure C2 e conte os discos para baixo, sem pular nenhum.'] },
+        { k: 'cifose', t: 'A cifose torácica', ex: 'wsAmuAL', at: 126, ver: ['anat', 'Curvaturas e alinhamento sagital'], p: [
+          'Siga com os olhos a borda da frente dos corpos vertebrais, do pescoço até a lombar.',
+          'A linha faz as curvas que você viu em Anatomia, no passo "Curvaturas e alinhamento sagital":',
+          '- **Cervical:** lordose, convexa para a frente.',
+          '- **Torácica:** cifose, convexa para trás.',
+          '- **Lombar:** lordose de novo, no fim do exame.',
+          'No sagital a frente fica à direita. A **cifose torácica** aparece como a coluna arqueada para a esquerda da tela, no meio do tórax.',
+          'Um ângulo num nível só, em vez de uma curva suave, chama atenção para a vértebra desse nível. É a cifose local que você viu em Doenças, na Fratura osteoporótica por compressão.',
+          'Na próxima ressonância torácica, procure se a curva é suave em todos os níveis.'] },
+        { k: 'cone', t: 'O cone medular', ex: 'wsAmuAL', at: 132, ver: ['anat', 'Cone medular e cauda equina'], p: [
+          'Siga a medula para baixo até ela terminar em ponta. Clique na ponta.',
+          'É o **cone medular**. Neste exame ele termina na altura do disco T12-L1.',
+          'Em Anatomia você viu que no adulto ele fica perto de L1-L2. A altura varia. Num estudo com 504 adultos, o cone ficou entre o meio de T12 e o alto de L3, em média no terço de baixo de L1 (Saifuddin et al., Spine 1998). T12-L1 está dentro dessa faixa.',
+          'Para dar o nível do cone, conte a partir de C2, como no passo "Contar a partir de C2".',
+          'Na próxima ressonância, procure a ponta da medula e dê o nível dela pela contagem.'] },
+        { k: 'teste', t: 'Teste: a vértebra T12', ex: 'wsAmuAL', at: 126, test: { ok: [32], sag: true, hint: 'Ache o dente de C2 e conte os discos para baixo. O 18º é o T12-L1, e T12 é a vértebra logo acima dele.' }, p: [
+          'Clique na vértebra T12 no sagital. A resposta aparece logo abaixo.',
+          'Na próxima ressonância torácica, procure C2 e conte para baixo, sem pular nível.'] }
       ]
     },
     {
@@ -3712,6 +3820,39 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
       ]
     },
     {
+      id: 'myelo', g: 1, ...dz('myelo'), steps: [
+        { k: 'sag', t: 'A medula apertada no sagital', ex: 'sgTokyo', at: 116, p: [
+          'No T2, siga a medula de cima para baixo, com as duas faixas claras de líquor, até o disco C6-C7.',
+          'Em Doenças, Mielopatia cervical espondilótica, você viu no 3D a medula comprimida. No T2 sagital, a **compressão da medula** se gradua de 0, sem estenose, a 3 (Kang et al., AJR 2011):',
+          '- **Grau 1:** o espaço do líquor em volta da medula some em mais da metade.',
+          '- **Grau 2:** a medula se deforma.',
+          '- **Grau 3:** a medula muda de sinal no T2.',
+          'Em C6-C7 o líquor some na frente e atrás, e a medula afina.',
+          'O radiologista descreveu este exame assim, sem usar essa escala:',
+          '- **C6-C7:** compressão grave da medula, com mielopatia.',
+          '- **C3-C4 a C6-C7:** protrusões e hérnias de disco.',
+          'Este paciente tem 36 anos, e a compressão vem dos discos. Não é o caso clássico de Doenças, do idoso com osteófitos e ligamento amarelo dobrado. A medula apertada se lê do mesmo jeito.',
+          'Na próxima ressonância do pescoço, procure o nível em que o líquor some e veja se a medula se deforma.'] },
+        { k: 'axial', t: 'A medula achatada no axial', ex: 'sgTokyo', at: 116, axial: true, p: [
+          'O quadro Axial mostra o disco C6-C7. Clique no sagital no disco C2-C3 para comparar, e depois volte ao C6-C7.',
+          'Este exame não tem axial feito pelo aparelho em C6-C7. O axial é montado do T2 sagital, feito em cortes finos de 0,8 mm.',
+          '- **C2-C3:** a medula é oval, com líquor claro em volta.',
+          '- **C6-C7:** a medula fica **achatada** de frente para trás, e quase não sobra líquor em volta.',
+          'Em Doenças você leu que hipersinal da medula no T2 indica lesão. A nota do radiologista fala em mielopatia em C6-C7, mas nesta imagem o hipersinal não fica nítido.',
+          'Na próxima ressonância do pescoço, procure no axial a forma da medula e o líquor em volta dela.'] },
+        { k: 'hernia', t: 'Hérnia C5-C6 em outro paciente', ex: 'sgNwu01', at: 115, p: [
+          'No T2 sagital, siga a faixa clara de líquor na frente da medula até o disco C5-C6. Depois olhe o quadro Axial.',
+          'Este é um homem de 24 anos. O radiologista descreveu:',
+          '- **C5-C6:** compressão da medula por hérnia de disco.',
+          'No sagital, o líquor na frente da medula some em C5-C6, e a medula é empurrada para trás. Atrás dela, o líquor continua.',
+          'O axial é o T2* que você viu no Exame normal cervical, aqui feito inclinado, ao longo do disco. Nele a **hérnia** encosta na frente da medula e a deforma.',
+          'Na próxima ressonância do pescoço, procure de que lado o líquor some: na frente, atrás ou nos dois.'] },
+        { k: 'teste', t: 'Teste: o nível da compressão grave', ex: 'sgTokyo', at: 114, test: { ok: [116], sag: true, hint: 'Siga a medula e procure o nível em que o líquor some na frente e atrás. Depois conte os discos a partir do dente de C2.' }, p: [
+          'Clique no disco do nível com a compressão grave da medula, no sagital. A resposta aparece logo abaixo.',
+          'Na próxima ressonância do pescoço, procure onde o líquor some e dê o nível contando a partir de C2.'] }
+      ]
+    },
+    {
       // Doenças não tem item próprio: o nódulo aparece no 3D da Cifose de Scheuermann, com uma linha de explicação no cartão do rótulo
       id: 'schmorl', g: 1, name: 'Nódulo de Schmorl', ver: ['dz', 'scheuer'], steps: [
         { k: 'entalhe', t: 'O nódulo no sagital', ex: 'spider136', seq: 'space', at: 206, p: [
@@ -3731,6 +3872,58 @@ const [RM_EXAMS, RM_TRACKS] = (() => {
         { k: 'teste', t: 'Teste: um disco com nódulo', ex: 'spider136', at: 202, test: { sag: true, ok: g136.map((r, i) => (r[RM_G.up] || r[RM_G.low]) && !r.slice(3, 7).some(Boolean) && !r[RM_G.modic] ? 201 + i : 0).filter(Boolean), hint: 'Os nódulos deste exame ficam nos discos do alto, perto de T12. Procure o entalhe na placa.' }, p: [
           'Clique num disco com nódulo de Schmorl nas placas, no sagital. A resposta aparece logo abaixo.',
           'Na próxima ressonância, procure entalhes nas placas de todos os discos, não só nos de baixo.'] }
+      ]
+    },
+    {
+      id: 'osteofx', g: 1, ...dz('osteofx'), steps: [
+        { k: 'nivel', t: 'A vértebra fraturada', ex: 'vcfP59', seq: 't1', at: 44, contornos: true, p: [
+          'O quadro abriu no T1, com o contorno numa vértebra só. Conte a partir do sacro para dar o nível dela.',
+          'Este é outro banco de imagens: uma mulher de 73 anos com fratura osteoporótica. Não há laudo, só a classe da fratura e a vértebra.',
+          'A vértebra marcada é L4. Abaixo dela vem L5, e depois o sacro.',
+          'Em Doenças, Fratura osteoporótica por compressão, você viu no 3D o corpo de L1 em cunha. Aqui a fratura é em L4: o corpo ficou **mais baixo** que o de L3 e o de L5.',
+          'Este banco só tem T1. Por isso esta trilha e a da metástase leem a fratura pelo T1.',
+          'Na próxima ressonância, procure o corpo mais baixo que os vizinhos e dê o nível contando a partir do sacro.'] },
+        { k: 'gordura', t: 'A gordura que sobra no T1', ex: 'vcfP59', seq: 't1', at: 44, p: [
+          'Compare o brilho do corpo de L4 com o de L3 e o de L5. Depois siga a borda de trás de L4.',
+          'No Exame normal você viu que a medula óssea do adulto tem gordura e fica clara no T1. Nesta fratura, o T1 mostra duas coisas:',
+          '- **Gordura preservada:** quase todo o corpo de L4 continua claro, como as vértebras vizinhas.',
+          '- **Parede de trás reta:** a borda de trás de L4 segue a linha das vizinhas e não abaula para o canal.',
+          'Os dois sinais pesam a favor da fratura osteoporótica, e não da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996).',
+          'Em Doenças você leu que o STIR mostra o edema e diz se a fratura é recente. Este banco não tem STIR nem T2.',
+          'Na próxima ressonância, procure no T1 se a vértebra fraturada ainda tem gordura clara.'] },
+        { k: 'teste', t: 'Teste: a vértebra fraturada', ex: 'vcfP59', seq: 't1', at: 'mira', test: { ok: [44], sag: true, hint: 'Procure o corpo mais baixo que os vizinhos. Confira o nível contando a partir do sacro.' }, p: [
+          'Clique na vértebra fraturada, no sagital. A resposta aparece logo abaixo.',
+          'Neste exame os Contornos marcam só a vértebra fraturada. Deixe-os desligados.',
+          'Na próxima ressonância, procure a vértebra mais baixa e confira o nível pelo sacro.'] }
+      ]
+    },
+    {
+      id: 'mets', g: 1, ...dz('mets'), steps: [
+        { k: 'escura', t: 'O corpo inteiro escuro no T1', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'O quadro abriu no T1, em L4. Compare o brilho do corpo de L4 com o de L3, logo acima, e o de L5, logo abaixo.',
+          'Esta é uma mulher de 69 anos, do mesmo banco da Fratura osteoporótica por compressão. A fratura de L4 é por metástase, confirmada por biópsia.',
+          'Em Doenças, Metástase vertebral, você viu que o tumor chega à medula óssea do corpo vertebral. No T1 ele toma o lugar da gordura clara.',
+          'Aqui o **corpo inteiro** de L4 fica escuro. Não sobra gordura clara em parte nenhuma dele.',
+          'Na próxima ressonância, procure no T1 um corpo vertebral escuro por inteiro, diferente dos vizinhos.'] },
+        { k: 'parede', t: 'A parede de trás convexa', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'Siga a borda de trás dos corpos vertebrais, de L3 até o sacro. Pare em L4.',
+          'Nos vizinhos, a borda de trás é reta. Em L4 ela fica **convexa**: abaula para trás e entra no canal.',
+          'A parede de trás convexa pesa a favor da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996).',
+          'Na próxima ressonância, procure se a parede de trás da vértebra fraturada fica reta ou abaula para o canal.'] },
+        { k: 'comparar', t: 'Osteoporótica ou metástase no T1', ex: 'vcfP79', seq: 't1', at: 44, p: [
+          'Compare esta L4 com a da trilha Fratura osteoporótica por compressão. As duas são do mesmo banco e do mesmo nível.',
+          'Estes **sinais no T1** ajudam a separar a fratura osteoporótica da metástase (Jung et al., RadioGraphics 2003; Cuénod et al., Radiology 1996):',
+          '- **Gordura que sobra no corpo:** a favor de fratura osteoporótica. É a L4 da outra trilha.',
+          '- **Corpo inteiro escuro:** a favor de metástase. É esta L4. Mas ele também apareceu em 12 de 63 fraturas osteoporóticas recentes (Cuénod).',
+          '- **Parede de trás convexa:** a favor de metástase. É esta L4. A da outra trilha é reta.',
+          'Jung cita também uma faixa escura logo abaixo da placa fraturada, no T1 e no T2, a favor de fratura osteoporótica. Na L4 da outra trilha ela não fica nítida.',
+          'Nenhum sinal decide sozinho. Aqui o diagnóstico veio da biópsia.',
+          'Este banco só tem T1. O STIR ou o T2, e o contraste, acrescentariam outros sinais que não dá para ver aqui.',
+          'Na próxima ressonância com uma vértebra fraturada, procure no T1 quanto de gordura sobra e a forma da parede de trás.'] },
+        { k: 'teste', t: 'Teste: a vértebra com metástase', ex: 'vcfP79', seq: 't1', at: 'mira', test: { ok: [44], sag: true, hint: 'Procure o corpo vertebral escuro por inteiro no T1, com a parede de trás abaulada. Confira o nível contando a partir do sacro.' }, p: [
+          'Clique na vértebra com metástase, no sagital. A resposta aparece logo abaixo.',
+          'Neste exame os Contornos marcam só essa vértebra. Deixe-os desligados.',
+          'Na próxima ressonância, procure no T1 a vértebra escura por inteiro.'] }
       ]
     }
   ];
@@ -4545,19 +4738,28 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
 
   /* ---------- ressonância: trilhas em exames do SPIDER e da RSNA (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
   const rmView = $('#rmview'), rmCv = $('#rmgl'), rmAxCv = $('#rmaxgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
-  // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido da RSNA, num segundo canvas (#rmax),
+  // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido (RSNA e T2* do spine-generic), num segundo canvas (#rmax),
   // porque numa instância só a NiiVue reamostraria o axial na grade do sagital.
-  // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial da RSNA; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
-  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null };
+  // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial adquirido; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
+  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null, camEx: '' };
   const rmEx = () => RM_STEPS[S.rmStep].ex;
-  // só os exames da RSNA têm axial próprio, e nenhum deles tem máscara (no lugar dela, os pontos dos radiologistas)
-  const rmRsna = ex => !!ex.ax;
+  // só os exames da RSNA não têm máscara (no lugar dela, os pontos dos radiologistas)
+  const rmRsna = ex => ex.cred === 'rsna';
+  // encarte do 3D na região do exame (ex.cam: alvo e distância), de lado como em RM_CFG
+  const rmCam = () => Object.assign({}, RM_CFG.cam, rmEx().cam);
   const RM_V = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9'];
-  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino
+  const RM_VN = [7, 12, 5].flatMap((n, r) => [...Array(n)].map((_, i) => 'CTL'[r] + (i + 1)));
+  // esquema dos casos além da lombar (docs/ressonancia.md, Mapa de rótulos): 11 a 17 C1 a C7, 21 a 32 T1 a T12, 41 a 45 L1 a L5
+  const rmVn = v => v >= 11 && v <= 17 ? RM_VN[v - 11] : v >= 21 && v <= 32 ? RM_VN[v - 14] : v >= 41 && v <= 45 ? RM_VN[v - 22] : null;
+  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino.
+  // SPIDER: 1 a 9 vértebras, 201 a 209 discos. Casos novos: rmVn, disco = 100 + vértebra de cima, 101 medula. 100 é o canal nos dois
   function rmName(v) {
     if (v >= 1 && v <= 9) return { nome: 'Vértebra ' + RM_V[v - 1], key: RM_V[v - 1], f: 1 };
     if (v === 100) return { nome: 'Canal vertebral', key: 'dura' };
+    if (v === 101) return { nome: 'Medula espinhal', key: 'cord', f: 1 };
     if (v > 200 && v < 210) { const n = v - 201, d = RM_V[n] + '-' + (n ? RM_V[n - 1] : 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
+    const n = rmVn(v); if (n) return { nome: 'Vértebra ' + n, key: n, f: 1 };
+    const u = rmVn(v - 100); if (u && u !== 'C1') { const d = u + '-' + (RM_VN[RM_VN.indexOf(u) + 1] || 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
     return null;
   }
   // pontos da RSNA (src/rm.js, at): 'canal.L4-L5' -> 'Canal central, L4-L5'
@@ -4581,26 +4783,29 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   // shortcut: entrada -2 transparente na tabela de cores. A NiiVue 0.69.0 (shader das camadas, comentário 'issue1139') arredonda todo valor
   // acima do mínimo para pelo menos 2/256 da tabela, e o fundo 0 pintava com a cor do rótulo 1. Tirar se a NiiVue corrigir; retestar ao trocar de versão
   const RM_LUT = (() => {
-    const I = [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 201, 202, 203, 204, 205, 206, 207, 208, 209], L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
-    // discos azuis, corpos alternando quente e roxo, canal amarelo (as cores do protótipo do spike)
-    I.forEach(v => { const c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v > 200 ? [0, 200, 255, 255] : v % 2 ? [255, 120, 60, 255] : [200, 70, 200, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
+    const I = [-2, 0].concat([...Array(210).keys()].filter(rmName)), L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
+    // discos azuis, corpos alternando quente e roxo (L5 quente, como no protótipo do spike), canal amarelo, medula verde
+    I.forEach(v => { const n = rmName(v), c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v === 101 ? [60, 220, 120, 255] : n.key.startsWith('disc.') ? [0, 200, 255, 255] : (23 - RM_VN.indexOf(n.key)) % 2 ? [200, 70, 200, 255] : [255, 120, 60, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
     return L;
   })();
   const RM_SEQ = [['t2', 'T2'], ['t1', 'T1'], ['space', 'T2 alta resolução']];
   // contornos no axial montado com 1/4 da opacidade do sagital (0,4 vira 0,1): a 0,4 a cor cobria o saco dural e as raízes
   const RM_AXA = 0.25;
-  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue
+  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue; nos exames de outra região, ex.cam troca o alvo e a distância (rmCam)
   const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
   // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout).
   // Convenção radiológica: no axial a esquerda do paciente fica à direita da tela, como nos exames; o sagital não muda
   const RM_OPTS = { fontColor: [1, 1, 1, 1], fontMinPx: 20, backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
-  // letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
-  function rmOutline(nv) {
+  // ajustes das duas instâncias. Letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
+  function rmPatch(nv) {
     const dt = nv.drawText.bind(nv);
     nv.drawText = (xy, s, sc = 1, c = null) => {
       if (!c) { const k = 2 * (nv.uiData.dpr || 1); [[-k, 0], [k, 0], [0, -k], [0, k]].forEach(([x, y]) => dt([xy[0] + x, xy[1] + y], s, sc, [0, 0, 0, 1])); }
       dt(xy, s, sc, c);
     };
+    // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
+    const interp = nv.updateInterpolation.bind(nv);
+    nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
   }
   function rmInit() {
     return RM.ready || (RM.ready = new Promise((ok, no) => {
@@ -4608,18 +4813,17 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
       const nv = new niivue.Niivue(RM_OPTS);
-      await nv.attachToCanvas(rmCv); rmOutline(nv);
-      // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
-      const interp = nv.updateInterpolation.bind(nv);
-      nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
-      // axial montado (SPIDER) aproximado, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do exame (o centro do recorte fica atrás demais no SPACE),
-      // e com os contornos mais fracos. O zoom e a opacidade da NiiVue valem para todos os quadros, então só o axial troca na hora de desenhar
+      await nv.attachToCanvas(rmCv); rmPatch(nv);
+      // axial montado aproximado e com os contornos mais fracos. No SPIDER, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal
+      // do exame (o centro do recorte fica atrás demais no SPACE); nos outros, na origem, que é a medula do disco-chave (docs/ressonancia.md, Origem deslocada).
+      // O zoom e a opacidade da NiiVue valem para todos os quadros, então só o axial troca na hora de desenhar
       const draw2D = nv.draw2D.bind(nv);
       nv.draw2D = (ltwh, axCorSag, mm, wh) => {
         nv.overlayAlphaShader = axCorSag === 0 ? RM_AXA : 1; // uniforme lido a cada quadro em draw2DMain
-        if (axCorSag !== 0 || rmRsna(rmEx())) return draw2D(ltwh, axCorSag, mm, wh);
+        if (axCorSag !== 0 || rmEx().ax) return draw2D(ltwh, axCorSag, mm, wh);
         const { at } = rmEx(), sc = nv.scene, keep = sc.pan2Dxyzmm;
-        sc.pan2Dxyzmm = rmPan(nv, [0, 1].map(i => (at[100][i] + at[202][i]) / 2), 70);
+        // cervical: o campo do T2 é estreito (cerca de 51 mm) e alto, e 20 dá um zoom de cerca de 2,5 vezes, para a medula aparecer
+        sc.pan2Dxyzmm = at[202] ? rmPan(nv, [0, 1].map(i => (at[100][i] + at[202][i]) / 2), 70) : rmPan(nv, [0, 0], 20);
         try { return draw2D(ltwh, axCorSag, mm, wh); } finally { sc.pan2Dxyzmm = keep; }
       };
       nv.onLocationChange = d => rmPicked(d, nv); RM.nv = nv; rmLayout(); return nv;
@@ -4631,11 +4835,11 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     const e = nv.screenFieldOfViewExtendedVox(0), z = Math.max(1, nv.screenFieldOfViewExtendedMM(0).fovMM[0] / w);
     return [(e.mnMM[0] + e.mxMM[0]) / 2 - c[0] * z, (e.mnMM[1] + e.mxMM[1]) / 2 - c[1] * z, 0, z];
   }
-  // segunda instância, só para o axial da RSNA; criada no primeiro exame da RSNA
+  // segunda instância, só para o axial adquirido; criada no primeiro exame que tem um. Contornos com a opacidade do axial montado
   function rmAxInit() {
     return RM.axReady || (RM.axReady = rmInit().then(async () => {
       const a = new niivue.Niivue(RM_OPTS);
-      await a.attachToCanvas(rmAxCv); rmOutline(a);
+      await a.attachToCanvas(rmAxCv); rmPatch(a); a.overlayAlphaShader = RM_AXA;
       a.onLocationChange = d => rmPicked(d, a); RM.nvAx = a; rmLayout(); return a;
     }).catch(e => { RM.axReady = null; throw e; }));
   }
@@ -4649,7 +4853,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   }
   async function rmApply() {
     if (S.mode !== 'rm') return;
-    const id = RM_STEPS[S.rmStep].st.ex, ex = rmEx(), seq = ex.seqs[RM.seq] ? RM.seq : 't2', want = id + '/' + seq, base = 'rm/' + ex.dir + '/';
+    const id = RM_STEPS[S.rmStep].st.ex, ex = rmEx(), seq = ex.seqs[RM.seq] ? RM.seq : Object.keys(ex.seqs)[0], want = id + '/' + seq, base = 'rm/' + ex.dir + '/';
     if (RM.loaded !== want || (ex.ax && RM.axLoaded !== id)) rmMsg.textContent = 'Carregando as imagens…';
     const nv = await rmInit();
     if (RM.loaded !== want) {
@@ -4663,11 +4867,13 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
       if (keep) RM.goto = keep;
     }
     if (ex.ax && RM.axLoaded !== id) {
-      const a = await rmAxInit();
+      const a = await rmAxInit(), [img, mask] = ex.ax;
       RM.axLoaded = '';
-      await a.loadVolumes([{ url: base + ex.ax + '.nii.gz' }]);
-      // axial com cerca de 90 mm de largura em volta do canal em L4-L5, que é a origem do estudo (docs/ressonancia.md, Origem deslocada)
-      a.scene.pan2Dxyzmm = rmPan(a, [0, 0], 90);
+      await a.loadVolumes([{ url: base + img + '.nii.gz' }].concat(mask ? [{ url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }] : []));
+      if (mask) { a.volumes[1].setColormapLabel(RM_LUT); a.updateGLVolume(); }
+      // axial em volta da origem do estudo (docs/ressonancia.md, Origem deslocada): na RSNA, o canal em L4-L5, com cerca de 90 mm de largura;
+      // no T2* cervical, a medula do disco-chave, com 45 mm, para a substância cinzenta aparecer
+      a.scene.pan2Dxyzmm = rmPan(a, [0, 0], rmRsna(ex) ? 90 : 45);
       RM.axLoaded = id;
     }
     rmMsg.textContent = '';
@@ -4675,10 +4881,10 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     if (RM.goto && RM.goto.ex === id && RM.loaded === want) { rmAim(nv, RM.goto.mm); if (ex.ax) rmAim(RM.nvAx, RM.goto.mm); RM.goto = null; }
   }
   // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez.
-  // RSNA: o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial
-  // SPIDER: o axial montado (borrado) só aparece no passo que o usa (st.axial); na RSNA o axial é adquirido e aparece sempre
+  // Axial adquirido (ex.ax: RSNA e T2*): o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial; a classe rsna o mostra
+  // Sem ele: o axial montado (borrado) só aparece no passo que o usa (st.axial); o adquirido aparece sempre
   function rmLayout() {
-    const one = mobileQ.matches, rs = rmRsna(rmEx()), ax = rs || !!RM_STEPS[S.rmStep].st.axial;
+    const one = mobileQ.matches, rs = !!rmEx().ax, ax = rs || !!RM_STEPS[S.rmStep].st.axial;
     rmView.classList.toggle('ax', one && ax && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs); rmView.classList.toggle('noax', !ax);
     // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
     const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight)), ta = Math.min(0.1, 26 / Math.max(1, rmAxCv.clientHeight)), sag = { sliceType: 2, position: [0, t, 0.6, 1 - t] };
@@ -4695,16 +4901,16 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   }
   function rmPicked(d, nv) {
     const ex = rmEx(), { st } = RM_STEPS[S.rmStep];
+    // axial adquirido: o outro quadro vai ao ponto clicado; o syncWith da NiiVue só propaga com o canvas em foco
+    if (ex.ax) { const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm); }
     if (rmRsna(ex)) {
-      // o outro quadro vai ao ponto clicado: o syncWith da NiiVue só propaga com o canvas em foco
-      const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm);
       // fora do teste, só o clique perto de um ponto marcado abre a caixa, com a frase de ensino
       const id = rmLm(ex, nv, d); RM.pick = st.test ? { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id } : id && { nome: rmLmName(id), lm: id, dica: rmLmDica(id) }; rmSel(null);
       if (st.test) RM.res = id || '';
     } else {
       const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
       RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
-      // test.sag: só o sagital responde (o axial montado mostra o disco do corte da linha); clique no axial apaga a resposta
+      // test.sag: só o sagital responde (o axial, montado ou adquirido, mostra o disco do corte da linha); clique no axial apaga a resposta
       if (st.test) RM.res = st.test.sag && d.axCorSag === 0 ? null : v;
     }
     rmPanel(true);
@@ -4721,7 +4927,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   function rmPanel(announce) {
     const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st, t } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
     box.hidden = !p;
-    const lit = has3D && p && p.key; // só os rótulos do SPIDER têm estrutura no 3D
+    const lit = has3D && p && p.key; // só os rótulos das máscaras têm estrutura no 3D (os pontos da RSNA não)
     if (p) {
       box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${p.dica ? ' ' + esc(p.dica) : ''}${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
       if (lit) $('#rmopen').onclick = rmOpen3D;
@@ -4748,19 +4954,21 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     if (!levelOf(p.key)) { const ms = model.reg.get(aliasKey(p.key)) || []; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; }); applyVisuals(); syncTools(); if (ms.length) frameMeshes(ms); }
     if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
   }
-  // nome sob o cursor (ou sob o dedo) com Nomes ligado; só no SPIDER, que tem máscara
+  // nome sob o cursor (ou sob o dedo) com Nomes ligado, no sagital e no axial adquirido; só onde há máscara (não na RSNA)
   function rmTagAt(e) {
-    const nv = RM.nv;
+    const cv = e.currentTarget, nv = cv === rmAxCv ? RM.nvAx : RM.nv;
     if (!RM.names || !nv || nv.volumes.length < 2) { rmTag.hidden = true; return; }
-    const r = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
+    // r: o canvas tocado; o: o quadro inteiro (.rmcv, do tamanho de #rmgl), onde a etiqueta se posiciona
+    const r = cv.getBoundingClientRect(), o = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
     // valor da máscara como a NiiVue lê em onLocationChange (mm -> voxel da própria máscara); frac2vox falha no segundo volume
     const m = nv.volumes[1], h = f[0] >= 0 && m.mm2vox(nv.frac2mm(f)), s = h && rmName(Math.round(m.getValue(h[0], h[1], h[2])));
     rmTag.hidden = !s; if (!s) return;
     rmTag.textContent = s.nome;
-    rmTag.style.transform = `translate(${Math.max(4, Math.min(x + 14, r.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, y - 30).toFixed(0)}px)`;
+    rmTag.style.transform = `translate(${Math.max(4, Math.min(e.clientX - o.left + 14, o.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, e.clientY - o.top - 30).toFixed(0)}px)`;
   }
-  rmCv.addEventListener('pointermove', rmTagAt); rmCv.addEventListener('pointerdown', rmTagAt);
-  rmCv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; });
+  [rmCv, rmAxCv].forEach(c => { c.addEventListener('pointermove', rmTagAt); c.addEventListener('pointerdown', rmTagAt); c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; }); });
+  // Contornos nos dois quadros (a RSNA não tem a camada 1)
+  const rmMaskOp = () => [RM.nv, RM.nvAx].forEach(n => n && n.volumes[1] && n.setOpacity(1, RM.mask ? 0.4 : 0));
   function rmBarRender() {
     const ex = rmEx(), chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
     // RSNA: sem máscara, então sem Contornos e Nomes
@@ -4769,7 +4977,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
       + `<div class="seg rmpane" role="group" aria-label="Plano">${[['sag', 'Sagital'], ['ax', 'Axial']].map(([k, t]) => `<button type="button" data-pane="${k}" aria-pressed="${RM.pane === k}">${t}</button>`).join('')}</div>`;
     rmBar.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
       const k = b.dataset.rm;
-      if (k === 'mask') { RM.mask = !RM.mask; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0); }
+      if (k === 'mask') { RM.mask = !RM.mask; rmMaskOp(); }
       else if (k === 'names') { RM.names = !RM.names; if (!RM.names) rmTag.hidden = true; }
       else { RM.seq = k; rmShow(); }
       rmBarRender(); rmBar.querySelector(`[data-rm="${k}"]`).focus();
@@ -4803,11 +5011,11 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
     h += `<div class="rmpick" id="rmpick" hidden></div>`;
     if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
-    h += `<p class="rmcred">${esc(RM_CRED[rmRsna(ex) ? 'rsna' : 'spider'])}</p>`;
+    h += `<p class="rmcred">${esc(RM_CRED[ex.cred])}</p>`;
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
     if (ver) $('#rmver').onclick = rmVer(ver).go;
-    if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
+    if (has3D) $('#rm3d').onclick = () => { const c = rmCam(); setFull(true); flyTo(Object.assign(c, { d: 2 * c.d }), 0); };
     rmPanel();
     const last = S.rmStep === RM_STEPS.length - 1;
     setNav(`<button class="btn" id="prev" ${S.rmStep === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next" ${last ? 'disabled' : ''}>Próximo</button>`);
@@ -4819,7 +5027,8 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   // passo novo: série e mira do passo; exame novo apaga o que foi clicado
   // Contornos começam desligados, para ver o brilho real; st.contornos os liga nos passos de dar nome ou contar
   function rmStep() {
-    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0);
+    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; rmMaskOp();
+    if (RM.camEx !== st.ex) { RM.camEx = st.ex; flyTo(rmCam()); } // exame de outra região: o encarte vai junto
     RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow();
   }
   function goRm(k, moveFocus) {
@@ -4846,7 +5055,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
-    else if (m === 'rm') { applyConfig(RM_CFG); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
+    else if (m === 'rm') { RM.camEx = RM_STEPS[S.rmStep].st.ex; applyConfig(Object.assign({}, RM_CFG, { cam: rmCam() })); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
     else { applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(moveFocus); }
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');

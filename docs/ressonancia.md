@@ -755,7 +755,7 @@ As capturas ficam em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d
 - **VCF só T1**: sem T2 ou STIR, não há edema nem sinal do líquido. Também não há rótulos das outras vértebras, do canal ou dos discos.
 - **P9** (benigna, L2): a segmentação não cai na grade do DICOM (meio voxel no plano). Ficou fora da escolha.
 - **whole-spine amuHB**: descartado, porque a imagem termina em T12-L1. O T1 do ds005616 não foi baixado.
-- **Ainda não testado no app**: o esquema novo de rótulos e o `ax_t2star` em segunda instância.
+- **Usado no app nas trilhas cervical, torácica, mielopatia, fratura osteoporótica e metástase.**: o esquema novo de rótulos e o `ax_t2star` em segunda instância.
 
 ## Onde ficou o material do spike (fora do repo)
 

@@ -804,19 +804,28 @@
 
   /* ---------- ressonância: trilhas em exames do SPIDER e da RSNA (src/rm.js) na NiiVue, que só carrega ao entrar no modo ---------- */
   const rmView = $('#rmview'), rmCv = $('#rmgl'), rmAxCv = $('#rmaxgl'), rmBar = $('#rmbar'), rmTag = $('#rmtag'), rmMsg = $('#rmmsg');
-  // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido da RSNA, num segundo canvas (#rmax),
+  // nv: sagital, e no SPIDER também o axial montado, com a mesma mira. nvAx: o axial adquirido (RSNA e T2* do spine-generic), num segundo canvas (#rmax),
   // porque numa instância só a NiiVue reamostraria o axial na grade do sagital.
-  // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial da RSNA; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
-  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null };
+  // seq: série pedida; loaded: '<exame>/<série>' no sagital; axLoaded: exame no axial adquirido; goto: { ex, mm } para a mira; pick: o que foi clicado; res: resposta no passo de teste
+  const RM = { nv: null, nvAx: null, ready: null, axReady: null, q: Promise.resolve(), loaded: '', axLoaded: '', seq: 't2', goto: null, mask: false, names: false, pane: 'sag', pick: null, res: null, camEx: '' };
   const rmEx = () => RM_STEPS[S.rmStep].ex;
-  // só os exames da RSNA têm axial próprio, e nenhum deles tem máscara (no lugar dela, os pontos dos radiologistas)
-  const rmRsna = ex => !!ex.ax;
+  // só os exames da RSNA não têm máscara (no lugar dela, os pontos dos radiologistas)
+  const rmRsna = ex => ex.cred === 'rsna';
+  // encarte do 3D na região do exame (ex.cam: alvo e distância), de lado como em RM_CFG
+  const rmCam = () => Object.assign({}, RM_CFG.cam, rmEx().cam);
   const RM_V = ['L5', 'L4', 'L3', 'L2', 'L1', 'T12', 'T11', 'T10', 'T9'];
-  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino
+  const RM_VN = [7, 12, 5].flatMap((n, r) => [...Array(n)].map((_, i) => 'CTL'[r] + (i + 1)));
+  // esquema dos casos além da lombar (docs/ressonancia.md, Mapa de rótulos): 11 a 17 C1 a C7, 21 a 32 T1 a T12, 41 a 45 L1 a L5
+  const rmVn = v => v >= 11 && v <= 17 ? RM_VN[v - 11] : v >= 21 && v <= 32 ? RM_VN[v - 14] : v >= 41 && v <= 45 ? RM_VN[v - 22] : null;
+  // rótulo da máscara -> nome e chave do 3D (as mesmas chaves de focusKey e da régua); f: nome feminino.
+  // SPIDER: 1 a 9 vértebras, 201 a 209 discos. Casos novos: rmVn, disco = 100 + vértebra de cima, 101 medula. 100 é o canal nos dois
   function rmName(v) {
     if (v >= 1 && v <= 9) return { nome: 'Vértebra ' + RM_V[v - 1], key: RM_V[v - 1], f: 1 };
     if (v === 100) return { nome: 'Canal vertebral', key: 'dura' };
+    if (v === 101) return { nome: 'Medula espinhal', key: 'cord', f: 1 };
     if (v > 200 && v < 210) { const n = v - 201, d = RM_V[n] + '-' + (n ? RM_V[n - 1] : 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
+    const n = rmVn(v); if (n) return { nome: 'Vértebra ' + n, key: n, f: 1 };
+    const u = rmVn(v - 100); if (u && u !== 'C1') { const d = u + '-' + (RM_VN[RM_VN.indexOf(u) + 1] || 'S1'); return { nome: 'Disco ' + d, key: 'disc.' + d }; }
     return null;
   }
   // pontos da RSNA (src/rm.js, at): 'canal.L4-L5' -> 'Canal central, L4-L5'
@@ -840,26 +849,29 @@
   // shortcut: entrada -2 transparente na tabela de cores. A NiiVue 0.69.0 (shader das camadas, comentário 'issue1139') arredonda todo valor
   // acima do mínimo para pelo menos 2/256 da tabela, e o fundo 0 pintava com a cor do rótulo 1. Tirar se a NiiVue corrigir; retestar ao trocar de versão
   const RM_LUT = (() => {
-    const I = [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 201, 202, 203, 204, 205, 206, 207, 208, 209], L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
-    // discos azuis, corpos alternando quente e roxo, canal amarelo (as cores do protótipo do spike)
-    I.forEach(v => { const c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v > 200 ? [0, 200, 255, 255] : v % 2 ? [255, 120, 60, 255] : [200, 70, 200, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
+    const I = [-2, 0].concat([...Array(210).keys()].filter(rmName)), L = { I, R: [], G: [], B: [], A: [], labels: I.map(v => (rmName(v) || { nome: '' }).nome) };
+    // discos azuis, corpos alternando quente e roxo (L5 quente, como no protótipo do spike), canal amarelo, medula verde
+    I.forEach(v => { const n = rmName(v), c = v <= 0 ? [0, 0, 0, 0] : v === 100 ? [255, 220, 0, 255] : v === 101 ? [60, 220, 120, 255] : n.key.startsWith('disc.') ? [0, 200, 255, 255] : (23 - RM_VN.indexOf(n.key)) % 2 ? [200, 70, 200, 255] : [255, 120, 60, 255]; ['R', 'G', 'B', 'A'].forEach((k, i) => L[k].push(c[i])); });
     return L;
   })();
   const RM_SEQ = [['t2', 'T2'], ['t1', 'T1'], ['space', 'T2 alta resolução']];
   // contornos no axial montado com 1/4 da opacidade do sagital (0,4 vira 0,1): a 0,4 a cor cobria o saco dural e as raízes
   const RM_AXA = 0.25;
-  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue
+  // o 3D enquadra a lombar de lado, com a frente à direita como no sagital da NiiVue; nos exames de outra região, ex.cam troca o alvo e a distância (rmCam)
   const RM_CFG = { cam: { t: 'L4', az: -90, el: 4, d: 40 }, show: 'bone disc' };
   // toque duplo ou longo reiniciava o contraste: toque duplo nunca (0 ms) e toque longo acima de qualquer toque (Infinity viraria 0 no setTimeout).
   // Convenção radiológica: no axial a esquerda do paciente fica à direita da tela, como nos exames; o sagital não muda
   const RM_OPTS = { fontColor: [1, 1, 1, 1], fontMinPx: 20, backColor: [12 / 255, 13 / 255, 16 / 255, 1], show3Dcrosshair: false, isColorbar: false, dragAndDropEnabled: false, loadingText: '', doubleTouchTimeout: 0, longTouchTimeout: 2e9, isNearestInterpolation: false, isRadiologicalConvention: true };
-  // letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
-  function rmOutline(nv) {
+  // ajustes das duas instâncias. Letras de orientação brancas com contorno escuro: a NiiVue 0.69.0 não tem opção de contorno, então todo texto sem cor própria sai antes em preto, 2 px para cada lado
+  function rmPatch(nv) {
     const dt = nv.drawText.bind(nv);
     nv.drawText = (xy, s, sc = 1, c = null) => {
       if (!c) { const k = 2 * (nv.uiData.dpr || 1); [[-k, 0], [k, 0], [0, -k], [0, k]].forEach(([x, y]) => dt([xy[0] + x, xy[1] + y], s, sc, [0, 0, 0, 1])); }
       dt(xy, s, sc, c);
     };
+    // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
+    const interp = nv.updateInterpolation.bind(nv);
+    nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
   }
   function rmInit() {
     return RM.ready || (RM.ready = new Promise((ok, no) => {
@@ -867,18 +879,17 @@
       s.onload = ok; s.onerror = () => { s.remove(); no(new Error('lib')); }; document.head.appendChild(s);
     }).then(async () => {
       const nv = new niivue.Niivue(RM_OPTS);
-      await nv.attachToCanvas(rmCv); rmOutline(nv);
-      // imagem linear e máscara (camada 1) no vizinho mais próximo, para a cor de um rótulo não vazar no outro; a NiiVue 0.69.0 só tem um ajuste para as duas
-      const interp = nv.updateInterpolation.bind(nv);
-      nv.updateInterpolation = (layer, force) => { if (!layer) return interp(layer, force); nv.opts.isNearestInterpolation = true; interp(layer); nv.opts.isNearestInterpolation = false; };
-      // axial montado (SPIDER) aproximado, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal do exame (o centro do recorte fica atrás demais no SPACE),
-      // e com os contornos mais fracos. O zoom e a opacidade da NiiVue valem para todos os quadros, então só o axial troca na hora de desenhar
+      await nv.attachToCanvas(rmCv); rmPatch(nv);
+      // axial montado aproximado e com os contornos mais fracos. No SPIDER, com cerca de 70 mm de largura, no meio do caminho entre o disco L4-L5 e o canal
+      // do exame (o centro do recorte fica atrás demais no SPACE); nos outros, na origem, que é a medula do disco-chave (docs/ressonancia.md, Origem deslocada).
+      // O zoom e a opacidade da NiiVue valem para todos os quadros, então só o axial troca na hora de desenhar
       const draw2D = nv.draw2D.bind(nv);
       nv.draw2D = (ltwh, axCorSag, mm, wh) => {
         nv.overlayAlphaShader = axCorSag === 0 ? RM_AXA : 1; // uniforme lido a cada quadro em draw2DMain
-        if (axCorSag !== 0 || rmRsna(rmEx())) return draw2D(ltwh, axCorSag, mm, wh);
+        if (axCorSag !== 0 || rmEx().ax) return draw2D(ltwh, axCorSag, mm, wh);
         const { at } = rmEx(), sc = nv.scene, keep = sc.pan2Dxyzmm;
-        sc.pan2Dxyzmm = rmPan(nv, [0, 1].map(i => (at[100][i] + at[202][i]) / 2), 70);
+        // cervical: o campo do T2 é estreito (cerca de 51 mm) e alto, e 20 dá um zoom de cerca de 2,5 vezes, para a medula aparecer
+        sc.pan2Dxyzmm = at[202] ? rmPan(nv, [0, 1].map(i => (at[100][i] + at[202][i]) / 2), 70) : rmPan(nv, [0, 0], 20);
         try { return draw2D(ltwh, axCorSag, mm, wh); } finally { sc.pan2Dxyzmm = keep; }
       };
       nv.onLocationChange = d => rmPicked(d, nv); RM.nv = nv; rmLayout(); return nv;
@@ -890,11 +901,11 @@
     const e = nv.screenFieldOfViewExtendedVox(0), z = Math.max(1, nv.screenFieldOfViewExtendedMM(0).fovMM[0] / w);
     return [(e.mnMM[0] + e.mxMM[0]) / 2 - c[0] * z, (e.mnMM[1] + e.mxMM[1]) / 2 - c[1] * z, 0, z];
   }
-  // segunda instância, só para o axial da RSNA; criada no primeiro exame da RSNA
+  // segunda instância, só para o axial adquirido; criada no primeiro exame que tem um. Contornos com a opacidade do axial montado
   function rmAxInit() {
     return RM.axReady || (RM.axReady = rmInit().then(async () => {
       const a = new niivue.Niivue(RM_OPTS);
-      await a.attachToCanvas(rmAxCv); rmOutline(a);
+      await a.attachToCanvas(rmAxCv); rmPatch(a); a.overlayAlphaShader = RM_AXA;
       a.onLocationChange = d => rmPicked(d, a); RM.nvAx = a; rmLayout(); return a;
     }).catch(e => { RM.axReady = null; throw e; }));
   }
@@ -908,7 +919,7 @@
   }
   async function rmApply() {
     if (S.mode !== 'rm') return;
-    const id = RM_STEPS[S.rmStep].st.ex, ex = rmEx(), seq = ex.seqs[RM.seq] ? RM.seq : 't2', want = id + '/' + seq, base = 'rm/' + ex.dir + '/';
+    const id = RM_STEPS[S.rmStep].st.ex, ex = rmEx(), seq = ex.seqs[RM.seq] ? RM.seq : Object.keys(ex.seqs)[0], want = id + '/' + seq, base = 'rm/' + ex.dir + '/';
     if (RM.loaded !== want || (ex.ax && RM.axLoaded !== id)) rmMsg.textContent = 'Carregando as imagens…';
     const nv = await rmInit();
     if (RM.loaded !== want) {
@@ -922,11 +933,13 @@
       if (keep) RM.goto = keep;
     }
     if (ex.ax && RM.axLoaded !== id) {
-      const a = await rmAxInit();
+      const a = await rmAxInit(), [img, mask] = ex.ax;
       RM.axLoaded = '';
-      await a.loadVolumes([{ url: base + ex.ax + '.nii.gz' }]);
-      // axial com cerca de 90 mm de largura em volta do canal em L4-L5, que é a origem do estudo (docs/ressonancia.md, Origem deslocada)
-      a.scene.pan2Dxyzmm = rmPan(a, [0, 0], 90);
+      await a.loadVolumes([{ url: base + img + '.nii.gz' }].concat(mask ? [{ url: base + mask + '.nii.gz', opacity: RM.mask ? 0.4 : 0 }] : []));
+      if (mask) { a.volumes[1].setColormapLabel(RM_LUT); a.updateGLVolume(); }
+      // axial em volta da origem do estudo (docs/ressonancia.md, Origem deslocada): na RSNA, o canal em L4-L5, com cerca de 90 mm de largura;
+      // no T2* cervical, a medula do disco-chave, com 45 mm, para a substância cinzenta aparecer
+      a.scene.pan2Dxyzmm = rmPan(a, [0, 0], rmRsna(ex) ? 90 : 45);
       RM.axLoaded = id;
     }
     rmMsg.textContent = '';
@@ -934,10 +947,10 @@
     if (RM.goto && RM.goto.ex === id && RM.loaded === want) { rmAim(nv, RM.goto.mm); if (ex.ax) rmAim(RM.nvAx, RM.goto.mm); RM.goto = null; }
   }
   // desktop: sagital e axial lado a lado, a mesma mira nos dois; celular: um quadro por vez.
-  // RSNA: o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial
-  // SPIDER: o axial montado (borrado) só aparece no passo que o usa (st.axial); na RSNA o axial é adquirido e aparece sempre
+  // Axial adquirido (ex.ax: RSNA e T2*): o canvas principal só mostra o sagital e o axial fica no canvas de cima (#rmax), no lugar do quadro axial; a classe rsna o mostra
+  // Sem ele: o axial montado (borrado) só aparece no passo que o usa (st.axial); o adquirido aparece sempre
   function rmLayout() {
-    const one = mobileQ.matches, rs = rmRsna(rmEx()), ax = rs || !!RM_STEPS[S.rmStep].st.axial;
+    const one = mobileQ.matches, rs = !!rmEx().ax, ax = rs || !!RM_STEPS[S.rmStep].st.axial;
     rmView.classList.toggle('ax', one && ax && RM.pane === 'ax'); rmView.classList.toggle('rsna', rs); rmView.classList.toggle('noax', !ax);
     // t: faixa no alto para o nome do quadro não cobrir a imagem; o axial fica no alto para o encarte do 3D caber embaixo
     const t = Math.min(0.1, 26 / Math.max(1, rmCv.clientHeight)), ta = Math.min(0.1, 26 / Math.max(1, rmAxCv.clientHeight)), sag = { sliceType: 2, position: [0, t, 0.6, 1 - t] };
@@ -954,16 +967,16 @@
   }
   function rmPicked(d, nv) {
     const ex = rmEx(), { st } = RM_STEPS[S.rmStep];
+    // axial adquirido: o outro quadro vai ao ponto clicado; o syncWith da NiiVue só propaga com o canvas em foco
+    if (ex.ax) { const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm); }
     if (rmRsna(ex)) {
-      // o outro quadro vai ao ponto clicado: o syncWith da NiiVue só propaga com o canvas em foco
-      const o = nv === RM.nv ? RM.nvAx : RM.nv; if (o && o.volumes.length) rmAim(o, d.mm);
       // fora do teste, só o clique perto de um ponto marcado abre a caixa, com a frase de ensino
       const id = rmLm(ex, nv, d); RM.pick = st.test ? { nome: id ? rmLmName(id) : 'Fora do ponto marcado', lm: id } : id && { nome: rmLmName(id), lm: id, dica: rmLmDica(id) }; rmSel(null);
       if (st.test) RM.res = id || '';
     } else {
       const v = d.values && d.values[1] ? Math.round(d.values[1].value) : 0;
       RM.pick = rmName(v); rmSel(RM.pick && RM.pick.key);
-      // test.sag: só o sagital responde (o axial montado mostra o disco do corte da linha); clique no axial apaga a resposta
+      // test.sag: só o sagital responde (o axial, montado ou adquirido, mostra o disco do corte da linha); clique no axial apaga a resposta
       if (st.test) RM.res = st.test.sag && d.axCorSag === 0 ? null : v;
     }
     rmPanel(true);
@@ -980,7 +993,7 @@
   function rmPanel(announce) {
     const box = $('#rmpick'), res = $('#rmres'), p = RM.pick, { st, t } = RM_STEPS[S.rmStep], ex = rmEx(), rs = rmRsna(ex); if (!box) return;
     box.hidden = !p;
-    const lit = has3D && p && p.key; // só os rótulos do SPIDER têm estrutura no 3D
+    const lit = has3D && p && p.key; // só os rótulos das máscaras têm estrutura no 3D (os pontos da RSNA não)
     if (p) {
       box.innerHTML = `<p>Você clicou: <strong>${esc(p.nome)}</strong>.${p.dica ? ' ' + esc(p.dica) : ''}${lit ? (p.f ? ' Ela aparece acesa no 3D.' : ' Ele aparece aceso no 3D.') : ''}</p>${lit ? '<button class="btn link" id="rmopen" type="button">Abrir no 3D grande</button>' : ''}`;
       if (lit) $('#rmopen').onclick = rmOpen3D;
@@ -1007,19 +1020,21 @@
     if (!levelOf(p.key)) { const ms = model.reg.get(aliasKey(p.key)) || []; ms.forEach(m => { S.layers[(KIND[m.userData.kind] || KIND.bone).L] = true; }); applyVisuals(); syncTools(); if (ms.length) frameMeshes(ms); }
     if (mobileQ.matches) view.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
   }
-  // nome sob o cursor (ou sob o dedo) com Nomes ligado; só no SPIDER, que tem máscara
+  // nome sob o cursor (ou sob o dedo) com Nomes ligado, no sagital e no axial adquirido; só onde há máscara (não na RSNA)
   function rmTagAt(e) {
-    const nv = RM.nv;
+    const cv = e.currentTarget, nv = cv === rmAxCv ? RM.nvAx : RM.nv;
     if (!RM.names || !nv || nv.volumes.length < 2) { rmTag.hidden = true; return; }
-    const r = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
+    // r: o canvas tocado; o: o quadro inteiro (.rmcv, do tamanho de #rmgl), onde a etiqueta se posiciona
+    const r = cv.getBoundingClientRect(), o = rmCv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, k = nv.uiData.dpr || 1, f = nv.canvasPos2frac([x * k, y * k]);
     // valor da máscara como a NiiVue lê em onLocationChange (mm -> voxel da própria máscara); frac2vox falha no segundo volume
     const m = nv.volumes[1], h = f[0] >= 0 && m.mm2vox(nv.frac2mm(f)), s = h && rmName(Math.round(m.getValue(h[0], h[1], h[2])));
     rmTag.hidden = !s; if (!s) return;
     rmTag.textContent = s.nome;
-    rmTag.style.transform = `translate(${Math.max(4, Math.min(x + 14, r.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, y - 30).toFixed(0)}px)`;
+    rmTag.style.transform = `translate(${Math.max(4, Math.min(e.clientX - o.left + 14, o.width - rmTag.offsetWidth - 4)).toFixed(0)}px,${Math.max(4, e.clientY - o.top - 30).toFixed(0)}px)`;
   }
-  rmCv.addEventListener('pointermove', rmTagAt); rmCv.addEventListener('pointerdown', rmTagAt);
-  rmCv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; });
+  [rmCv, rmAxCv].forEach(c => { c.addEventListener('pointermove', rmTagAt); c.addEventListener('pointerdown', rmTagAt); c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') rmTag.hidden = true; }); });
+  // Contornos nos dois quadros (a RSNA não tem a camada 1)
+  const rmMaskOp = () => [RM.nv, RM.nvAx].forEach(n => n && n.volumes[1] && n.setOpacity(1, RM.mask ? 0.4 : 0));
   function rmBarRender() {
     const ex = rmEx(), chip = (k, t, on) => `<button class="chip" type="button" data-rm="${k}" aria-pressed="${on}">${t}</button>`;
     // RSNA: sem máscara, então sem Contornos e Nomes
@@ -1028,7 +1043,7 @@
       + `<div class="seg rmpane" role="group" aria-label="Plano">${[['sag', 'Sagital'], ['ax', 'Axial']].map(([k, t]) => `<button type="button" data-pane="${k}" aria-pressed="${RM.pane === k}">${t}</button>`).join('')}</div>`;
     rmBar.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
       const k = b.dataset.rm;
-      if (k === 'mask') { RM.mask = !RM.mask; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0); }
+      if (k === 'mask') { RM.mask = !RM.mask; rmMaskOp(); }
       else if (k === 'names') { RM.names = !RM.names; if (!RM.names) rmTag.hidden = true; }
       else { RM.seq = k; rmShow(); }
       rmBarRender(); rmBar.querySelector(`[data-rm="${k}"]`).focus();
@@ -1062,11 +1077,11 @@
     if (st.test) h += `<div class="rmres" id="rmres" hidden></div>`;
     h += `<div class="rmpick" id="rmpick" hidden></div>`;
     if (has3D) h += `<button class="btn rm3d" id="rm3d" type="button">Ver no 3D</button>`;
-    h += `<p class="rmcred">${esc(RM_CRED[rmRsna(ex) ? 'rsna' : 'spider'])}</p>`;
+    h += `<p class="rmcred">${esc(RM_CRED[ex.cred])}</p>`;
     scrollEl.innerHTML = h; scrollEl.scrollTop = 0;
     // celular: o 3D em tela cheia, com a lombar inteira na tela em pé (mais longe que no encarte) e a estrutura clicada acesa
     if (ver) $('#rmver').onclick = rmVer(ver).go;
-    if (has3D) $('#rm3d').onclick = () => { setFull(true); flyTo(Object.assign({}, RM_CFG.cam, { d: 80 }), 0); };
+    if (has3D) $('#rm3d').onclick = () => { const c = rmCam(); setFull(true); flyTo(Object.assign(c, { d: 2 * c.d }), 0); };
     rmPanel();
     const last = S.rmStep === RM_STEPS.length - 1;
     setNav(`<button class="btn" id="prev" ${S.rmStep === 0 ? 'disabled' : ''}>Anterior</button><button class="btn primary" id="next" ${last ? 'disabled' : ''}>Próximo</button>`);
@@ -1078,7 +1093,8 @@
   // passo novo: série e mira do passo; exame novo apaga o que foi clicado
   // Contornos começam desligados, para ver o brilho real; st.contornos os liga nos passos de dar nome ou contar
   function rmStep() {
-    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; if (RM.nv && RM.nv.volumes[1]) RM.nv.setOpacity(1, RM.mask ? 0.4 : 0);
+    const { st, ex } = RM_STEPS[S.rmStep]; RM.mask = !!st.contornos; rmMaskOp();
+    if (RM.camEx !== st.ex) { RM.camEx = st.ex; flyTo(rmCam()); } // exame de outra região: o encarte vai junto
     RM.seq = st.seq || 't2'; RM.goto = { ex: st.ex, mm: ex.at[st.at] }; RM.res = null; rmLayout(); rmShow();
   }
   function goRm(k, moveFocus) {
@@ -1105,7 +1121,7 @@
   function setMode(m, moveFocus) {
     S.mode = m; syncMode(); S.dz = null; rebuild({});
     if (m === 'anat') renderStep(moveFocus);
-    else if (m === 'rm') { applyConfig(RM_CFG); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
+    else if (m === 'rm') { RM.camEx = RM_STEPS[S.rmStep].st.ex; applyConfig(Object.assign({}, RM_CFG, { cam: rmCam() })); rmSel(RM.pick && RM.pick.key); rmStep(); renderRm(moveFocus); }
     else { applyConfig({ cam: { t: 'center', az: 30, el: 8, d: 120 }, show: 'bone disc' }); renderDz(moveFocus); }
   }
   $('#m-anat').onclick = () => S.mode !== 'anat' && setMode('anat');

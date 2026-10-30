@@ -1,17 +1,17 @@
-# Graph Report - aula-coluna-3d  (2026-10-29)
+# Graph Report - aula-coluna-3d  (2026-10-30)
 
 ## Corpus Check
-- 32 files · ~114,698 words
+- 32 files · ~123,195 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 306 nodes · 516 edges · 23 communities (16 shown, 7 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.89)
+- 315 nodes · 527 edges · 23 communities (16 shown, 7 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9fcb347c`
+- Built from commit: `d5928245`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -33,32 +33,32 @@
 - transcrever.mjs
 - Ressonância: spike de viabilidade (fase 1)
 - rm.js
-- rmPicked
+- Além da lombar: casos
 - Como escrever a Ressonância
 
 ## God Nodes (most connected - your core abstractions)
 1. `renderDz()` - 20 edges
 2. `buildSpine()` - 18 edges
-3. `Ressonância: spike de viabilidade (fase 1)` - 17 edges
+3. `Ressonância: spike de viabilidade (fase 1)` - 18 edges
 4. `applyConfig()` - 15 edges
 5. `renderStep()` - 13 edges
 6. `renderRm()` - 13 edges
 7. `applyVisuals()` - 12 edges
 8. `focusKey()` - 12 edges
-9. `renderChapters()` - 11 edges
-10. `setMode()` - 11 edges
+9. `flyTo()` - 11 edges
+10. `renderChapters()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Como o código funciona` --references--> `placeNav()`  [INFERRED]
-  README.md → src/app.js
 - `Como o código funciona` --references--> `invalidate()`  [INFERRED]
   README.md → src/app.js
 - `Como o código funciona` --references--> `applyVisuals()`  [INFERRED]
   README.md → src/app.js
+- `Como o código funciona` --references--> `placeNav()`  [INFERRED]
+  README.md → src/app.js
 - `Visualização e convenção radiológica` --references--> `sync()`  [INFERRED]
   docs/ressonancia.md → src/app.js
-- `Como o código funciona` --references--> `mergeGeoms()`  [INFERRED]
-  README.md → src/geo.js
+- `Mapa de rótulos (cervical, torácica e VCF)` --references--> `rmName()`  [INFERRED]
+  docs/ressonancia.md → src/app.js
 
 ## Import Cycles
 - None detected.
@@ -66,12 +66,12 @@
 ## Communities (23 total, 7 thin omitted)
 
 ### Community 0 - "geo.js"
-Cohesion: 0.20
-Nodes (22): Como o código funciona, BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar(), buildThoracic() (+14 more)
+Cohesion: 0.18
+Nodes (23): Como o código funciona, placeNav(), BASE_WEDGE, bodyOutline(), buildSpine(), buildC1(), buildCervical(), buildLumbar() (+15 more)
 
 ### Community 1 - "applyConfig"
-Cohesion: 0.11
-Nodes (35): aliasKey(), applyConfig(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard() (+27 more)
+Cohesion: 0.14
+Nodes (30): aliasKey(), applyConfig(), applyVisuals(), axTarget(), bindSee(), capLayer(), clearRuler(), closeCard() (+22 more)
 
 ### Community 3 - "playwright"
 Cohesion: 0.06
@@ -90,8 +90,8 @@ Cohesion: 0.22
 Nodes (8): Ações, Começar, Continuar, Parar, Pendências da última rodada, Resultado, Retrospectiva: aula 3D da coluna (12/10/2026), Temas
 
 ### Community 7 - "app.js"
-Cohesion: 0.13
-Nodes (30): bindQuiz(), cats(), chapterDone(), closeDz(), dzCfg(), edgeFade(), focusTitle(), goRm() (+22 more)
+Cohesion: 0.08
+Nodes (48): bindQuiz(), cats(), chapterDone(), closeDz(), describe(), dzCfg(), edgeFade(), focusTitle() (+40 more)
 
 ### Community 8 - "content.js"
 Cohesion: 0.22
@@ -121,9 +121,9 @@ Nodes (31): Acesso e conteúdo do zip, Axial, Capturas, Casos, Casos escolhidos,
 Cohesion: 0.29
 Nodes (7): RM_CRED, [RM_EXAMS, RM_TRACKS], RM_G, RM_GROUPS, RM_IDS, RM_NIIVUE, rmDiscs()
 
-### Community 20 - "rmPicked"
-Cohesion: 0.19
-Nodes (16): rmAim(), rmApply(), rmAxInit(), rmBarRender(), rmGrade(), rmInit(), rmLayout(), rmLm() (+8 more)
+### Community 20 - "Além da lombar: casos"
+Cohesion: 0.18
+Nodes (11): Além da lombar: casos, Capturas, Casos, Conferência da numeração, Conversão, orientação e origem, Fontes, licenças e citação, Mapa de rótulos (cervical, torácica e VCF), O que faltou ou ficou de fora (+3 more)
 
 ### Community 22 - "Como escrever a Ressonância"
 Cohesion: 0.50
@@ -131,23 +131,23 @@ Nodes (3): Como escrever a Ressonância, Formato no código (src/rm.js), Regras
 
 ## Knowledge Gaps
 - **3 isolated node(s):** `@niivue/niivue`, `@supabase/supabase-js`, `three`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 152 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 159 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Como o código funciona` connect `geo.js` to `applyConfig`, `Aula 3D da coluna vertebral`?**
-  _High betweenness centrality (0.090) - this node is a cross-community bridge._
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
 - **What connects `@niivue/niivue`, `@supabase/supabase-js`, `three` to the rest of the system?**
   _3 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `applyConfig` be split into smaller, more focused modules?**
-  _Cohesion score 0.10628019323671498 - nodes in this community are weakly interconnected._
-- **Why does `sync()` connect `app.js` to `applyConfig`, `Ressonância: spike de viabilidade (fase 1)`?**
-  _High betweenness centrality (0.086) - this node is a cross-community bridge._
+  _Cohesion score 0.13793103448275862 - nodes in this community are weakly interconnected._
+- **Why does `Ressonância: spike de viabilidade (fase 1)` connect `Ressonância: spike de viabilidade (fase 1)` to `Além da lombar: casos`?**
+  _High betweenness centrality (0.078) - this node is a cross-community bridge._
 - **Should `playwright` be split into smaller, more focused modules?**
   _Cohesion score 0.06072874493927125 - nodes in this community are weakly interconnected._
+- **Why does `Além da lombar: casos` connect `Além da lombar: casos` to `Ressonância: spike de viabilidade (fase 1)`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
-- **Should `app.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.12643678160919541 - nodes in this community are weakly interconnected._
