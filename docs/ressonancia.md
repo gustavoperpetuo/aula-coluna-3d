@@ -480,6 +480,283 @@ Visualizador:
 - **Zoom do axial.** Medido na 0.69.0: o centro do quadro é `((mn+mx)/2 - pan)/zoom`, com o campo em voxels. A conta anterior, `c * (1 - zoom)`, só acertava com o campo já centrado em `c`; No SPACE do 45 o centro ficava 10,7 mm atrás do ponto pedido. Agora o centro cai no ponto pedido: no SPIDER, o meio entre o disco L4-L5 e o canal, com 70 mm de largura; Na RSNA, o canal em L4-L5, com 90 mm.
 - **Crédito** muda com o exame (SPIDER ou RSNA).
 
+## Além da lombar: casos
+
+Preparado em 30/10/2026. Só dados: seis exames novos em `dist/rm/<pasta>/`, ainda fora do `src/rm.js`. São três cervicais, um torácico e duas fraturas lombares. Nenhum arquivo de `src/` ou `tests/` mudou.
+
+| Pasta | Papel | Séries | MiB |
+|---|---|---|---|
+| `sg-amu01` | cervical quase normal | `sag_t2`, `sag_t1`, `ax_t2star` | 6,16 |
+| `sg-nwu01` | hérnia C5-C6 comprimindo a medula | `sag_t2`, `sag_t1`, `ax_t2star` | 9,05 |
+| `sg-tokyoSkyra02` | mielopatia, compressão grave em C6-C7 | `sag_t2`, `sag_t1` | 6,55 |
+| `ws-amuAL` | coluna torácica normal (o arquivo vai de C1 a L3) | `sag_t2` | 3,36 |
+| `vcf-P59` | fratura osteoporótica (benigna) de L4 | `sag_t1` | 2,99 |
+| `vcf-P79` | fratura por metástase (maligna) de L4 | `sag_t1` | 4,60 |
+
+Os seis somam 32,7 MiB em 22 arquivos, e `dist/rm` passa de 151,6 para 184,3 MiB. O maior arquivo é `sg-nwu01/sag_t2.nii.gz`, com 4,63 MiB. Todos ficam abaixo de 10 MB.
+
+Cada série tem `<série>.nii.gz` e `<série>_mask.nii.gz`, na mesma grade. Os nomes seguem a RSNA (`sag_t2`, `sag_t1`, `ax_...`), e a máscara leva o sufixo `_mask`, como no SPIDER.
+
+### Fontes, licenças e citação
+
+**spine-generic `data-multi-subject`** (casos `sg-*`)
+- Fonte: https://github.com/spine-generic/data-multi-subject, commit `1c7f204` de 06/10/2026.
+- Licença: o `LICENSE` começa com "Attribution 4.0 International" (CC BY 4.0). O `dataset_description.json` diz `"License": "CC0"`. Vale o `LICENSE`, que é o mais restritivo.
+- Citação: Cohen-Adad J et al. Open-access quantitative MRI data of the spinal cord and reproducibility across participants, sites and manufacturers. Sci Data 8, 219 (2021). doi:10.1038/s41597-021-00941-8. O dataset é doi:10.5281/zenodo.4299140, e a API do Zenodo dá `cc-by-4.0`.
+- Crédito sugerido: "Imagens: spine-generic (Cohen-Adad et al., Sci Data 2021), CC BY 4.0, recortadas e convertidas."
+- Rótulos (`derivatives/labels`):
+  - `spine_dseg` (vértebras e discos): TotalSpineSeg.
+  - `SC_seg` (medula): SCT contrast-agnostic.
+  - `canal_seg` (canal): SCT `sc_canal_t2` com correção manual.
+
+**whole-spine, OpenNeuro ds005616** (caso `ws-amuAL`)
+- Fonte: https://openneuro.org/datasets/ds005616, versão 1.1.6. O espelho é github.com/OpenNeuroDatasets/ds005616, commit `78f2fdb`.
+- Licença: `"License": "CC0"` no `dataset_description.json`.
+- Citação: Molinier N, Bédard S, Boudreau M, Callot V, Pageot C, Laines-Medina N, Alonso-Ortiz E, Valošek J, Cohen-Adad J. whole-spine. OpenNeuro. doi:10.18112/openneuro.ds005616.v1.1.6.
+- A CC0 não exige crédito, mas vale citar do mesmo jeito.
+
+**Fraturas vertebrais por compressão (VCF), HCFMRP, Zenodo 13274445** (casos `vcf-*`)
+- Fonte: https://zenodo.org/records/13274445. A API traz `"license": {"id": "cc-by-4.0"}`.
+- Citação do dataset: Chiari-Correia N, Nogueira-Barbosa MH, Azevedo-Marques PM, Chiari-Correia R, Cordeiro SS, Lima LL. Lumbar Spine Vertebral Compression Fractures (VCFs) Dataset: MRI T1-Weighted Images for Benign and Malignant Classification. Zenodo, 2024. doi:10.5281/zenodo.13274445.
+- Artigo: Chiari-Correia, Nogueira-Barbosa, Chiari-Correia, Azevedo-Marques. A 3D Radiomics-Based Artificial Neural Network Model for Benign Versus Malignant Vertebral Compression Fracture Classification in MRI. J Digit Imaging 36, 1565-1577 (2023). doi:10.1007/s10278-023-00847-4.
+- Crédito sugerido: "Imagens: HCFMRP VCF Dataset (Chiari-Correia et al., Zenodo 2024), CC BY 4.0, convertidas."
+
+**Download**
+- spine-generic: a chave do git-annex sai do link simbólico no `master`. O arquivo vem do remoto público `httpalso` (`object-arbutus.alliancecan.ca/...:def-jcohen-data-multi-subject/<chave>`). O espelho S3 da Amazon responde 403. Cada arquivo foi conferido pelo SHA256 da chave. Foram três sujeitos, cerca de 135 MB.
+- ds005616: o `.log.rmet` do ramo `git-annex` dá o `versionId` do bucket público `s3.amazonaws.com/openneuro.org`. Também foi conferido o SHA256. Foram três sujeitos testados, cerca de 25 MB.
+- Zenodo: há um único `.rar` de 1,30 GB, em RAR4 não sólido, sem acesso arquivo por arquivo. Ele foi baixado inteiro em 78 pedaços com Range, em paralelo (uns 40 s), e o md5 confere com o do Zenodo. A extração foi feita com libarchive (pacote `libarchive-c`), só da planilha e dos 69 pacientes com fratura num nível só.
+- Nenhum DICOM ou NIfTI baixado entrou no repo. Só os arquivos convertidos ficam em `dist/rm`.
+
+### Mapa de rótulos (cervical, torácica e VCF)
+
+As máscaras são `uint8`, com um esquema único para os casos novos. Os valores não colidem com o SPIDER (1 a 9 e 201 a 209). A exceção é o 100, que nos dois esquemas é o canal. Assim, uma única função pode ler os dois sem saber de que exame veio a máscara.
+
+| Valor | Estrutura | Chave no 3D (`src/geo.js`) |
+|---|---|---|
+| 11 a 17 | vértebras C1 a C7 | `C1` ... `C7` |
+| 21 a 32 | vértebras T1 a T12 | `T1` ... `T12` |
+| 41 a 45 | vértebras L1 a L5 | `L1` ... `L5` |
+| 100 + vértebra de cima | disco: 112 = C2-C3 ... 116 = C6-C7, 117 = C7-T1, 121 = T1-T2 ... 131 = T11-T12, 132 = T12-L1, 141 = L1-L2 ... 145 = L5-S1 | `disc.C2-C3` ... |
+| 100 | canal vertebral sem a medula: o líquor e o saco dural | `dura` |
+| 101 | medula espinal | `cord` |
+
+Origem dos valores:
+- **spine-generic** (`spine_dseg` do TotalSpineSeg):
+  - As vértebras 11 a 17, 21 a 32 e 41 a 45 ficam com o mesmo número.
+  - Discos: 63 a 67 viram 112 a 116; 71 vira 117; 72 a 82 viram 121 a 131; 91 vira 132; 92 a 95 viram 141 a 144; 100 vira 145.
+- **ds005616** (`spine_dseg`): a numeração é invertida.
+  - Vértebras: 41 = C1, 40 = C2, e assim por diante até 18 = L5.
+  - Discos: 226 − n é o disco abaixo da vértebra n (C1 = 1), então 224 = C2-C3.
+  - O esquema não está no README. Foi deduzido pela altura dos centros e conferido na imagem: o 40 é o osso com o dente.
+- **Medula e canal**: 101 vem do `SC_seg`. 100 vem do `canal_seg` (limiar 0,5), nos voxels que não são medula, vértebra nem disco. O `canal_seg` do SCT inclui a medula, e na máscara a medula fica por cima.
+- **VCF**: a máscara só tem a vértebra fraturada (44 = L4). Ela vem do `seg.nrrd` do 3D Slicer, posto na grade do DICOM. O `seg.nrrd` já está nessa grade: a diferença no índice é 0.
+- **Fragmentos de borda**: os rótulos com menos de 30 mm³ foram apagados.
+  - Do T2 do `sg-amu01`, a vértebra 24 (T4), com 58 voxels.
+  - Do T2 do `sg-nwu01`, os discos 124 e 125, com 3 e 28 voxels.
+
+Para o visualizador (não feito, porque `src/` não podia mudar):
+- `rmName` hoje só conhece 1 a 9, 100 e 201 a 209. Precisa de um ramo para 11 a 50, 101 e 112 a 145.
+- A tabela de cores (`RM_LUT.I`) precisa listar os valores novos, mantendo a entrada transparente em -2.
+- A NiiVue já posiciona sozinha os volumes em RAS.
+- `ax_t2star` é um axial adquirido em grade própria, como o axial da RSNA. Para não ser reamostrado no sagital, ele precisa da segunda instância (`#rmax`).
+- O protótipo `proto/rm4.html` (pasta de rascunho) já faz esse mapeamento e foi usado nas capturas.
+
+### Conversão, orientação e origem
+
+Scripts: `scripts/conv.py` (NIfTI e rótulos) e `scripts/vcf.py` (DICOM e `seg.nrrd`).
+
+**Formato e orientação**
+- Tudo fica em **RAS**: só permutação e inversão de eixos (`as_closest_canonical`), sem reamostrar.
+- qform e sform com código 1. O cabeçalho é novo e vazio (`descrip`, `aux_file`, `intent_name` e `db_name`), sem extensões.
+- A imagem é `int16`, arredondada; dois T2 do spine-generic vinham em float. A máscara é `uint8`. A compressão é gzip nível 9.
+- Do DICOM só se usa a geometria: `ImagePositionPatient`, `ImageOrientationPatient`, `PixelSpacing` e o passo medido entre os cortes. Nenhuma outra tag é copiada.
+
+**Recorte**
+- Caixa dos rótulos mais 15 mm, e 20 mm na direção cabeça-pé.
+- Eixos com mais de 2 mm entre cortes ficam inteiros: os 15 cortes do T2* e os cortes sagitais da VCF.
+- A VCF não foi recortada, porque o campo inteiro tem menos de 5 MiB e mostra o sacro e toda a lombar, o que deixa contar os níveis.
+- Nada foi reamostrado.
+
+**Origem deslocada**, como na RSNA: todas as séries de um caso foram transladadas juntas.
+- O ponto (0, 0, 0) do mundo cai na medula na altura do disco-chave:
+  - `sg-amu01`: C4-C5;
+  - `sg-nwu01`: C5-C6;
+  - `sg-tokyoSkyra02`: C6-C7;
+  - `ws-amuAL`: T6-T7.
+- Na VCF, ele cai no centro da vértebra fraturada.
+- Deslocamento subtraído (RAS, mm):
+
+  | Caso | Deslocamento |
+  |---|---|
+  | `sg-amu01` | [-5,5, -5,8, 2,4] |
+  | `sg-nwu01` | [4,0, -7,4, -3,6] |
+  | `sg-tokyoSkyra02` | [-3,4, -41,0, -188,8] |
+  | `ws-amuAL` | [-2,0, -68,4, -295,4] |
+  | `vcf-P59` | [-0,8, -8,9, -30,2] |
+  | `vcf-P79` | [1,1, 20,7, -13,5] |
+
+- Volumes oblíquos: o T2* do `sg-nwu01` (18,9°, inclinado ao longo do disco), o T2* do `sg-tokyoSkyra02` (8,9°, não incluído), os sagitais da VCF (4,3° e 3,6°) e o T2 do `sg-nwu01` (2,7°).
+
+### Casos
+
+**`sg-amu01`: cervical quase normal**
+- Sujeito: homem de 28 anos, controle saudável (HC). Siemens Verio, 3 T. Nota radiológica: "n/a".
+- Por quê: foi o recomendado na pesquisa de fontes. Tem os três contrastes, e o T2 cobre de C1 a T3. No T2* axial aparece a substância cinzenta em borboleta.
+- Arquivos:
+
+  | Arquivo | Matriz (x, y, z) | Voxel (mm) | MiB |
+  |---|---|---|---|
+  | `sag_t2` (3D SPACE, TE 120 ms) | 64 x 159 x 260 | 0,8 iso | 3,18 |
+  | `sag_t1` (MPRAGE) | 92 x 112 x 194 | 1,0 iso | 2,45 |
+  | `ax_t2star` (GRE axial; C2 a C6, discos C2-C3 a C5-C6) | 154 x 157 x 15 | 0,5 x 0,5 x 5 | 0,47 |
+  | máscaras | igual à imagem | | 0,03 / 0,02 / 0,005 |
+
+**`sg-nwu01`: hérnia de disco cervical comprimindo a medula**
+- Sujeito: homem de 24 anos, `pathology` = MildCompression. Siemens Prisma-fit, 3 T.
+- Nota radiológica (`participants.tsv`): "Spinal cord compression due to disc hernia C5/6".
+- Por quê: a nota fala de um nível só. O `sub-oxfordFmrib08` tem "C4-6", dois níveis.
+- O que se vê:
+  - No T2 sagital, o líquor na frente da medula some em C5-C6, e a medula é empurrada para trás.
+  - O T2* axial cobre C5-C6 (cortes k = 3 e 4).
+- Arquivos:
+
+  | Arquivo | Matriz | Voxel (mm) | MiB |
+  |---|---|---|---|
+  | `sag_t2` | 64 x 178 x 297 | 0,8 iso | 4,63 |
+  | `sag_t1` | 93 x 138 x 262 | 1,0 iso | 3,91 |
+  | `ax_t2star` (C2 a C7, discos C2-C3 a C6-C7) | 156 x 155 x 15 | 0,5 x 0,5 x 5 | 0,44 |
+  | máscaras | | | 0,04 / 0,03 / 0,004 |
+
+**`sg-tokyoSkyra02`: mielopatia cervical**
+- Sujeito: homem de 36 anos, `pathology` = DCM. Siemens Skyra, 3 T.
+- Nota radiológica: "Spinal cord compression due to disc protrusions/hernias C3-7 (at the level C6/7 rather severe spinal cord compression with myelopathy)".
+- Ressalva para a aula: é compressão por disco (protrusões e hérnias) num homem de 36 anos, não a espondilose clássica do idoso.
+- Por quê:
+  - É um dos dois sujeitos com DCM.
+  - O `sub-tokyoIngenia02` tem a mesma nota, a mesma idade, a mesma altura e o mesmo peso. Parece ser a mesma pessoa noutro aparelho, mas isso não foi verificado.
+  - O Skyra é Siemens, como os outros dois casos cervicais.
+- O que se vê:
+  - No T2 sagital, a medula fica afinada em C6-C7.
+  - No axial montado do T2 de 0,8 mm, a medula sai achatada dentro do canal.
+- O T2* não entrou: tanto no Skyra quanto no Ingenia ele cobre só de C2 a C6 e não chega a C6-C7.
+- Arquivos:
+
+  | Arquivo | Matriz | Voxel (mm) | MiB |
+  |---|---|---|---|
+  | `sag_t2` | 64 x 159 x 266 | 0,8 iso | 3,89 |
+  | `sag_t1` | 96 x 119 x 179 | 1,0 iso | 2,61 |
+  | máscaras | | | 0,03 / 0,02 |
+
+**`ws-amuAL`: coluna torácica normal**
+- Sujeito: homem de 25 anos, HC, `stenosis` = n/a. Siemens Verio, 3 T.
+- O T2 3D SPACE de 1 mm foi composto de várias estações. O JSON avisa "Parties d'images non adaptées les unes aux autres !".
+- Por quê: foram baixados três candidatos sem estenose (amuAL, amuAP e amuHB). O amuHB termina no disco T12-L1, com pedaços de L1 e L2 rotulados na borda de baixo. O amuAP também serviria (vai até L5). Ficou o amuAL porque, no corte mediano, o tórax dele saiu um pouco mais nítido. É uma escolha visual.
+- O arquivo não foi cortado só no tórax: de C1 a L3 dá 3,30 MiB, e a cervical é o que permite contar a partir de C2.
+- Arquivo: `sag_t2`, 47 x 128 x 537, 1,0 mm iso, 3,30 MiB; máscara 0,06 MiB.
+- O T1 (MPRAGE da cabeça ao tronco, 103 MB) não foi baixado.
+
+**`vcf-P59`: fratura osteoporótica de L4**
+- Paciente: mulher de 73 anos. `Class` = benign, `Segmented Vertebra` = L4 (`Patients.xlsx`). Philips Achieva, 1,5 T, sagital T1.
+- O dataset não traz laudo, só a classe e o nível. As malignas têm biópsia; as benignas são osteoporóticas.
+- Por quê: foram vistas as montagens dos 35 pacientes benignos com um nível só. O P59 mostra o padrão típico:
+  - depressão da placa superior;
+  - faixa escura logo abaixo dela;
+  - o resto do corpo com a gordura clara preservada;
+  - parede posterior sem abaulamento.
+- Arquivo: `sag_t1`, 12 x 640 x 640, 4,4 x 0,53 x 0,53 mm, 2,98 MiB; máscara 0,01 MiB.
+
+**`vcf-P79`: fratura por metástase de L4**
+- Paciente: mulher de 69 anos. `Class` = malignant, com biópsia (critério do dataset). `Segmented Vertebra` = L4. Philips Achieva, 1,5 T, sagital T1.
+- Por quê: entre os 34 malignos com um nível só, é o mais claro:
+  - o corpo de L4 inteiro fica escuro no T1, com a gordura substituída;
+  - o corpo está colapsado;
+  - a parede posterior fica convexa e entra no canal.
+- Há também focos escuros arredondados em L3 (mais nítido 8 mm à direita do centro) e em L1. Não estão segmentados e precisam ser confirmados por um radiologista.
+- O mesmo nível do P59 permite comparar benigna e maligna lado a lado.
+- Arquivo: `sag_t1`, 14 x 672 x 672, 4,0 x 0,51 x 0,51 mm, 4,59 MiB; máscara 0,01 MiB.
+
+O dataset VCF só tem T1. Não há T2 nem STIR, então não se vê edema nem o sinal do líquido.
+
+### Conferência da numeração
+
+**Cervical e torácica**
+- No T2 sagital mediano, C2 é o osso com o dente (odontoide). O arco anterior de C1 fica na frente da ponta do dente, e o arco posterior atrás da medula. Daí se conta para baixo, disco por disco.
+- `scripts/seqchk.py` confere duas coisas:
+  - em ordem de altura, os rótulos alternam vértebra e disco, e cada disco 100 + v fica logo abaixo da vértebra v;
+  - o passo entre vértebras não salta mais que 1,6 vezes a mediana, o que acusaria um nível pulado.
+
+**VCF**
+- Conta-se a partir do sacro: S1, disco L5-S1, L5, disco L4-L5 e então a vértebra segmentada.
+
+| Caso | Rótulos na máscara | Resultado |
+|---|---|---|
+| `sg-amu01` | T2 e T1: C1 a T3, discos C2-C3 a T2-T3. T2*: C2 a C6 | Confere. C2 com o dente; 6 discos de C2-C3 a C7-T1 sem falha |
+| `sg-nwu01` | T2: C1 a T4, discos C2-C3 a T3-T4. T1: C1 a T5. T2*: C2 a C7 | Confere |
+| `sg-tokyoSkyra02` | T2: C1 a T4 (T4 só como fragmento lateral na borda), discos C2-C3 a T2-T3. T1: C1 a T2 | Confere |
+| `ws-amuAL` | C1 a L3, discos C2-C3 a L2-L3 | Confere. Os 18 discos de C2-C3 a T12-L1 estão contíguos, sem salto, e o cone medular termina em T12-L1, o que é normal. As costelas não aparecem no sagital, então T12 vem da contagem a partir de C2 |
+| `vcf-P59` | 44 (L4) | Confere com a planilha. Abaixo da vértebra marcada há uma vértebra (L5) e depois o sacro |
+| `vcf-P79` | 44 (L4) | Confere com a planilha |
+
+Observações:
+- O script só acusou ordem trocada em vértebras cortadas pela borda: C7 no T2* do `sg-nwu01` e T2 no T1 do `sg-tokyoSkyra02`. O centro delas se desloca com o corte. Não é erro de numeração.
+- Na VCF, sem a coluna inteira, uma vértebra de transição não se descarta.
+- Um radiologista deve confirmar os níveis antes da aula.
+
+### Posições dos rótulos (`at`)
+
+Os valores estão em mm, em RAS, já com a origem deslocada. O script é `scripts/atmap.py`.
+- **Vértebra**: centro da parte que fica na frente do canal, ou seja, o corpo. O centro do rótulo inteiro caía entre o corpo e o arco. No C1, que é um anel em volta do dente, e nos rótulos cortados pela borda, o ponto vai para o voxel mais próximo do próprio rótulo.
+- **Disco**: centro do rótulo.
+- **`cord.<nível>` e `canal.<nível>`**: centro da medula, ou do canal com a medula, a até 1 mm da altura do centro do disco.
+- **Conferência**:
+  - o script verifica que cada ponto cai no próprio rótulo;
+  - nas capturas, a mira posta em `cord.*` deu o rótulo 101, e na VCF deu o 44;
+  - no `sg-amu01`, a mira em `12` deu C2.
+
+O T1 difere do T2 em cerca de 3 mm nos rótulos inteiros. `cord.<nível>` no T1 fica a até 1,2 mm do (0, 0, 0). O T2* tem mapa próprio. Os JSON completos, inclusive do T1, estão em `rm4/at/` na pasta de rascunho.
+
+```js
+// sg-amu01, T2 (o T1 tem 'cord.C4-C5': [-0.2, -0.2, -0.7])
+at: { 11: [-3.4, 14.4, 65.6], 12: [-0.9, 14.3, 48.9], 13: [-1.8, 15.0, 26.9], 14: [-0.9, 14.9, 9.2], 15: [-0.4, 14.4, -7.3], 16: [-0.1, 13.2, -24.7], 17: [0.3, 9.4, -42.8], 21: [0.2, 1.9, -61.3], 22: [-0.3, -8.5, -80.0], 23: [-1.1, -19.8, -99.7], 112: [-1.2, 16.5, 34.8], 113: [-0.9, 16.2, 17.2], 114: [0.8, 17.0, -0.2], 115: [1.1, 16.3, -17.1], 116: [1.3, 14.3, -34.5], 117: [1.1, 7.7, -52.6], 121: [0.2, -1.9, -70.9], 122: [-0.8, -15.1, -88.6], 'cord.C4-C5': [0.0, 0.0, 0.0], 'canal.C4-C5': [0.2, 1.0, 0.0] }
+// sg-amu01, T2* axial
+at: { 12: [0.5, 14.1, 47.8], 13: [-0.9, 14.7, 27.6], 14: [0.3, 14.7, 10.6], 15: [0.4, 14.9, -7.2], 16: [-0.8, 9.3, -18.5], 112: [-0.8, 15.4, 36.9], 113: [-0.8, 16.3, 16.9], 114: [0.1, 14.6, 1.8], 115: [0.3, 16.9, -18.0], 'cord.C4-C5': [-0.2, 0.5, 1.1], 'canal.C4-C5': [0.2, 1.4, 1.2] }
+// sg-nwu01, T2: hérnia em C5-C6 (115); o T1 tem 'cord.C5-C6': [0.6, 0.0, -0.9]
+at: { 11: [-1.6, 34.9, 81.7], 12: [-2.6, 34.2, 63.6], 13: [-1.6, 28.3, 42.4], 14: [-0.4, 23.0, 25.7], 15: [0.9, 16.7, 9.3], 16: [1.4, 11.8, -6.8], 17: [1.2, 7.4, -24.4], 21: [-0.3, 1.1, -42.9], 22: [-0.6, -7.0, -62.4], 23: [-0.4, -15.0, -82.2], 24: [1.1, -21.5, -103.3], 112: [-1.8, 31.7, 50.1], 113: [0.1, 26.7, 32.9], 114: [1.5, 21.1, 15.9], 115: [2.7, 14.7, 0.0], 116: [2.5, 10.8, -16.0], 117: [1.2, 6.1, -33.9], 121: [-0.2, -1.7, -52.8], 122: [-0.9, -11.9, -71.7], 123: [0.1, -18.8, -92.1], 'cord.C5-C6': [0.0, 0.0, 0.0], 'canal.C5-C6': [0.8, 0.2, 0.0] }
+// sg-nwu01, T2* axial (bloco inclinado 18,9°)
+at: { 12: [-2.5, 8.7, 57.6], 13: [-1.7, 28.6, 43.5], 14: [0.2, 22.8, 26.8], 15: [1.0, 16.8, 10.6], 16: [2.0, 10.9, -6.0], 17: [-10.0, 5.3, -14.6], 112: [-1.7, 31.5, 50.4], 113: [1.0, 27.0, 34.2], 114: [1.0, 20.3, 17.2], 115: [4.2, 13.7, 2.9], 116: [2.2, 9.6, -16.1], 'cord.C5-C6': [0.7, 0.7, 2.8], 'canal.C5-C6': [1.8, 0.7, 2.8] }
+// sg-tokyoSkyra02, T2: compressão grave em C6-C7 (116); o T1 tem 'cord.C6-C7': [0.0, -0.5, -0.1]; 24 (T4) é só um fragmento lateral
+at: { 11: [-2.4, 27.4, 101.9], 12: [-0.2, 27.4, 84.2], 13: [-1.3, 23.9, 61.9], 14: [-1.7, 20.4, 44.5], 15: [-1.5, 18.1, 26.9], 16: [-1.9, 16.5, 9.4], 17: [-1.3, 14.4, -7.7], 21: [-1.1, 8.4, -26.7], 22: [0.6, 0.5, -46.6], 23: [1.7, -8.0, -66.4], 24: [-18.9, -41.5, -70.4], 112: [0.6, 26.6, 69.9], 113: [0.3, 23.3, 51.9], 114: [-0.8, 20.3, 34.5], 115: [-1.8, 18.7, 17.0], 116: [-1.3, 17.3, -0.2], 117: [-1.0, 13.5, -17.8], 121: [-0.5, 5.5, -36.8], 122: [1.0, -3.6, -56.2], 'cord.C6-C7': [0.0, 0.0, 0.0], 'canal.C6-C7': [0.0, 1.0, -0.1] }
+// ws-amuAL, T2: torácica; cord.T12-L1 é o cone medular
+at: { 11: [-1.1, 59.2, 249.5], 12: [6.0, 59.5, 235.3], 13: [4.3, 59.3, 209.1], 14: [2.5, 59.5, 191.7], 15: [1.6, 58.0, 172.7], 16: [1.0, 57.1, 154.7], 17: [0.9, 52.4, 133.9], 21: [-1.2, 45.3, 113.8], 22: [-1.9, 37.6, 93.5], 23: [-2.6, 30.6, 74.8], 24: [-2.6, 25.0, 54.2], 25: [-1.3, 20.5, 33.6], 26: [-0.2, 18.0, 10.8], 27: [0.7, 16.9, -12.0], 28: [1.1, 17.9, -36.3], 29: [1.4, 20.3, -59.1], 30: [2.0, 23.5, -84.6], 31: [3.1, 27.0, -110.4], 32: [3.6, 30.7, -140.8], 41: [3.5, 32.5, -171.7], 42: [2.4, 34.3, -206.4], 43: [2.0, 36.2, -243.6], 112: [5.2, 61.1, 217.5], 113: [3.6, 61.8, 199.0], 114: [1.6, 60.4, 180.9], 115: [0.1, 59.9, 162.3], 116: [-1.2, 56.7, 143.1], 117: [-1.6, 49.7, 123.1], 121: [-2.4, 42.2, 104.2], 122: [-3.1, 32.4, 85.0], 123: [-3.6, 25.7, 65.4], 124: [-2.9, 20.7, 44.8], 125: [-0.8, 17.3, 23.0], 126: [0.7, 16.2, -0.4], 127: [0.9, 16.7, -24.0], 128: [1.3, 19.0, -47.5], 129: [1.5, 22.1, -71.3], 130: [2.2, 25.6, -97.0], 131: [3.4, 29.0, -124.8], 132: [3.1, 32.4, -155.8], 141: [2.9, 32.9, -188.5], 142: [1.2, 35.2, -226.2], 'cord.T6-T7': [0.0, 0.0, 0.0], 'canal.T6-T7': [-0.1, -1.3, 0.0], 'cord.T12-L1': [4.5, 9.4, -156.0], 'canal.T12-L1': [4.7, 10.9, -156.0] }
+// vcf-P59 e vcf-P79: vértebra fraturada (L4) na origem
+at: { 44: [0.0, 0.0, 0.0] }
+```
+
+### Capturas
+
+As capturas ficam em `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/rm4/`.
+- Foram feitas com `proto/rm4.html`: uma cópia do protótipo da fase 1 com o esquema de rótulos novo, lendo `dist/rm` por um link simbólico.
+- São 1440 x 900, com a mira no `at`, e cada uma tem uma versão sem máscara (`_nomask`).
+- Arquivos:
+  - `sg-amu01_t2_C4C5`, `sg-amu01_t2_C2` e `sg-amu01_t2star_C4C5`;
+  - `sg-nwu01_t2_hernia_C5C6`, `sg-nwu01_t1_hernia_C5C6` e `sg-nwu01_t2star_hernia_C5C6`;
+  - `sg-tokyoSkyra02_t2_myelopathy_C6C7` e `sg-tokyoSkyra02_t1_myelopathy_C6C7`;
+  - `ws-amuAL_t2_T6T7` e `ws-amuAL_t2_conus_T12L1`;
+  - `vcf-P59_t1_benign_L4` e `vcf-P79_t1_malignant_L4`.
+- Prévias usadas na escolha e na conferência dos níveis estão em `rm4/prev/`:
+  - `ccj_both.png`, `wsAL_ccj.png`, `wsAL_tl.png` e `vcfz-P59.png`;
+  - `vcf_benign.png` e `vcf_malig.png`, as montagens dos 69 pacientes;
+  - `ax_*.png`, todos os cortes do T2*.
+- Scripts novos em `scripts/`: `sg_fetch.py`, `on_fetch.py`, `conv.py`, `vcf.py`, `rarls.py`, `rarx.py`, `atmap.py`, `seqchk.py`, `prev.py`, `axmont.py`, `niinfo.py`, `affchk.py` e `shoot4.js`.
+
+### O que faltou ou ficou de fora
+
+- **Axial em C6-C7 na mielopatia**: nenhum T2* adquirido chega lá, nem no Skyra nem no Ingenia. O axial sai do T2 3D de 0,8 mm, montado pelo visualizador.
+- **VCF só T1**: sem T2 ou STIR, não há edema nem sinal do líquido. Também não há rótulos das outras vértebras, do canal ou dos discos.
+- **P9** (benigna, L2): a segmentação não cai na grade do DICOM (meio voxel no plano). Ficou fora da escolha.
+- **whole-spine amuHB**: descartado, porque a imagem termina em T12-L1. O T1 do ds005616 não foi baixado.
+- **Ainda não testado no app**: o esquema novo de rótulos e o `ax_t2star` em segunda instância.
+
 ## Onde ficou o material do spike (fora do repo)
 
 Pasta de rascunho da sessão `/tmp/claude-0/-home-user-aula-coluna-3d/3798958d-74ac-5d1d-b223-b01b1d5553a8/scratchpad/`:
