@@ -594,7 +594,7 @@
     if (S.mode === 'rm') {
       // as duas partes (RM_GROUPS) com as trilhas; a trilha aberta se abre nos passos (os nomes das partes e a lista de passos só aparecem na trilha do desktop)
       const cur = RM_STEPS[S.rmStep];
-      chapEl.innerHTML = RM_GROUPS.map((g, gi) => `<p class="rmgrp">${esc(g)}</p>` + RM_TRACKS.filter(t => t.g === gi).map(t => `<button data-rk="${RM_STEPS.findIndex(r => r.t === t)}" aria-current="${cur.t === t}" class="${RM_STEPS.every(r => r.t !== t || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(t.name)}</button>`
+      chapEl.innerHTML = RM_GROUPS.map((g, gi) => `<p class="rmgrp">${esc(g)}</p>` + RM_TRACKS.filter(t => t.g === gi).map(t => `<button data-rk="${RM_STEPS.findIndex(r => r.t === t)}" aria-current="${cur.t === t}" class="rmt${RM_STEPS.every(r => r.t !== t || store.rmSeen.includes(r.id)) ? ' done' : ''}">${esc(t.name)}</button>`
         + (cur.t === t ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.t === t ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('')).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goRm(+b.dataset.rk, true));
     } else if (S.mode === 'anat') {

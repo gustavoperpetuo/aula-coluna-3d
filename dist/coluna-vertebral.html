@@ -122,12 +122,18 @@ body.resizing { cursor: col-resize; user-select: none; }
   .rail .chap { flex-direction: column; gap: 2px; padding: 0; overflow: visible; }
   .rail .chap button { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; border-color: transparent; border-radius: 8px; min-height: 44px; padding: 8px 12px; font-size: 15px; line-height: 1.3; }
   .rail .chap button b { min-width: 14px; }
-  .rail .chap button:hover:not([aria-current="step"]) { background: var(--paper); }
+  .rail .chap button:hover:not([aria-current="step"]):not([aria-current="true"]) { background: var(--paper); }
   .rail .chap button.done:not([aria-current="step"])::after { margin-left: auto; }
   /* ressonância: o caso aberto mostra os passos, o atual na cor de destaque */
-  .rail .chap .rmgrp { display: block; margin: 12px 0 2px; padding: 0 12px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink-3); }
+  /* três níveis que não se confundem: parte (rótulo, não clica), trilha (botão com borda e seta) e passos (recuados, com fio à esquerda) */
+  .rail .chap .rmgrp { display: block; margin: 20px 0 6px; padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3; color: var(--ink-3); }
   .rail .chap .rmgrp:first-child { margin-top: 0; }
-  .rail .chap .rmsteps { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px 12px; }
+  .rail .chap .rmt { border-color: var(--line); background: var(--panel); font-weight: 600; margin-bottom: 4px; }
+  .rail .chap .rmt:hover:not([aria-current="true"]) { border-color: var(--accent); }
+  .rail .chap .rmt::before { content: "\25B8"; font-size: 12px; color: var(--ink-3); }
+  .rail .chap .rmt[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .rail .chap .rmt[aria-current="true"]::before { content: "\25BE"; color: #fff; }
+  .rail .chap .rmsteps { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px 14px; padding: 2px 0 2px 6px; border-left: 2px solid var(--line); }
   .rail .chap .rmsteps button { min-height: 36px; padding: 6px 10px; font-size: 14.5px; }
   .rail .chap .rmsteps button[aria-current="step"] { background: none; border-color: transparent; color: var(--accent); font-weight: 700; }
   .rail .chap .rmsteps button[aria-current="step"] b { color: var(--accent); }
@@ -4528,7 +4534,7 @@ const RM_IDS = RM_TRACKS.flatMap(t => t.steps.map(s => t.id + '.' + s.k));
     if (S.mode === 'rm') {
       // as duas partes (RM_GROUPS) com as trilhas; a trilha aberta se abre nos passos (os nomes das partes e a lista de passos só aparecem na trilha do desktop)
       const cur = RM_STEPS[S.rmStep];
-      chapEl.innerHTML = RM_GROUPS.map((g, gi) => `<p class="rmgrp">${esc(g)}</p>` + RM_TRACKS.filter(t => t.g === gi).map(t => `<button data-rk="${RM_STEPS.findIndex(r => r.t === t)}" aria-current="${cur.t === t}" class="${RM_STEPS.every(r => r.t !== t || store.rmSeen.includes(r.id)) ? 'done' : ''}">${esc(t.name)}</button>`
+      chapEl.innerHTML = RM_GROUPS.map((g, gi) => `<p class="rmgrp">${esc(g)}</p>` + RM_TRACKS.filter(t => t.g === gi).map(t => `<button data-rk="${RM_STEPS.findIndex(r => r.t === t)}" aria-current="${cur.t === t}" class="rmt${RM_STEPS.every(r => r.t !== t || store.rmSeen.includes(r.id)) ? ' done' : ''}">${esc(t.name)}</button>`
         + (cur.t === t ? `<div class="rmsteps">${RM_STEPS.map((r, k) => r.t === t ? `<button data-rk="${k}" aria-current="${k === S.rmStep ? 'step' : 'false'}" class="${store.rmSeen.includes(r.id) ? 'done' : ''}"><b>${r.i + 1}</b>${esc(r.st.t)}</button>` : '').join('')}</div>` : '')).join('')).join('');
       chapEl.querySelectorAll('button').forEach(b => b.onclick = () => goRm(+b.dataset.rk, true));
     } else if (S.mode === 'anat') {

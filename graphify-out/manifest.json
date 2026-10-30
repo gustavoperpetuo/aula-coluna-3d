@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1793326107.3541338,
-    "seen": 1793327810.1273377,
-    "ast_hash": "fe4f8ba1a670b2434d841325683c57a4",
+    "mtime": 1793390640.6146524,
+    "seen": 1793393625.9439132,
+    "ast_hash": "af94d641cd1390ecaa75aeefc0314833",
     "semantic_hash": ""
   },
   "src/content.js": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "src/head.html": {
-    "mtime": 1793325711.1323514,
-    "seen": 1793327810.1273794,
-    "ast_hash": "8d99e9dee6452f3fb7bca1298006518b",
+    "mtime": 1793390668.688187,
+    "seen": 1793393625.9439995,
+    "ast_hash": "272515935bfa8b972519671f49e00b59",
     "semantic_hash": ""
   },
   "src/home.html": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "docs/ressonancia.md": {
-    "mtime": 1793324948.0076718,
-    "seen": 1793327810.1273742,
-    "ast_hash": "61cfa51c6713da8bfc2055cc41d859fe",
+    "mtime": 1793327879.269811,
+    "seen": 1793393625.9439864,
+    "ast_hash": "a466ef3526f6d627714dc70b94f29936",
     "semantic_hash": ""
   },
   "docs/estilo-ressonancia.md": {
